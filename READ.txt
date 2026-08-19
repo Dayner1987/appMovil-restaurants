@@ -1,0 +1,12 @@
+project to use in course ProgMovilII by dayner alvarez
+backend: strapi
+frontend: expo
+***libraris from npm****
+
+npm install axios
+npx expo install @react-native-async-storage/async-storage
+npx expo install @expo/vector-
+
+******start server dev****
+npx expo start -c
+npm run develop

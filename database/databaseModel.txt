@@ -1,0 +1,543 @@
+CREATE DATABASE IF NOT EXISTS restaurants
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE restaurants;
+
+-- =====================================================
+-- 1. RESTAURANTS
+-- =====================================================
+
+CREATE TABLE restaurants (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(150) NOT NULL,
+    slug VARCHAR(180) NOT NULL,
+    description TEXT NULL,
+    address TEXT NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    phone VARCHAR(30) NOT NULL,
+    nit VARCHAR(30) NULL,
+    logo_url VARCHAR(500) NULL,
+    cover_image_url VARCHAR(500) NULL,
+
+    restaurant_status ENUM(
+        'ACTIVE',
+        'INACTIVE',
+        'SUSPENDED'
+    ) NOT NULL DEFAULT 'ACTIVE',
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_restaurants_slug (slug),
+    KEY idx_restaurants_status (restaurant_status)
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- 2. USERS
+-- =====================================================
+
+CREATE TABLE users (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    username VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+
+    first_name VARCHAR(100) NOT NULL,
+    middle_name VARCHAR(100) NULL,
+    last_name VARCHAR(100) NOT NULL,
+    second_last_name VARCHAR(100) NULL,
+
+    ci VARCHAR(30) NULL,
+    phone VARCHAR(30) NULL,
+    avatar_url VARCHAR(500) NULL,
+
+    role ENUM(
+        'SUPER_ADMIN',
+        'RESTAURANT_ADMIN',
+        'EMPLOYEE',
+        'CLIENT'
+    ) NOT NULL DEFAULT 'CLIENT',
+
+    restaurant_id INT UNSIGNED NULL,
+
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    UNIQUE KEY uq_users_username (username),
+    UNIQUE KEY uq_users_email (email),
+    UNIQUE KEY uq_users_ci (ci),
+
+    KEY idx_users_restaurant (restaurant_id),
+    KEY idx_users_role (role),
+
+    CONSTRAINT fk_users_restaurant
+        FOREIGN KEY (restaurant_id)
+        REFERENCES restaurants(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- 3. CATEGORIES
+-- =====================================================
+
+CREATE TABLE categories (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    restaurant_id INT UNSIGNED NOT NULL,
+
+    name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    image_url VARCHAR(500) NULL,
+
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    KEY idx_categories_restaurant (restaurant_id),
+
+    CONSTRAINT fk_categories_restaurant
+        FOREIGN KEY (restaurant_id)
+        REFERENCES restaurants(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- 4. PRODUCTS
+-- =====================================================
+
+CREATE TABLE products (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    restaurant_id INT UNSIGNED NOT NULL,
+    category_id INT UNSIGNED NOT NULL,
+
+    name VARCHAR(150) NOT NULL,
+    slug VARCHAR(180) NOT NULL,
+    sku VARCHAR(80) NULL,
+
+    description TEXT NULL,
+
+    price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    stock INT NOT NULL DEFAULT 0,
+
+    is_available BOOLEAN NOT NULL DEFAULT TRUE,
+
+    main_image_url VARCHAR(500) NULL,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    UNIQUE KEY uq_products_slug_restaurant
+        (restaurant_id, slug),
+
+    UNIQUE KEY uq_products_sku (sku),
+
+    KEY idx_products_restaurant (restaurant_id),
+    KEY idx_products_category (category_id),
+
+    CONSTRAINT fk_products_restaurant
+        FOREIGN KEY (restaurant_id)
+        REFERENCES restaurants(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_products_category
+        FOREIGN KEY (category_id)
+        REFERENCES categories(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- 5. PROMOTIONS
+-- =====================================================
+
+CREATE TABLE promotions (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    restaurant_id INT UNSIGNED NOT NULL,
+
+    name VARCHAR(150) NOT NULL,
+    description TEXT NULL,
+
+    type ENUM(
+        'PERCENTAGE',
+        'FIXED_AMOUNT',
+        'TWO_FOR_ONE'
+    ) NOT NULL,
+
+    percentage DECIMAL(5,2) NULL,
+    discount_amount DECIMAL(10,2) NULL,
+
+    buy_quantity INT NULL,
+    pay_quantity INT NULL,
+
+    start_at DATETIME NOT NULL,
+    end_at DATETIME NOT NULL,
+
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    KEY idx_promotions_restaurant (restaurant_id),
+    KEY idx_promotions_dates (start_at, end_at),
+
+    CONSTRAINT fk_promotions_restaurant
+        FOREIGN KEY (restaurant_id)
+        REFERENCES restaurants(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- 6. RELACIÓN PRODUCTS <-> PROMOTIONS
+-- =====================================================
+
+CREATE TABLE promotion_products (
+    promotion_id INT UNSIGNED NOT NULL,
+    product_id INT UNSIGNED NOT NULL,
+
+    PRIMARY KEY (promotion_id, product_id),
+
+    KEY idx_promotion_products_product (product_id),
+
+    CONSTRAINT fk_promotion_products_promotion
+        FOREIGN KEY (promotion_id)
+        REFERENCES promotions(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_promotion_products_product
+        FOREIGN KEY (product_id)
+        REFERENCES products(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- 7. PUBLICATIONS
+-- =====================================================
+
+CREATE TABLE publications (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    restaurant_id INT UNSIGNED NOT NULL,
+    author_id INT UNSIGNED NOT NULL,
+
+    title VARCHAR(200) NOT NULL,
+    description TEXT NOT NULL,
+
+    image_url VARCHAR(500) NULL,
+
+    featured BOOLEAN NOT NULL DEFAULT FALSE,
+
+    is_published BOOLEAN NOT NULL DEFAULT FALSE,
+    published_at DATETIME NULL,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    KEY idx_publications_restaurant (restaurant_id),
+    KEY idx_publications_author (author_id),
+
+    CONSTRAINT fk_publications_restaurant
+        FOREIGN KEY (restaurant_id)
+        REFERENCES restaurants(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_publications_author
+        FOREIGN KEY (author_id)
+        REFERENCES users(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- 8. ORDERS
+-- =====================================================
+
+CREATE TABLE orders (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    restaurant_id INT UNSIGNED NOT NULL,
+
+    customer_id INT UNSIGNED NULL,
+    seller_id INT UNSIGNED NULL,
+
+    order_code VARCHAR(50) NOT NULL,
+
+    order_type ENUM(
+        'ONLINE',
+        'COUNTER',
+        'DELIVERY',
+        'PICKUP'
+    ) NOT NULL DEFAULT 'ONLINE',
+
+    order_status ENUM(
+        'PENDING',
+        'CONFIRMED',
+        'PREPARING',
+        'READY',
+        'COMPLETED',
+        'CANCELLED'
+    ) NOT NULL DEFAULT 'PENDING',
+
+    payment_status ENUM(
+        'PENDING',
+        'PARTIAL',
+        'PAID',
+        'REFUNDED'
+    ) NOT NULL DEFAULT 'PENDING',
+
+    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    discount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+
+    delivery_address TEXT NULL,
+    notes TEXT NULL,
+
+    ordered_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME NULL,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    UNIQUE KEY uq_orders_code (order_code),
+
+    KEY idx_orders_restaurant (restaurant_id),
+    KEY idx_orders_customer (customer_id),
+    KEY idx_orders_seller (seller_id),
+    KEY idx_orders_status (order_status),
+    KEY idx_orders_date (ordered_at),
+
+    CONSTRAINT fk_orders_restaurant
+        FOREIGN KEY (restaurant_id)
+        REFERENCES restaurants(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_orders_customer
+        FOREIGN KEY (customer_id)
+        REFERENCES users(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_orders_seller
+        FOREIGN KEY (seller_id)
+        REFERENCES users(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- 9. ORDER ITEMS
+-- =====================================================
+
+CREATE TABLE order_items (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    order_id INT UNSIGNED NOT NULL,
+    product_id INT UNSIGNED NOT NULL,
+    promotion_id INT UNSIGNED NULL,
+
+    product_name VARCHAR(150) NOT NULL,
+
+    quantity INT NOT NULL,
+
+    unit_price DECIMAL(10,2) NOT NULL,
+
+    discount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+
+    subtotal DECIMAL(10,2) NOT NULL,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    KEY idx_order_items_order (order_id),
+    KEY idx_order_items_product (product_id),
+    KEY idx_order_items_promotion (promotion_id),
+
+    CONSTRAINT fk_order_items_order
+        FOREIGN KEY (order_id)
+        REFERENCES orders(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_order_items_product
+        FOREIGN KEY (product_id)
+        REFERENCES products(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_order_items_promotion
+        FOREIGN KEY (promotion_id)
+        REFERENCES promotions(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- 10. PAYMENTS
+-- =====================================================
+
+CREATE TABLE payments (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    order_id INT UNSIGNED NOT NULL,
+    received_by INT UNSIGNED NULL,
+
+    amount DECIMAL(10,2) NOT NULL,
+
+    method ENUM(
+        'CASH',
+        'QR',
+        'CARD',
+        'TRANSFER'
+    ) NOT NULL,
+
+    status ENUM(
+        'PENDING',
+        'APPROVED',
+        'REJECTED',
+        'REFUNDED'
+    ) NOT NULL DEFAULT 'PENDING',
+
+    transaction_reference VARCHAR(150) NULL,
+
+    paid_at DATETIME NULL,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    KEY idx_payments_order (order_id),
+    KEY idx_payments_received_by (received_by),
+    KEY idx_payments_status (status),
+
+    CONSTRAINT fk_payments_order
+        FOREIGN KEY (order_id)
+        REFERENCES orders(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_payments_received_by
+        FOREIGN KEY (received_by)
+        REFERENCES users(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- 11. RECEIPTS
+-- =====================================================
+
+CREATE TABLE receipts (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    order_id INT UNSIGNED NOT NULL,
+
+    receipt_number VARCHAR(80) NOT NULL,
+
+    issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    subtotal DECIMAL(10,2) NOT NULL,
+    discount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    total DECIMAL(10,2) NOT NULL,
+
+    customer_name VARCHAR(200) NULL,
+    customer_email VARCHAR(150) NULL,
+
+    pdf_url VARCHAR(500) NULL,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    UNIQUE KEY uq_receipts_order (order_id),
+    UNIQUE KEY uq_receipts_number (receipt_number),
+
+    CONSTRAINT fk_receipts_order
+        FOREIGN KEY (order_id)
+        REFERENCES orders(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+
+) ENGINE=InnoDB
+DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;

@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payments",
+  "info": {
+    "singularName": "payment",
+    "pluralName": "payments",
+    "displayName": "Payment"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": [
+        "CASH",
+        "QR",
+        "CARD",
+        "TRANSFER"
+      ]
+    },
+    "statusPayment": {
+      "type": "enumeration",
+      "enum": [
+        "PENDING",
+        "APPROVED",
+        "REJECTED",
+        "REFUNDED"
+      ]
+    },
+    "transactionReference": {
+      "type": "string"
+    },
+    "paidAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order",
+      "inversedBy": "payments"
+    }
+  }
+}
