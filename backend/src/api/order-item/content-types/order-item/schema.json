@@ -28,10 +28,6 @@
       "type": "decimal",
       "required": true
     },
-    "productName": {
-      "type": "string",
-      "required": true
-    },
     "order": {
       "type": "relation",
       "relation": "manyToOne",
@@ -43,6 +39,9 @@
       "relation": "manyToOne",
       "target": "api::product.product",
       "inversedBy": "order_items"
+    },
+    "productName": {
+      "type": "string"
     }
   }
 }

@@ -534,7 +534,7 @@ export interface ApiOrderItemOrderItem extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     order: Schema.Attribute.Relation<'manyToOne', 'api::order.order'>;
     product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
-    productName: Schema.Attribute.String & Schema.Attribute.Required;
+    productName: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     quantity: Schema.Attribute.Integer &
       Schema.Attribute.Required &
@@ -803,6 +803,44 @@ export interface ApiReceiptReceipt extends Struct.CollectionTypeSchema {
       Schema.Attribute.Unique;
     subtotal: Schema.Attribute.Decimal & Schema.Attribute.Required;
     total: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiRestaurantApplicationRestaurantApplication
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'restaurant_applications';
+  info: {
+    displayName: 'Restaurant Application';
+    pluralName: 'restaurant-applications';
+    singularName: 'restaurant-application';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    applicant: Schema.Attribute.Relation<
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::restaurant-application.restaurant-application'
+    > &
+      Schema.Attribute.Private;
+    proposedRestaurantName: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    rejectionReason: Schema.Attribute.Text;
+    reviewedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<['pending', 'approved', 'rejected']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1362,6 +1400,10 @@ export interface PluginUsersPermissionsUser
       'manyToOne',
       'api::restaurant.restaurant'
     >;
+    restaurant_application: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::restaurant-application.restaurant-application'
+    >;
     role: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.role'
@@ -1399,6 +1441,7 @@ declare module '@strapi/strapi' {
       'api::promotion.promotion': ApiPromotionPromotion;
       'api::publication.publication': ApiPublicationPublication;
       'api::receipt.receipt': ApiReceiptReceipt;
+      'api::restaurant-application.restaurant-application': ApiRestaurantApplicationRestaurantApplication;
       'api::restaurant.restaurant': ApiRestaurantRestaurant;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

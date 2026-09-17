@@ -107,6 +107,11 @@
       "relation": "manyToMany",
       "target": "api::order.order",
       "inversedBy": "users"
+    },
+    "restaurant_application": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::restaurant-application.restaurant-application"
     }
   }
 }

@@ -1,4 +1,4 @@
-project to use in course ProgMovilII by dayner alvarez
+project to use in course Dev.Movil.II by dayner alvarez
 backend: strapi
 frontend: expo
 ***libraris from npm****
@@ -11,4 +11,6 @@ npx expo install lottie-react-native
 npm install @lottiefiles/dotlottie-react
 ******start server dev****
 npx expo start -c
+npm run develop
+***server backend with strapi****
 npm run develop
