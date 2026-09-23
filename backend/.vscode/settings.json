@@ -1,3 +1,10 @@
 {
-  "window.title": " BACKEND — ${activeEditorShort}"
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 500,
+
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit",
+    "source.sortMembers": "explicit"
+  }
 }

@@ -1,3 +1,4 @@
+//src/extensions/users-permissions/strapi-server.ts
 export default (plugin: any) => {
   async function getUserRole(userId: number | string) {
     const user = await strapi.db
