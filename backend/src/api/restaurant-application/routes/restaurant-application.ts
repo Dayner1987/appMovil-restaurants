@@ -1,12 +1,8 @@
-export default {
-  routes: [
-    {
-      method: 'POST',
-      path: '/restaurant-applications/register',
-      handler: 'api::restaurant-application.restaurant-application.register',
-      config: {
-        auth: false,
-      },
-    },
-  ],
-};
+//src/api/restaurant-application/routes/restaurant-application.ts
+/**
+ * restaurant router
+ */
+
+import { factories } from '@strapi/strapi';
+
+export default factories.createCoreRouter('api::restaurant-application.restaurant-application');
