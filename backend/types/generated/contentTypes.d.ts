@@ -863,9 +863,6 @@ export interface ApiRestaurantRestaurant extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::category.category'
     >;
-    coverImage: Schema.Attribute.Media<
-      'images' | 'files' | 'videos' | 'audios'
-    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -892,6 +889,7 @@ export interface ApiRestaurantRestaurant extends Struct.CollectionTypeSchema {
       'api::publication.publication'
     >;
     publishedAt: Schema.Attribute.DateTime;
+    QRImage: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     slug: Schema.Attribute.UID<'name'>;
     statusRes: Schema.Attribute.Enumeration<
       ['ACTIVE', 'INACTIVE', 'SUSPENDED']

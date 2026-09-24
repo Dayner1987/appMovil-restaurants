@@ -53,7 +53,7 @@
         "audios"
       ]
     },
-    "coverImage": {
+    "QRImage": {
       "type": "media",
       "multiple": false,
       "allowedTypes": [
