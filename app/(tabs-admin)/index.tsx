@@ -1,27 +1,24 @@
 // app/(tabs)/index.tsx
 
 import { useCallback } from 'react';
-
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
-  StyleSheet,
+  ScrollView,
   Text,
   View,
 } from 'react-native';
-
-import {
-  useFocusEffect,
-  useRouter,
-} from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 
 import DashboardNavbar from '@/components/DashboardNavbar';
+import AdminHero from '@/components/admin/AdminHero';
+import AdminSalesChart from '@/components/admin/SalesChart';
+import RestaurantApplicationsPreview from '@/components/admin/RestaurantApplicationsPreview';
+import AdminFooter from '@/components/admin/AdminFooter';
+
 import { useRestaurantApplication } from '@/hooks/useRestaurantApplication';
 
 export default function AdminHomeScreen() {
-  const router = useRouter();
-
   const {
     applications,
     loading,
@@ -31,10 +28,6 @@ export default function AdminHomeScreen() {
     autoLoad: false,
   });
 
-  // =====================================================
-  // RECARGAR SOLICITUDES CADA VEZ QUE LA PANTALLA
-  // VUELVE A ESTAR ACTIVA
-  // =====================================================
   useFocusEffect(
     useCallback(() => {
       void loadApplications().catch(() => undefined);
@@ -42,339 +35,68 @@ export default function AdminHomeScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-[#F8F8F3]">
       <DashboardNavbar title="Administración" />
 
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          Solicitudes de restaurantes
-        </Text>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingBottom: 20,
+        }}
+      >
+        <View className="w-full self-center px-4 pb-4 pt-5 web:max-w-[920px]">
+          <AdminHero />
 
-        <Text style={styles.subtitle}>
-          Revisa y administra las solicitudes recibidas.
-        </Text>
-      </View>
-
-      {loading && applications.length === 0 && (
-        <View style={styles.center}>
-          <ActivityIndicator
-            size="large"
-            color="#7657D5"
-          />
-
-          <Text style={styles.loadingText}>
-            Cargando solicitudes...
-          </Text>
-        </View>
-      )}
-
-      {error &&
-        !loading &&
-        applications.length === 0 && (
-          <View style={styles.messageBox}>
-            <Text style={styles.errorText}>
-              {error}
-            </Text>
-
-            <Pressable
-              style={styles.retryButton}
-              onPress={() =>
-                void loadApplications().catch(
-                  () => undefined
-                )
-              }
-            >
-              <Text style={styles.retryText}>
-                Reintentar
-              </Text>
-            </Pressable>
+          <View className="mt-5">
+            <AdminSalesChart />
           </View>
-        )}
 
-      {applications.length > 0 && (
-        <FlatList
-          style={styles.flatList}
-          data={applications}
-          keyExtractor={(item) =>
-            item.documentId ||
-            String(item.id)
-          }
-          contentContainerStyle={
-            styles.list
-          }
-          showsVerticalScrollIndicator={false}
-          refreshing={loading}
-          onRefresh={() =>
-            void loadApplications().catch(
-              () => undefined
-            )
-          }
-          renderItem={({ item }) => {
-            const applicantName =
-              [
-                item.applicant?.firstName,
-                item.applicant?.lastName,
-              ]
-                .filter(Boolean)
-                .join(' ') ||
-              item.applicant?.username ||
-              'Propietario sin nombre';
+          <View className="mt-6">
+            {loading && applications.length === 0 ? (
+              <View className="min-h-[220px] items-center justify-center rounded-[28px] bg-white">
+                <ActivityIndicator
+                  size="large"
+                  color="#88A64B"
+                />
 
-            return (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.card,
-                  pressed &&
-                    styles.cardPressed,
-                ]}
-                onPress={() =>
-                  router.push({
-                    pathname:
-                      '../others/RestaurantSol',
-                    params: {
-                      documentId:
-                        item.documentId,
-                    },
-                  })
-                }
-              >
-                <View
-                  style={
-                    styles.iconContainer
-                  }
-                >
-                  <Text style={styles.icon}>
-                    R
-                  </Text>
-                </View>
-
-                <View
-                  style={styles.cardContent}
-                >
-                  <Text
-                    style={
-                      styles.restaurantName
-                    }
-                  >
-                    {
-                      item.proposedRestaurantName
-                    }
-                  </Text>
-
-                  <Text style={styles.owner}>
-                    Propietario:{' '}
-                    {applicantName}
-                  </Text>
-
-                  <Text
-                    style={[
-                      styles.status,
-
-                      item.status ===
-                        'approved' &&
-                        styles.approved,
-
-                      item.status ===
-                        'rejected' &&
-                        styles.rejected,
-                    ]}
-                  >
-                    {item.status ===
-                    'pending'
-                      ? 'Pendiente'
-                      : item.status ===
-                          'approved'
-                        ? 'Aprobado'
-                        : 'Rechazado'}
-                  </Text>
-                </View>
-
-                <Text style={styles.arrow}>
-                  ›
+                <Text className="mt-3 text-[13px] text-[#8B907F]">
+                  Cargando solicitudes...
                 </Text>
-              </Pressable>
-            );
-          }}
-        />
-      )}
+              </View>
+            ) : error && applications.length === 0 ? (
+              <View className="items-center rounded-[28px] bg-white p-6">
+                <View className="h-14 w-14 items-center justify-center rounded-[18px] bg-[#FCE9E5]">
+                  <Text className="text-[22px] font-extrabold text-[#BF5B4C]">
+                    !
+                  </Text>
+                </View>
 
-      {!loading &&
-        !error &&
-        applications.length === 0 && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>
-              No existen solicitudes
-            </Text>
+                <Text className="mt-4 text-center text-[13px] leading-5 text-[#BF5B4C]">
+                  {error}
+                </Text>
 
-            <Text style={styles.emptyText}>
-              Las nuevas solicitudes aparecerán aquí.
-            </Text>
+                <Pressable
+                  onPress={() =>
+                    void loadApplications().catch(() => undefined)
+                  }
+                  className="mt-5 rounded-[18px] bg-[#D98B4F] px-6 py-3 active:opacity-80"
+                >
+                  <Text className="font-bold text-white">
+                    Reintentar
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <RestaurantApplicationsPreview
+                applications={applications}
+              />
+            )}
           </View>
-        )}
+
+          <AdminFooter />
+        </View>
+      </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F7FC',
-  },
-
-  flatList: {
-    flex: 1,
-  },
-
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#292638',
-  },
-
-  subtitle: {
-    marginTop: 6,
-    fontSize: 14,
-    color: '#7D788A',
-  },
-
-  list: {
-    padding: 20,
-    paddingTop: 10,
-    paddingBottom: 40,
-  },
-
-  card: {
-    minHeight: 100,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  cardPressed: {
-    opacity: 0.7,
-  },
-
-  iconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#F0ECFC',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 13,
-  },
-
-  icon: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#7657D5',
-  },
-
-  cardContent: {
-    flex: 1,
-  },
-
-  restaurantName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#343143',
-  },
-
-  owner: {
-    marginTop: 5,
-    fontSize: 13,
-    color: '#858191',
-  },
-
-  status: {
-    marginTop: 7,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: '#FFF3D6',
-    color: '#A56A00',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-
-  approved: {
-    backgroundColor: '#DDF7E8',
-    color: '#16834B',
-  },
-
-  rejected: {
-    backgroundColor: '#FFE1E1',
-    color: '#C0392B',
-  },
-
-  arrow: {
-    marginLeft: 10,
-    fontSize: 30,
-    color: '#AAA6B7',
-  },
-
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  loadingText: {
-    marginTop: 10,
-    color: '#7D788A',
-  },
-
-  messageBox: {
-    margin: 20,
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-  },
-
-  errorText: {
-    textAlign: 'center',
-    color: '#C0392B',
-  },
-
-  retryButton: {
-    marginTop: 15,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#7657D5',
-  },
-
-  retryText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-
-  empty: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 80,
-    alignItems: 'center',
-  },
-
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#343143',
-  },
-
-  emptyText: {
-    marginTop: 8,
-    color: '#858191',
-  },
-});

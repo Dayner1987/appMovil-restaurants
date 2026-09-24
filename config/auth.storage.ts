@@ -1,3 +1,4 @@
+//config/auth.storage.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { AppUser } from '@/types/user.types';

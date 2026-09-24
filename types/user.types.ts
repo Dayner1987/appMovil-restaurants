@@ -1,3 +1,5 @@
+// types/user.types.ts
+
 export type AppRole =
   | 'admin'
   | 'restaurant'
@@ -16,19 +18,32 @@ export interface UserRole {
 export interface UserImage {
   id: number;
   documentId?: string;
+
   name?: string;
-  url?: string;
   alternativeText?: string | null;
   caption?: string | null;
-  width?: number;
-  height?: number;
-  mime?: string;
-  size?: number;
+
+  width?: number | null;
+  height?: number | null;
+
+  formats?: Record<string, unknown> | null;
+
+  mime?: string | null;
+  size?: number | null;
+
+  url?: string | null;
+  previewUrl?: string | null;
+
+  provider?: string | null;
+
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface UserRestaurant {
   id: number;
   documentId?: string;
+
   name?: string;
   email?: string;
 }
@@ -36,6 +51,7 @@ export interface UserRestaurant {
 export interface UserOrder {
   id: number;
   documentId?: string;
+
   orderCode?: string;
   total?: number;
   statusOrder?: string;
@@ -44,63 +60,135 @@ export interface UserOrder {
 export interface UserRestaurantApplication {
   id: number;
   documentId?: string;
+
   proposedRestaurantName?: string;
-  status?: 'pending' | 'approved' | 'rejected' | string;
+
+  status?:
+    | 'pending'
+    | 'approved'
+    | 'rejected'
+    | string;
+
   rejectionReason?: string | null;
 }
 
 export interface AppUser {
   id: number;
   documentId?: string;
+
   username: string;
   email: string;
+
   provider?: string | null;
+
   confirmed: boolean;
   blocked: boolean;
+
   firstName: string;
   middleName?: string | null;
+
   lastName: string;
   secondLastName?: string | null;
+
   ci?: string | null;
   phone?: string | null;
+
   role?: UserRole | null;
+
   avatar?: UserImage | null;
+
   restaurant?: UserRestaurant | null;
+
   orders?: UserOrder[];
-  restaurant_application?: UserRestaurantApplication | null;
+
+  restaurant_application?:
+    | UserRestaurantApplication
+    | null;
+
   createdAt: string;
   updatedAt: string;
+
   publishedAt?: string | null;
 }
 
+// =====================================================
+// PERFIL PROPIO
+// =====================================================
+
 export interface UpdateMyProfileData {
   firstName?: string;
+
   middleName?: string | null;
+
   lastName?: string;
+
   secondLastName?: string | null;
+
   phone?: string | null;
+
   ci?: string | null;
 }
+
+// =====================================================
+// AVATAR PROPIO
+// =====================================================
+
+export interface MyAvatarResponse {
+  avatar: UserImage | null;
+}
+
+export interface RemoveMyAvatarResponse {
+  avatar: null;
+  message: string;
+}
+
+// =====================================================
+// PASSWORD
+// =====================================================
+
+export interface ChangePasswordData {
+  currentPassword: string;
+
+  newPassword: string;
+
+  confirmPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  jwt: string;
+
+  refreshToken?: string;
+
+  user: AppUser;
+}
+
+// =====================================================
+// ADMINISTRACIÓN DE USUARIOS
+// =====================================================
 
 export interface UpdateUserData {
   username?: string;
   email?: string;
-  firstName?: string;
-  middleName?: string | null;
-  lastName?: string;
-  secondLastName?: string | null;
-  ci?: string | null;
-  phone?: string | null;
-  confirmed?: boolean;
-  blocked?: boolean;
-  role?: number | null;
-  restaurant?: number | null;
-}
 
-export interface ChangePasswordData {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
+  firstName?: string;
+
+  middleName?: string | null;
+
+  lastName?: string;
+
+  secondLastName?: string | null;
+
+  ci?: string | null;
+
+  phone?: string | null;
+
+  confirmed?: boolean;
+
+  blocked?: boolean;
+
+  role?: number | null;
+
+  restaurant?: number | null;
 }
 
 export interface UserPagination {
@@ -112,6 +200,7 @@ export interface UserPagination {
 
 export interface UserListResponse {
   data: AppUser[];
+
   meta: {
     pagination: UserPagination;
   };
@@ -119,17 +208,30 @@ export interface UserListResponse {
 
 export interface UserResponse {
   data: AppUser;
-  meta?: Record<string, unknown>;
+
+  meta?: Record<
+    string,
+    unknown
+  >;
 }
 
 export interface UserQueryParams {
   page?: number;
   pageSize?: number;
+
   sort?: string | string[];
+
   username?: string;
+
   email?: string;
+
   blocked?: boolean;
+
   confirmed?: boolean;
+
   roleId?: number | string;
-  restaurantId?: number | string;
+
+  restaurantId?:
+    | number
+    | string;
 }
