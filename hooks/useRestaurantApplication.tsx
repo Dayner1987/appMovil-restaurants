@@ -70,47 +70,98 @@ export function useRestaurantApplication(
   >([]);
 
   const [loading, setLoading] = useState(false);
+
+  const [refreshing, setRefreshing] =
+    useState(false);
+
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const [error, setError] =
+    useState<string | null>(null);
 
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
-  const loadApplication = useCallback(async (id: string) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response =
-        await restaurantApplicationService.findOne(id);
-
-      if (mountedRef.current) {
-        setApplication(response.data);
+  // =====================================================
+  // ACTUALIZAR UNA SOLICITUD EN TODOS LOS ESTADOS LOCALES
+  // =====================================================
+  const syncApplication = useCallback(
+    (updated: RestaurantApplication) => {
+      if (!mountedRef.current) {
+        return;
       }
 
-      return response.data;
-    } catch (error) {
-      const message = getErrorMessage(error);
+      setApplication((current) => {
+        if (
+          !current ||
+          current.documentId === updated.documentId
+        ) {
+          return updated;
+        }
 
-      if (mountedRef.current) {
-        setError(message);
+        return current;
+      });
+
+      setApplications((current) =>
+        current.map((item) =>
+          item.documentId === updated.documentId
+            ? updated
+            : item
+        )
+      );
+    },
+    []
+  );
+
+  // =====================================================
+  // CARGAR UNA SOLICITUD
+  // =====================================================
+  const loadApplication = useCallback(
+    async (id: string) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response =
+          await restaurantApplicationService.findOne(id);
+
+        if (mountedRef.current) {
+          setApplication(response.data);
+        }
+
+        return response.data;
+      } catch (error) {
+        const message =
+          getErrorMessage(error);
+
+        if (mountedRef.current) {
+          setError(message);
+        }
+
+        throw error;
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
       }
+    },
+    []
+  );
 
-      throw error;
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-      }
-    }
-  }, []);
-
+  // =====================================================
+  // CARGAR LISTA
+  // =====================================================
   const loadApplications = useCallback(
-    async (params: RestaurantApplicationQueryParams = {}) => {
+    async (
+      params: RestaurantApplicationQueryParams = {}
+    ) => {
       setLoading(true);
       setError(null);
 
@@ -118,7 +169,8 @@ export function useRestaurantApplication(
         const response =
           await restaurantApplicationService.findAll({
             ...params,
-            applicantId: applicantId ?? params.applicantId,
+            applicantId:
+              applicantId ?? params.applicantId,
           });
 
         if (mountedRef.current) {
@@ -127,7 +179,8 @@ export function useRestaurantApplication(
 
         return response;
       } catch (error) {
-        const message = getErrorMessage(error);
+        const message =
+          getErrorMessage(error);
 
         if (mountedRef.current) {
           setError(message);
@@ -143,15 +196,64 @@ export function useRestaurantApplication(
     [applicantId]
   );
 
+  // =====================================================
+  // REFRESCAR SIN OCULTAR LA LISTA
+  // =====================================================
+  const refreshApplications = useCallback(
+    async (
+      params: RestaurantApplicationQueryParams = {}
+    ) => {
+      if (mountedRef.current) {
+        setRefreshing(true);
+        setError(null);
+      }
+
+      try {
+        const response =
+          await restaurantApplicationService.findAll({
+            ...params,
+            applicantId:
+              applicantId ?? params.applicantId,
+          });
+
+        if (mountedRef.current) {
+          setApplications(response.data);
+        }
+
+        return response;
+      } catch (error) {
+        const message =
+          getErrorMessage(error);
+
+        if (mountedRef.current) {
+          setError(message);
+        }
+
+        throw error;
+      } finally {
+        if (mountedRef.current) {
+          setRefreshing(false);
+        }
+      }
+    },
+    [applicantId]
+  );
+
+  // =====================================================
+  // REGISTRAR
+  // =====================================================
   const registerApplication = useCallback(
     async (data: RestaurantRegisterData) => {
       setSaving(true);
       setError(null);
 
       try {
-        return await restaurantApplicationService.register(data);
+        return await restaurantApplicationService.register(
+          data
+        );
       } catch (error) {
-        const message = getErrorMessage(error);
+        const message =
+          getErrorMessage(error);
 
         if (mountedRef.current) {
           setError(message);
@@ -167,6 +269,9 @@ export function useRestaurantApplication(
     []
   );
 
+  // =====================================================
+  // ACTUALIZAR
+  // =====================================================
   const updateApplication = useCallback(
     async (
       id: string,
@@ -177,25 +282,19 @@ export function useRestaurantApplication(
 
       try {
         const response =
-          await restaurantApplicationService.update(id, data);
+          await restaurantApplicationService.update(
+            id,
+            data
+          );
 
         const updated = response.data;
 
-        if (mountedRef.current) {
-          setApplication(updated);
-
-          setApplications((current) =>
-            current.map((item) =>
-              item.documentId === updated.documentId
-                ? updated
-                : item
-            )
-          );
-        }
+        syncApplication(updated);
 
         return updated;
       } catch (error) {
-        const message = getErrorMessage(error);
+        const message =
+          getErrorMessage(error);
 
         if (mountedRef.current) {
           setError(message);
@@ -208,73 +307,29 @@ export function useRestaurantApplication(
         }
       }
     },
-    []
+    [syncApplication]
   );
 
-  const approveApplication = useCallback(async (id: string) => {
-    setSaving(true);
-    setError(null);
-
-    try {
-      const response =
-        await restaurantApplicationService.approve(id);
-
-      const approved = response.data;
-
-      if (mountedRef.current) {
-        setApplication(approved);
-
-        setApplications((current) =>
-          current.map((item) =>
-            item.documentId === approved.documentId
-              ? approved
-              : item
-          )
-        );
-      }
-
-      return approved;
-    } catch (error) {
-      const message = getErrorMessage(error);
-
-      if (mountedRef.current) {
-        setError(message);
-      }
-
-      throw error;
-    } finally {
-      if (mountedRef.current) {
-        setSaving(false);
-      }
-    }
-  }, []);
-
-  const rejectApplication = useCallback(
-    async (id: string, reason: string) => {
+  // =====================================================
+  // APROBAR
+  // =====================================================
+  const approveApplication = useCallback(
+    async (id: string) => {
       setSaving(true);
       setError(null);
 
       try {
         const response =
-          await restaurantApplicationService.reject(id, reason);
+          await restaurantApplicationService.approve(id);
 
-        const rejected = response.data;
+        const approved = response.data;
 
-        if (mountedRef.current) {
-          setApplication(rejected);
+        syncApplication(approved);
 
-          setApplications((current) =>
-            current.map((item) =>
-              item.documentId === rejected.documentId
-                ? rejected
-                : item
-            )
-          );
-        }
-
-        return rejected;
+        return approved;
       } catch (error) {
-        const message = getErrorMessage(error);
+        const message =
+          getErrorMessage(error);
 
         if (mountedRef.current) {
           setError(message);
@@ -287,9 +342,53 @@ export function useRestaurantApplication(
         }
       }
     },
-    []
+    [syncApplication]
   );
 
+  // =====================================================
+  // RECHAZAR
+  // =====================================================
+  const rejectApplication = useCallback(
+    async (
+      id: string,
+      reason: string
+    ) => {
+      setSaving(true);
+      setError(null);
+
+      try {
+        const response =
+          await restaurantApplicationService.reject(
+            id,
+            reason
+          );
+
+        const rejected = response.data;
+
+        syncApplication(rejected);
+
+        return rejected;
+      } catch (error) {
+        const message =
+          getErrorMessage(error);
+
+        if (mountedRef.current) {
+          setError(message);
+        }
+
+        throw error;
+      } finally {
+        if (mountedRef.current) {
+          setSaving(false);
+        }
+      }
+    },
+    [syncApplication]
+  );
+
+  // =====================================================
+  // ELIMINAR
+  // =====================================================
   const deleteApplication = useCallback(
     async (id: string) => {
       setSaving(true);
@@ -301,16 +400,20 @@ export function useRestaurantApplication(
         if (mountedRef.current) {
           setApplications((current) =>
             current.filter(
-              (item) => item.documentId !== id
+              (item) =>
+                item.documentId !== id
             )
           );
 
-          if (application?.documentId === id) {
-            setApplication(null);
-          }
+          setApplication((current) =>
+            current?.documentId === id
+              ? null
+              : current
+          );
         }
       } catch (error) {
-        const message = getErrorMessage(error);
+        const message =
+          getErrorMessage(error);
 
         if (mountedRef.current) {
           setError(message);
@@ -323,33 +426,45 @@ export function useRestaurantApplication(
         }
       }
     },
-    [application?.documentId]
+    []
   );
 
-  const getPendingApplications = useCallback(
-    () =>
-      applications.filter(
-        (item) => item.status === 'pending'
-      ),
-    [applications]
-  );
+  // =====================================================
+  // FILTROS
+  // =====================================================
+  const getPendingApplications =
+    useCallback(
+      () =>
+        applications.filter(
+          (item) =>
+            item.status === 'pending'
+        ),
+      [applications]
+    );
 
-  const getApprovedApplications = useCallback(
-    () =>
-      applications.filter(
-        (item) => item.status === 'approved'
-      ),
-    [applications]
-  );
+  const getApprovedApplications =
+    useCallback(
+      () =>
+        applications.filter(
+          (item) =>
+            item.status === 'approved'
+        ),
+      [applications]
+    );
 
-  const getRejectedApplications = useCallback(
-    () =>
-      applications.filter(
-        (item) => item.status === 'rejected'
-      ),
-    [applications]
-  );
+  const getRejectedApplications =
+    useCallback(
+      () =>
+        applications.filter(
+          (item) =>
+            item.status === 'rejected'
+        ),
+      [applications]
+    );
 
+  // =====================================================
+  // CARGA AUTOMÁTICA
+  // =====================================================
   useEffect(() => {
     if (!autoLoad) {
       return;
@@ -376,21 +491,28 @@ export function useRestaurantApplication(
   return {
     application,
     applications,
+
     loading,
+    refreshing,
     saving,
     error,
+
     loadApplication,
     loadApplications,
+    refreshApplications,
+
     registerApplication,
     updateApplication,
     approveApplication,
     rejectApplication,
     deleteApplication,
+
     getPendingApplications,
     getApprovedApplications,
     getRejectedApplications,
+
     refresh: documentId
       ? () => loadApplication(documentId)
-      : () => loadApplications(query),
+      : () => refreshApplications(query),
   };
 }

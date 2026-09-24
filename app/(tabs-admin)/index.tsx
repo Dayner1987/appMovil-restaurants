@@ -1,4 +1,7 @@
-import { useEffect } from 'react';
+// app/(tabs)/index.tsx
+
+import { useCallback } from 'react';
+
 import {
   ActivityIndicator,
   FlatList,
@@ -7,7 +10,11 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+
+import {
+  useFocusEffect,
+  useRouter,
+} from 'expo-router';
 
 import DashboardNavbar from '@/components/DashboardNavbar';
 import { useRestaurantApplication } from '@/hooks/useRestaurantApplication';
@@ -24,62 +31,83 @@ export default function AdminHomeScreen() {
     autoLoad: false,
   });
 
-  useEffect(() => {
-    void loadApplications();
-  }, [loadApplications]);
+  // =====================================================
+  // RECARGAR SOLICITUDES CADA VEZ QUE LA PANTALLA
+  // VUELVE A ESTAR ACTIVA
+  // =====================================================
+  useFocusEffect(
+    useCallback(() => {
+      void loadApplications().catch(() => undefined);
+    }, [loadApplications])
+  );
 
   return (
     <View style={styles.container}>
       <DashboardNavbar title="Administración" />
 
       <View style={styles.header}>
-        <Text style={styles.title}>Solicitudes de restaurantes</Text>
+        <Text style={styles.title}>
+          Solicitudes de restaurantes
+        </Text>
+
         <Text style={styles.subtitle}>
           Revisa y administra las solicitudes recibidas.
         </Text>
       </View>
 
-      {loading && (
+      {loading && applications.length === 0 && (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#7657D5" />
+          <ActivityIndicator
+            size="large"
+            color="#7657D5"
+          />
+
           <Text style={styles.loadingText}>
             Cargando solicitudes...
           </Text>
         </View>
       )}
 
-      {error && !loading && (
-        <View style={styles.messageBox}>
-          <Text style={styles.errorText}>{error}</Text>
+      {error &&
+        !loading &&
+        applications.length === 0 && (
+          <View style={styles.messageBox}>
+            <Text style={styles.errorText}>
+              {error}
+            </Text>
 
-          <Pressable
-            style={styles.retryButton}
-            onPress={() => void loadApplications()}
-          >
-            <Text style={styles.retryText}>Reintentar</Text>
-          </Pressable>
-        </View>
-      )}
+            <Pressable
+              style={styles.retryButton}
+              onPress={() =>
+                void loadApplications().catch(
+                  () => undefined
+                )
+              }
+            >
+              <Text style={styles.retryText}>
+                Reintentar
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
-      {!loading && !error && (
+      {applications.length > 0 && (
         <FlatList
+          style={styles.flatList}
           data={applications}
           keyExtractor={(item) =>
-            item.documentId || String(item.id)
+            item.documentId ||
+            String(item.id)
           }
-          contentContainerStyle={styles.list}
+          contentContainerStyle={
+            styles.list
+          }
           showsVerticalScrollIndicator={false}
           refreshing={loading}
-          onRefresh={() => void loadApplications()}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>
-                No existen solicitudes
-              </Text>
-              <Text style={styles.emptyText}>
-                Las nuevas solicitudes aparecerán aquí.
-              </Text>
-            </View>
+          onRefresh={() =>
+            void loadApplications().catch(
+              () => undefined
+            )
           }
           renderItem={({ item }) => {
             const applicantName =
@@ -96,53 +124,93 @@ export default function AdminHomeScreen() {
               <Pressable
                 style={({ pressed }) => [
                   styles.card,
-                  pressed && styles.cardPressed,
+                  pressed &&
+                    styles.cardPressed,
                 ]}
                 onPress={() =>
                   router.push({
-                    pathname: '../others/RestaurantSol',
+                    pathname:
+                      '../others/RestaurantSol',
                     params: {
-                      documentId: item.documentId,
+                      documentId:
+                        item.documentId,
                     },
                   })
                 }
               >
-                <View style={styles.iconContainer}>
-                  <Text style={styles.icon}>🍽️</Text>
+                <View
+                  style={
+                    styles.iconContainer
+                  }
+                >
+                  <Text style={styles.icon}>
+                    R
+                  </Text>
                 </View>
 
-                <View style={styles.cardContent}>
-                  <Text style={styles.restaurantName}>
-                    {item.proposedRestaurantName}
+                <View
+                  style={styles.cardContent}
+                >
+                  <Text
+                    style={
+                      styles.restaurantName
+                    }
+                  >
+                    {
+                      item.proposedRestaurantName
+                    }
                   </Text>
 
                   <Text style={styles.owner}>
-                    Propietario: {applicantName}
+                    Propietario:{' '}
+                    {applicantName}
                   </Text>
 
                   <Text
                     style={[
                       styles.status,
-                      item.status === 'approved' &&
+
+                      item.status ===
+                        'approved' &&
                         styles.approved,
-                      item.status === 'rejected' &&
+
+                      item.status ===
+                        'rejected' &&
                         styles.rejected,
                     ]}
                   >
-                    {item.status === 'pending'
+                    {item.status ===
+                    'pending'
                       ? 'Pendiente'
-                      : item.status === 'approved'
+                      : item.status ===
+                          'approved'
                         ? 'Aprobado'
                         : 'Rechazado'}
                   </Text>
                 </View>
 
-                <Text style={styles.arrow}>›</Text>
+                <Text style={styles.arrow}>
+                  ›
+                </Text>
               </Pressable>
             );
           }}
         />
       )}
+
+      {!loading &&
+        !error &&
+        applications.length === 0 && (
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>
+              No existen solicitudes
+            </Text>
+
+            <Text style={styles.emptyText}>
+              Las nuevas solicitudes aparecerán aquí.
+            </Text>
+          </View>
+        )}
     </View>
   );
 }
@@ -152,26 +220,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F7FC',
   },
+
+  flatList: {
+    flex: 1,
+  },
+
   header: {
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 10,
   },
+
   title: {
     fontSize: 24,
     fontWeight: '800',
     color: '#292638',
   },
+
   subtitle: {
     marginTop: 6,
     fontSize: 14,
     color: '#7D788A',
   },
+
   list: {
     padding: 20,
     paddingTop: 10,
-    paddingBottom: 30,
+    paddingBottom: 40,
   },
+
   card: {
     minHeight: 100,
     marginBottom: 12,
@@ -181,9 +258,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+
   cardPressed: {
     opacity: 0.7,
   },
+
   iconContainer: {
     width: 52,
     height: 52,
@@ -193,22 +272,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 13,
   },
+
   icon: {
-    fontSize: 25,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#7657D5',
   },
+
   cardContent: {
     flex: 1,
   },
+
   restaurantName: {
     fontSize: 16,
     fontWeight: '800',
     color: '#343143',
   },
+
   owner: {
     marginTop: 5,
     fontSize: 13,
     color: '#858191',
   },
+
   status: {
     marginTop: 7,
     alignSelf: 'flex-start',
@@ -220,28 +306,34 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+
   approved: {
     backgroundColor: '#DDF7E8',
     color: '#16834B',
   },
+
   rejected: {
     backgroundColor: '#FFE1E1',
     color: '#C0392B',
   },
+
   arrow: {
     marginLeft: 10,
     fontSize: 30,
     color: '#AAA6B7',
   },
+
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   loadingText: {
     marginTop: 10,
     color: '#7D788A',
   },
+
   messageBox: {
     margin: 20,
     padding: 20,
@@ -249,10 +341,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
   },
+
   errorText: {
     textAlign: 'center',
     color: '#C0392B',
   },
+
   retryButton: {
     marginTop: 15,
     paddingHorizontal: 20,
@@ -260,19 +354,25 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#7657D5',
   },
+
   retryText: {
     color: '#FFFFFF',
     fontWeight: '700',
   },
+
   empty: {
+    flex: 1,
+    paddingHorizontal: 20,
     paddingTop: 80,
     alignItems: 'center',
   },
+
   emptyTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: '#343143',
   },
+
   emptyText: {
     marginTop: 8,
     color: '#858191',

@@ -1,3 +1,4 @@
+//app/others/RestaurantSol.tsx
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,

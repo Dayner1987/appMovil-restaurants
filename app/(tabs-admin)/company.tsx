@@ -5,7 +5,7 @@ import DashboardNavbar from '@/components/DashboardNavbar';
 export default function AdminCompanyScreen() {
   return (
     <View style={styles.container}>
-      <DashboardNavbar title="Company" />
+      <DashboardNavbar title="Empresa" />
 
       <View style={styles.center}>
         <Text style={styles.title}>Company</Text>

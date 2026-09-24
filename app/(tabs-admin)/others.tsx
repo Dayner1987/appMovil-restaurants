@@ -5,7 +5,7 @@ import DashboardNavbar from '@/components/DashboardNavbar';
 export default function AdminOthersScreen() {
   return (
     <View style={styles.container}>
-      <DashboardNavbar title="Others" />
+      <DashboardNavbar title="Gestión" />
 
       <View style={styles.center}>
         <Text style={styles.title}>Others</Text>
