@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
 import { restaurantApplicationService } from '@/services/restaurant-application.service';
+
 import type {
   RestaurantApplication,
   RestaurantApplicationQueryParams,
@@ -14,6 +21,37 @@ interface UseRestaurantApplicationOptions {
   query?: RestaurantApplicationQueryParams;
 }
 
+function getErrorMessage(error: unknown): string {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error
+  ) {
+    const response = (
+      error as {
+        response?: {
+          data?: {
+            error?: {
+              message?: string;
+            };
+          };
+        };
+      }
+    ).response;
+
+    return (
+      response?.data?.error?.message ||
+      'No se pudo completar la solicitud'
+    );
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Ocurrió un error inesperado';
+}
+
 export function useRestaurantApplication(
   options: UseRestaurantApplicationOptions = {}
 ) {
@@ -24,8 +62,13 @@ export function useRestaurantApplication(
     query,
   } = options;
 
-  const [application, setApplication] = useState<RestaurantApplication | null>(null);
-  const [applications, setApplications] = useState<RestaurantApplication[]>([]);
+  const [application, setApplication] =
+    useState<RestaurantApplication | null>(null);
+
+  const [applications, setApplications] = useState<
+    RestaurantApplication[]
+  >([]);
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,12 +83,25 @@ export function useRestaurantApplication(
 
   const loadApplication = useCallback(async (id: string) => {
     setLoading(true);
+    setError(null);
+
     try {
-      const response = await restaurantApplicationService.findOne(id);
+      const response =
+        await restaurantApplicationService.findOne(id);
+
       if (mountedRef.current) {
         setApplication(response.data);
       }
+
       return response.data;
+    } catch (error) {
+      const message = getErrorMessage(error);
+
+      if (mountedRef.current) {
+        setError(message);
+      }
+
+      throw error;
     } finally {
       if (mountedRef.current) {
         setLoading(false);
@@ -56,17 +112,28 @@ export function useRestaurantApplication(
   const loadApplications = useCallback(
     async (params: RestaurantApplicationQueryParams = {}) => {
       setLoading(true);
+      setError(null);
+
       try {
-        const response = await restaurantApplicationService.findAll({
-          ...params,
-          applicantId: applicantId ?? params.applicantId,
-        });
+        const response =
+          await restaurantApplicationService.findAll({
+            ...params,
+            applicantId: applicantId ?? params.applicantId,
+          });
 
         if (mountedRef.current) {
           setApplications(response.data);
         }
 
         return response;
+      } catch (error) {
+        const message = getErrorMessage(error);
+
+        if (mountedRef.current) {
+          setError(message);
+        }
+
+        throw error;
       } finally {
         if (mountedRef.current) {
           setLoading(false);
@@ -76,34 +143,65 @@ export function useRestaurantApplication(
     [applicantId]
   );
 
-  const registerApplication = useCallback(async (data: RestaurantRegisterData) => {
-    setSaving(true);
-    try {
-      return await restaurantApplicationService.register(data);
-    } finally {
-      if (mountedRef.current) {
-        setSaving(false);
+  const registerApplication = useCallback(
+    async (data: RestaurantRegisterData) => {
+      setSaving(true);
+      setError(null);
+
+      try {
+        return await restaurantApplicationService.register(data);
+      } catch (error) {
+        const message = getErrorMessage(error);
+
+        if (mountedRef.current) {
+          setError(message);
+        }
+
+        throw error;
+      } finally {
+        if (mountedRef.current) {
+          setSaving(false);
+        }
       }
-    }
-  }, []);
+    },
+    []
+  );
 
   const updateApplication = useCallback(
-    async (id: string, data: UpdateRestaurantApplicationData) => {
+    async (
+      id: string,
+      data: UpdateRestaurantApplicationData
+    ) => {
       setSaving(true);
+      setError(null);
+
       try {
-        const response = await restaurantApplicationService.update(id, data);
+        const response =
+          await restaurantApplicationService.update(id, data);
+
         const updated = response.data;
 
         if (mountedRef.current) {
           setApplication(updated);
+
           setApplications((current) =>
             current.map((item) =>
-              item.documentId === updated.documentId ? updated : item
+              item.documentId === updated.documentId
+                ? updated
+                : item
             )
           );
         }
 
         return updated;
+      } catch (error) {
+        const message = getErrorMessage(error);
+
+        if (mountedRef.current) {
+          setError(message);
+        }
+
+        throw error;
       } finally {
         if (mountedRef.current) {
           setSaving(false);
@@ -115,20 +213,35 @@ export function useRestaurantApplication(
 
   const approveApplication = useCallback(async (id: string) => {
     setSaving(true);
+    setError(null);
+
     try {
-      const response = await restaurantApplicationService.approve(id);
+      const response =
+        await restaurantApplicationService.approve(id);
+
       const approved = response.data;
 
       if (mountedRef.current) {
         setApplication(approved);
+
         setApplications((current) =>
           current.map((item) =>
-            item.documentId === approved.documentId ? approved : item
+            item.documentId === approved.documentId
+              ? approved
+              : item
           )
         );
       }
 
       return approved;
+    } catch (error) {
+      const message = getErrorMessage(error);
+
+      if (mountedRef.current) {
+        setError(message);
+      }
+
+      throw error;
     } finally {
       if (mountedRef.current) {
         setSaving(false);
@@ -139,20 +252,35 @@ export function useRestaurantApplication(
   const rejectApplication = useCallback(
     async (id: string, reason: string) => {
       setSaving(true);
+      setError(null);
+
       try {
-        const response = await restaurantApplicationService.reject(id, reason);
+        const response =
+          await restaurantApplicationService.reject(id, reason);
+
         const rejected = response.data;
 
         if (mountedRef.current) {
           setApplication(rejected);
+
           setApplications((current) =>
             current.map((item) =>
-              item.documentId === rejected.documentId ? rejected : item
+              item.documentId === rejected.documentId
+                ? rejected
+                : item
             )
           );
         }
 
         return rejected;
+      } catch (error) {
+        const message = getErrorMessage(error);
+
+        if (mountedRef.current) {
+          setError(message);
+        }
+
+        throw error;
       } finally {
         if (mountedRef.current) {
           setSaving(false);
@@ -165,18 +293,30 @@ export function useRestaurantApplication(
   const deleteApplication = useCallback(
     async (id: string) => {
       setSaving(true);
+      setError(null);
+
       try {
         await restaurantApplicationService.remove(id);
 
         if (mountedRef.current) {
           setApplications((current) =>
-            current.filter((item) => item.documentId !== id)
+            current.filter(
+              (item) => item.documentId !== id
+            )
           );
 
           if (application?.documentId === id) {
             setApplication(null);
           }
         }
+      } catch (error) {
+        const message = getErrorMessage(error);
+
+        if (mountedRef.current) {
+          setError(message);
+        }
+
+        throw error;
       } finally {
         if (mountedRef.current) {
           setSaving(false);
@@ -186,17 +326,29 @@ export function useRestaurantApplication(
     [application?.documentId]
   );
 
-  const getPendingApplications = useCallback(() => {
-    return applications.filter((item) => item.status === 'pending');
-  }, [applications]);
+  const getPendingApplications = useCallback(
+    () =>
+      applications.filter(
+        (item) => item.status === 'pending'
+      ),
+    [applications]
+  );
 
-  const getApprovedApplications = useCallback(() => {
-    return applications.filter((item) => item.status === 'approved');
-  }, [applications]);
+  const getApprovedApplications = useCallback(
+    () =>
+      applications.filter(
+        (item) => item.status === 'approved'
+      ),
+    [applications]
+  );
 
-  const getRejectedApplications = useCallback(() => {
-    return applications.filter((item) => item.status === 'rejected');
-  }, [applications]);
+  const getRejectedApplications = useCallback(
+    () =>
+      applications.filter(
+        (item) => item.status === 'rejected'
+      ),
+    [applications]
+  );
 
   useEffect(() => {
     if (!autoLoad) {

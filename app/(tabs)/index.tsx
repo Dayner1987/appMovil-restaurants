@@ -29,7 +29,7 @@ export default function HomeClient() {
             color="#E53935"
           />
 
-          <Text style={styles.title}>HomeClient</Text>
+          <Text style={styles.title}>HdsdsomeClient</Text>
 
           <Text style={styles.description}>
             Esta será la página principal del cliente.

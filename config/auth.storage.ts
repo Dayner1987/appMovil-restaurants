@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import type { AppUser } from '@/types/user.types';
 
 const TOKEN_KEY = 'auth_token';
