@@ -165,40 +165,87 @@ export function useCompany(
       }
     }
   }, []);
+const patchCompany = useCallback(async (
+  id: string,
+  data: UpdateCompanyData
+) => {
+  setSaving(true);
+  setError(null);
+
+  try {
+    const response = await companyService.patch(id, data);
+    const updatedCompany = response.data;
+
+    if (mountedRef.current) {
+      setCompany(updatedCompany);
+
+      setCompanies((currentCompanies) =>
+        currentCompanies.map((item) =>
+          item.documentId === updatedCompany.documentId
+            ? updatedCompany
+            : item
+        )
+      );
+    }
+
+    return updatedCompany;
+  } catch (requestError) {
+    if (mountedRef.current) {
+      setError('No se pudo actualizar la empresa');
+    }
+
+    throw requestError;
+  } finally {
+    if (mountedRef.current) {
+      setSaving(false);
+    }
+  }
+}, []);
 
   const uploadCompanyLogo = useCallback(async (
-    id: string,
-    imageUri: string,
-    fileName = 'company-logo.jpg',
-    mimeType = 'image/jpeg'
-  ) => {
-    setSaving(true);
-    setError(null);
+  id: string,
+  imageUri: string,
+  fileName = 'company-logo.jpg',
+  mimeType = 'image/jpeg'
+) => {
+  setSaving(true);
+  setError(null);
 
-    try {
-      const uploadedImage = await companyService.uploadLogo(
-        imageUri,
-        fileName,
-        mimeType
+  try {
+    const response = await companyService.uploadLogo(
+      id,
+      imageUri,
+      fileName,
+      mimeType
+    );
+
+    const updatedCompany = response.data;
+
+    if (mountedRef.current) {
+      setCompany(updatedCompany);
+
+      setCompanies((currentCompanies) =>
+        currentCompanies.map((item) =>
+          item.documentId === updatedCompany.documentId
+            ? updatedCompany
+            : item
+        )
       );
-
-      const updatedCompany = await updateCompany(id, {
-        logoImg: uploadedImage.id,
-      });
-
-      return updatedCompany;
-    } catch (requestError) {
-      if (mountedRef.current) {
-        setError('No se pudo actualizar el logo');
-      }
-
-      throw requestError;
-    } finally {
-      if (mountedRef.current) {
-        setSaving(false);
-      }
     }
-  }, [updateCompany]);
+
+    return updatedCompany;
+  } catch (requestError) {
+    if (mountedRef.current) {
+      setError('No se pudo actualizar el logo');
+    }
+
+    throw requestError;
+  } finally {
+    if (mountedRef.current) {
+      setSaving(false);
+    }
+  }
+}, []);
 
   const deleteCompany = useCallback(async (
     id: string
@@ -253,21 +300,63 @@ export function useCompany(
     loadCompany,
     loadCompanies,
   ]);
+  const deleteCompanyLogo = useCallback(async (
+  id: string
+) => {
+  setSaving(true);
+  setError(null);
 
-  return {
-    company,
-    companies,
-    loading,
-    saving,
-    error,
-    loadCompany,
-    loadCompanies,
-    createCompany,
-    updateCompany,
-    uploadCompanyLogo,
-    deleteCompany,
-    refresh: documentId
-      ? () => loadCompany(documentId)
-      : () => loadCompanies(query),
-  };
+  try {
+    const response = await companyService.deleteLogo(id);
+    const updatedCompany = response.data;
+
+    if (mountedRef.current) {
+      setCompany(updatedCompany);
+
+      setCompanies((currentCompanies) =>
+        currentCompanies.map((item) =>
+          item.documentId === updatedCompany.documentId
+            ? updatedCompany
+            : item
+        )
+      );
+    }
+
+    return updatedCompany;
+  } catch (requestError) {
+    if (mountedRef.current) {
+      setError('No se pudo eliminar el logo');
+    }
+
+    throw requestError;
+  } finally {
+    if (mountedRef.current) {
+      setSaving(false);
+    }
+  }
+}, []);
+return {
+  company,
+  companies,
+  loading,
+  saving,
+  error,
+
+  loadCompany,
+  loadCompanies,
+
+  createCompany,
+  updateCompany,
+  patchCompany,
+
+  uploadCompanyLogo,
+  deleteCompanyLogo,
+
+  deleteCompany,
+
+  refresh: documentId
+    ? () => loadCompany(documentId)
+    : () => loadCompanies(query),
+};
+
 }

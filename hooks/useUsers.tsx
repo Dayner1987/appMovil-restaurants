@@ -1,4 +1,4 @@
-// hooks/useUser.ts
+// hooks/useUsers.ts
 
 import {
   useCallback,

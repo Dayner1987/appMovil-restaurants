@@ -5,6 +5,14 @@ import {
 } from 'react-native';
 
 import { api } from './api';
+import type {
+  AdminAvatarResponse,
+  AdminResetPasswordData,
+  AdminResetPasswordResponse,
+  RoleListResponse,
+  RoleResponse,
+  UpdateRoleData,
+} from '@/types/user.types';
 
 import {
   authStorage,
@@ -46,6 +54,15 @@ const USERS_ME_EXTENSION_URL =
 
 const CHANGE_PASSWORD_URL =
   '/api/auth/change-password';
+
+  const USERS_ADMIN_EXTENSION_URL =
+  '/api/users-permissions/users';
+
+const ROLES_URL =
+  '/api/users-permissions/roles';
+
+const ADMIN_PASSWORD_URL =
+  '/api/users-permissions/users/admin';
 
 export const userService = {
   // ===================================================
@@ -139,6 +156,84 @@ export const userService = {
 
     return response.data;
   },
+async patch(
+  id: number | string,
+  data: UpdateUserData
+): Promise<UserResponse> {
+  const response =
+    await api.patch<UserResponse>(
+      `${USERS_URL}/${encodeURIComponent(String(id))}`,
+      data,
+      {
+        params: {
+          populate:
+            'role,avatar,restaurant',
+        },
+      }
+    );
+
+  return response.data;
+},
+
+async findRoles(): Promise<RoleListResponse> {
+  const response =
+    await api.get<RoleListResponse>(
+      ROLES_URL
+    );
+
+  return response.data;
+},
+
+async findRole(
+  roleId: number | string
+): Promise<RoleResponse> {
+  const response =
+    await api.get<RoleResponse>(
+      `${ROLES_URL}/${encodeURIComponent(
+        String(roleId)
+      )}`
+    );
+
+  return response.data;
+},
+
+async updateRole(
+  roleId: number | string,
+  data: UpdateRoleData
+): Promise<{ ok: boolean }> {
+  const response =
+    await api.put<{ ok: boolean }>(
+      `${ROLES_URL}/${encodeURIComponent(
+        String(roleId)
+      )}`,
+      data
+    );
+
+  return response.data;
+},
+async assignRole(
+  userId: number | string,
+  roleId: number | string
+): Promise<UserResponse> {
+  const response =
+    await api.patch<UserResponse>(
+      `${USERS_URL}/${encodeURIComponent(
+        String(userId)
+      )}`,
+      {
+        role: roleId,
+      },
+      {
+        params: {
+          populate:
+            'role,avatar,restaurant',
+        },
+      }
+    );
+
+  return response.data;
+},
+
 
   // ===================================================
   // ADMIN - ELIMINAR USUARIO
@@ -151,6 +246,74 @@ export const userService = {
       `${USERS_URL}/${id}`
     );
   },
+async uploadUserAvatar(
+  userId: number | string,
+  imageUri: string,
+  fileName = 'avatar.jpg',
+  mimeType = 'image/jpeg'
+): Promise<AdminAvatarResponse> {
+  const formData = new FormData();
+
+  if (Platform.OS === 'web') {
+    const imageResponse =
+      await fetch(imageUri);
+
+    const blob =
+      await imageResponse.blob();
+
+    formData.append(
+      'avatar',
+      blob,
+      fileName
+    );
+  } else {
+    formData.append(
+      'avatar',
+      {
+        uri: imageUri,
+        name: fileName,
+        type: mimeType,
+      } as any
+    );
+  }
+
+  const response =
+    await api.patch<AdminAvatarResponse>(
+      `${USERS_ADMIN_EXTENSION_URL}/${encodeURIComponent(
+        String(userId)
+      )}/avatar`,
+      formData
+    );
+
+  return response.data;
+},
+
+async removeUserAvatar(
+  userId: number | string
+): Promise<AdminAvatarResponse> {
+  const response =
+    await api.delete<AdminAvatarResponse>(
+      `${USERS_ADMIN_EXTENSION_URL}/${encodeURIComponent(
+        String(userId)
+      )}/avatar`
+    );
+
+  return response.data;
+},
+async resetUserPassword(
+  userId: number | string,
+  data: AdminResetPasswordData
+): Promise<AdminResetPasswordResponse> {
+  const response =
+    await api.post<AdminResetPasswordResponse>(
+      `${ADMIN_PASSWORD_URL}/${encodeURIComponent(
+        String(userId)
+      )}/password`,
+      data
+    );
+
+  return response.data;
+},
 
   // ===================================================
   // GET /api/users/me
@@ -276,6 +439,7 @@ export const userService = {
             data.confirmPassword,
         }
       );
+///admin
 
     /*
      * Strapi devuelve un JWT NUEVO después

@@ -169,28 +169,23 @@ export interface ChangePasswordResponse {
 export interface UpdateUserData {
   username?: string;
   email?: string;
-
   firstName?: string;
-
   middleName?: string | null;
-
   lastName?: string;
-
   secondLastName?: string | null;
-
   ci?: string | null;
-
   phone?: string | null;
-
   confirmed?: boolean;
-
   blocked?: boolean;
-
-  role?: number | null;
-
-  restaurant?: number | null;
+  role?:
+    | number
+    | string
+    | {
+        id: number;
+      }
+    | null;
+  restaurant?: number | string | null;
 }
-
 export interface UserPagination {
   page: number;
   pageSize: number;
@@ -234,4 +229,44 @@ export interface UserQueryParams {
   restaurantId?:
     | number
     | string;
+}
+
+// =====================================================
+// ROLES
+// =====================================================
+
+export interface RoleListResponse {
+  roles: UserRole[];
+}
+
+export interface RoleResponse {
+  role: UserRole;
+}
+
+export interface UpdateRoleData {
+  name?: string;
+  description?: string | null;
+  type?: string;
+}
+
+// =====================================================
+// CAMBIO DE CONTRASEÑA POR ADMINISTRADOR
+// =====================================================
+
+export interface AdminResetPasswordData {
+  password: string;
+  passwordConfirmation: string;
+}
+
+export interface AdminResetPasswordResponse {
+  ok: boolean;
+  message: string;
+}
+
+// =====================================================
+// RESPUESTAS DE AVATAR ADMINISTRATIVO
+// =====================================================
+
+export interface AdminAvatarResponse {
+  data: AppUser;
 }

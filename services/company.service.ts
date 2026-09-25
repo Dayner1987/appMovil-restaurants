@@ -6,10 +6,10 @@ import type {
   CompanyResponse,
   CreateCompanyData,
   UpdateCompanyData,
-  CompanyImage
 } from '@/types/company.types';
 
 const COMPANY_URL = '/api/companies';
+
 export const companyService = {
   async findAll(
     params: CompanyQueryParams = {}
@@ -60,11 +60,30 @@ export const companyService = {
     return response.data;
   },
 
+  // PUT: reemplaza todos los datos
   async update(
     documentId: string,
     data: UpdateCompanyData
   ): Promise<CompanyResponse> {
     const response = await api.put<CompanyResponse>(
+      `${COMPANY_URL}/${encodeURIComponent(documentId)}`,
+      { data },
+      {
+        params: {
+          populate: 'logoImg',
+        },
+      }
+    );
+
+    return response.data;
+  },
+
+  // PATCH: actualiza solamente los campos enviados
+  async patch(
+    documentId: string,
+    data: UpdateCompanyData
+  ): Promise<CompanyResponse> {
+    const response = await api.patch<CompanyResponse>(
       `${COMPANY_URL}/${encodeURIComponent(documentId)}`,
       { data },
       {
@@ -83,29 +102,52 @@ export const companyService = {
     );
   },
 
+  // PATCH /companies/:documentId/logo
   async uploadLogo(
-  imageUri: string,
-  fileName = 'company-logo.jpg',
-  mimeType = 'image/jpeg'
-): Promise<CompanyImage> {
-  const formData = new FormData();
+    documentId: string,
+    imageUri: string,
+    fileName = 'company-logo.jpg',
+    mimeType = 'image/jpeg'
+  ): Promise<CompanyResponse> {
+    const formData = new FormData();
 
-  formData.append('files', {
-    uri: imageUri,
-    name: fileName,
-    type: mimeType,
-  } as unknown as Blob);
+    formData.append(
+      'logoImg',
+      {
+        uri: imageUri,
+        name: fileName,
+        type: mimeType,
+      } as unknown as Blob
+    );
 
-  const response = await api.post<CompanyImage[]>(
-    '/api/upload',
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }
-  );
+    const response = await api.patch<CompanyResponse>(
+      `${COMPANY_URL}/${encodeURIComponent(documentId)}/logo`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        params: {
+          populate: 'logoImg',
+        },
+      }
+    );
 
-  return response.data[0];
-},
+    return response.data;
+  },
+
+  async deleteLogo(
+    documentId: string
+  ): Promise<CompanyResponse> {
+    const response = await api.delete<CompanyResponse>(
+      `${COMPANY_URL}/${encodeURIComponent(documentId)}/logo`,
+      {
+        params: {
+          populate: 'logoImg',
+        },
+      }
+    );
+
+    return response.data;
+  },
 };
