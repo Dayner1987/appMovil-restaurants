@@ -1,8 +1,14 @@
+// src/extensions/users-permissions/server/routes/admin-user-routes.ts
+
 export const adminUserRoutes = [
+  // =====================================================
+  // ADMIN - RESET PASSWORD
+  // =====================================================
+
   {
-    method: 'PATCH',
-    path: '/users/:id',
-    handler: 'user.adminPatch',
+    method: 'POST',
+    path: '/admin/users/:id/password',
+    handler: 'user.adminResetPassword',
     config: {
       auth: {
         scope: [],
@@ -10,6 +16,11 @@ export const adminUserRoutes = [
       policies: [],
     },
   },
+
+  // =====================================================
+  // ADMIN - ACTUALIZAR AVATAR
+  // =====================================================
+
   {
     method: 'PUT',
     path: '/users/:id/avatar',
@@ -21,6 +32,7 @@ export const adminUserRoutes = [
       policies: [],
     },
   },
+
   {
     method: 'PATCH',
     path: '/users/:id/avatar',
@@ -32,6 +44,11 @@ export const adminUserRoutes = [
       policies: [],
     },
   },
+
+  // =====================================================
+  // ADMIN - ELIMINAR AVATAR
+  // =====================================================
+
   {
     method: 'DELETE',
     path: '/users/:id/avatar',
@@ -43,15 +60,21 @@ export const adminUserRoutes = [
       policies: [],
     },
   },
+
+  // =====================================================
+  // ADMIN - ACTUALIZAR USUARIO
+  // IMPORTANTE: ruta genérica al final
+  // =====================================================
+
   {
-  method: 'POST',
-  path: '/users/admin/:id/password',
-  handler: 'user.adminResetPassword',
-  config: {
-    auth: {
-      scope: [],
+    method: 'PATCH',
+    path: '/users/:id',
+    handler: 'user.adminPatch',
+    config: {
+      auth: {
+        scope: [],
+      },
+      policies: [],
     },
-    policies: [],
   },
-},
 ];
