@@ -1,5 +1,8 @@
 // src/extensions/users-permissions/strapi-server.ts
+import {
 
+  adminResetPassword,
+} from './server/controllers/admin-users';
 import {
   updateProfile,
 } from './server/controllers/profile';
@@ -13,6 +16,19 @@ import {
 import {
   meRoutes,
 } from './server/routes/me-routes';
+
+
+import {
+  adminFind,
+  adminFindOne,
+  adminPatch,
+  adminUpdateAvatar,
+  adminRemoveAvatar,
+} from './server/controllers/admin-users';
+
+import {
+  adminUserRoutes,
+} from './server/routes/admin-user-routes';
 
 export default (
   plugin: any
@@ -313,7 +329,13 @@ export default (
 
       controller.removeMyAvatar =
         removeMyAvatar;
-
+controller.adminResetPassword =
+  adminResetPassword;
+        controller.adminFind = adminFind;
+controller.adminFindOne = adminFindOne;
+controller.adminPatch = adminPatch;
+controller.adminUpdateAvatar = adminUpdateAvatar;
+controller.adminRemoveAvatar = adminRemoveAvatar;
       return controller;
     }
   );
@@ -333,30 +355,20 @@ export default (
     );
   }
 
-  for (
-    const route of
-    meRoutes
-  ) {
-    const alreadyExists =
-      contentApiRoutes.some(
-        (
-          existing:
-            any
-        ) =>
-          existing.method ===
-            route.method &&
-          existing.path ===
-            route.path
-      );
+  for (const route of [
+  ...meRoutes,
+  ...adminUserRoutes,
+]) {
+  const alreadyExists = contentApiRoutes.some(
+    (existing: any) =>
+      existing.method === route.method &&
+      existing.path === route.path
+  );
 
-    if (
-      !alreadyExists
-    ) {
-      contentApiRoutes.push(
-        route
-      );
-    }
+  if (!alreadyExists) {
+    contentApiRoutes.push(route);
   }
+}
 
   return plugin;
 };
