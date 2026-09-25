@@ -35,34 +35,28 @@ import type {
 // RUTAS NATIVAS DE USERS-PERMISSIONS
 // =====================================================
 
+// services/user.service.ts
+
 const USERS_URL =
   '/api/users';
 
 const USERS_ME_URL =
   '/api/users/me';
 
-// =====================================================
-// RUTAS QUE AGREGAMOS NOSOTROS AL PLUGIN
-// =====================================================
-
 const USERS_ME_EXTENSION_URL =
   '/api/users-permissions/users/me';
 
-// =====================================================
-// PASSWORD NATIVO DE STRAPI
-// =====================================================
+const USERS_ADMIN_EXTENSION_URL =
+  '/api/users-permissions/users';
 
 const CHANGE_PASSWORD_URL =
   '/api/auth/change-password';
-
-  const USERS_ADMIN_EXTENSION_URL =
-  '/api/users-permissions/users';
 
 const ROLES_URL =
   '/api/users-permissions/roles';
 
 const ADMIN_PASSWORD_URL =
-  '/api/users-permissions/users/admin';
+  '/api/users-permissions/admin/users';
 
 export const userService = {
   // ===================================================
@@ -70,92 +64,89 @@ export const userService = {
   // ===================================================
 
   async findAll(
-    params: UserQueryParams = {}
-  ): Promise<UserListResponse> {
-    const response =
-      await api.get<UserListResponse>(
-        USERS_URL,
-        {
-          params: {
-            populate:
-              'role,avatar,restaurant,orders,restaurant_application',
+  params: UserQueryParams = {}
+): Promise<UserListResponse> {
+  const response =
+    await api.get<UserListResponse>(
+      USERS_URL,
+      {
+        params: {
+          populate:
+            'role,avatar,restaurant,orders,restaurant_application',
 
-            'pagination[page]':
-              params.page ?? 1,
+          'pagination[page]':
+            params.page ?? 1,
 
-            'pagination[pageSize]':
-              params.pageSize ?? 25,
+          'pagination[pageSize]':
+            params.pageSize ?? 25,
 
-            sort:
-              params.sort,
+          sort:
+            params.sort,
 
-            'filters[username][$containsi]':
-              params.username,
+          'filters[username][$containsi]':
+            params.username,
 
-            'filters[email][$containsi]':
-              params.email,
+          'filters[email][$containsi]':
+            params.email,
 
-            'filters[blocked][$eq]':
-              params.blocked,
+          'filters[blocked][$eq]':
+            params.blocked,
 
-            'filters[confirmed][$eq]':
-              params.confirmed,
+          'filters[confirmed][$eq]':
+            params.confirmed,
 
-            'filters[role][id][$eq]':
-              params.roleId,
+          'filters[role][id][$eq]':
+            params.roleId,
 
-            'filters[restaurant][id][$eq]':
-              params.restaurantId,
-          },
-        }
-      );
+          'filters[restaurant][id][$eq]':
+            params.restaurantId,
+        },
+      }
+    );
 
-    return response.data;
-  },
+  return response.data;
+},
 
   // ===================================================
   // ADMIN - OBTENER USUARIO
   // ===================================================
+async findOne(
+  id: number | string
+): Promise<AppUser> {
+  const response =
+    await api.get<AppUser>(
+      `${USERS_URL}/${encodeURIComponent(
+        String(id)
+      )}`,
+      {
+        params: {
+          populate:
+            'role,avatar,restaurant,orders,restaurant_application',
+        },
+      }
+    );
 
-  async findOne(
-    id: number | string
-  ): Promise<UserResponse> {
-    const response =
-      await api.get<UserResponse>(
-        `${USERS_URL}/${id}`,
-        {
-          params: {
-            populate:
-              'role,avatar,restaurant,orders,restaurant_application',
-          },
-        }
-      );
-
-    return response.data;
-  },
+  return response.data;
+},
 
   // ===================================================
   // ADMIN - ACTUALIZAR USUARIO
   // ===================================================
 
   async update(
-    id: number | string,
-    data: UpdateUserData
-  ): Promise<UserResponse> {
-    const response =
-      await api.put<UserResponse>(
-        `${USERS_URL}/${id}`,
-        data,
-        {
-          params: {
-            populate:
-              'role,avatar,restaurant',
-          },
-        }
-      );
+  id: number | string,
+  data: UpdateUserData
+): Promise<AppUser> {
+  const response =
+    await api.patch<UserResponse>(
+      `${USERS_ADMIN_EXTENSION_URL}/${encodeURIComponent(
+        String(id)
+      )}`,
+      data
+    );
 
-    return response.data;
-  },
+  return response.data.data;
+},
 async patch(
   id: number | string,
   data: UpdateUserData

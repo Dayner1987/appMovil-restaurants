@@ -1,218 +1,540 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+// components/DashboardNavbar.tsx
+
 import {
-  Alert,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+
+import {
   Animated,
   Dimensions,
+  Image,
   Modal,
-  Platform,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useAuth } from '@/hooks/useAuth';
+
+import Ionicons from '@expo/vector-icons/Ionicons';
+
+import {
+  router,
+} from 'expo-router';
+
+import Toast from 'react-native-toast-message';
+
+import {
+  useAuth,
+} from '@/hooks/useAuth';
+
+import {
+  useUser,
+} from '@/hooks/useUsers';
+
+import {
+  useCompany,
+} from '@/hooks/useCompany';
+
+import {
+  api,
+} from '@/services/api';
+
+import type {
+  Company,
+} from '@/types/company.types';
 
 interface DashboardNavbarProps {
   title?: string;
 }
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 340);
+type CompanyNavbarData =
+  Company & {
+    name?: string | null;
 
-export default function DashboardNavbar({
-  title = 'Mi aplicación',
-}: DashboardNavbarProps) {
-  const { user, isAuthenticated, logout } = useAuth();
+    companyName?:
+      | string
+      | null;
 
-  const [drawerVisible, setDrawerVisible] = useState(false);
-  const translateX = useRef(
-    new Animated.Value(-DRAWER_WIDTH)
-  ).current;
+    logo?:
+      | {
+          url?:
+            | string
+            | null;
+        }
+      | null;
+  };
 
-  const fullName = [user?.firstName, user?.lastName]
-    .filter(Boolean)
-    .join(' ');
+const SCREEN_WIDTH =
+  Dimensions.get(
+    'window'
+  ).width;
 
-  const displayedName =
-    fullName || user?.username || 'Invitado';
+const DRAWER_WIDTH =
+  Math.min(
+    SCREEN_WIDTH * 0.84,
+    360
+  );
 
-  const displayedEmail =
-    user?.email || 'Inicia sesión para ver tu perfil';
-
-  const displayedRole =
-    user?.role?.name || (isAuthenticated ? 'Cliente' : 'Visitante');
-
-  const avatarLetter = displayedName.charAt(0).toUpperCase();
-
-  function openDrawer() {
-    setDrawerVisible(true);
-
-    Animated.timing(translateX, {
-      toValue: 0,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
+function getMediaUrl(
+  url?:
+    | string
+    | null
+) {
+  if (!url) {
+    return null;
   }
 
-  function closeDrawer(callback?: () => void) {
-    Animated.timing(translateX, {
-      toValue: -DRAWER_WIDTH,
-      duration: 220,
-      useNativeDriver: true,
-    }).start(() => {
-      setDrawerVisible(false);
+  if (
+    url.startsWith(
+      'http://'
+    ) ||
+    url.startsWith(
+      'https://'
+    )
+  ) {
+    return url;
+  }
+
+  const baseUrl =
+    String(
+      api.defaults
+        .baseURL ?? ''
+    ).replace(
+      /\/$/,
+      ''
+    );
+
+  if (!baseUrl) {
+    return null;
+  }
+
+  return `${baseUrl}${
+    url.startsWith('/')
+      ? url
+      : `/${url}`
+  }`;
+}
+
+export default function DashboardNavbar({
+  title = 'Panel',
+}: DashboardNavbarProps) {
+  const {
+    user: authUser,
+    isAuthenticated,
+    logout,
+  } = useAuth();
+
+  /*
+   * /users/me para tener el
+   * perfil actualizado.
+   */
+  const {
+    user: currentUser,
+  } = useUser({
+    autoLoad:
+      isAuthenticated,
+  });
+
+  /*
+   * Para el panel administrativo
+   * tomamos la empresa disponible.
+   */
+  const {
+    company,
+    companies,
+  } = useCompany({
+    autoLoad: true,
+
+    query: {
+      page: 1,
+      pageSize: 1,
+    },
+  });
+
+  const [
+    drawerVisible,
+    setDrawerVisible,
+  ] =
+    useState(false);
+
+  const [
+    logoutVisible,
+    setLogoutVisible,
+  ] =
+    useState(false);
+
+  const [
+    loggingOut,
+    setLoggingOut,
+  ] =
+    useState(false);
+
+  const translateX =
+    useRef(
+      new Animated.Value(
+        -DRAWER_WIDTH
+      )
+    ).current;
+
+  const user =
+    currentUser ??
+    authUser;
+
+  const currentCompany =
+    (
+      company ??
+      companies[0] ??
+      null
+    ) as
+      | CompanyNavbarData
+      | null;
+
+  const displayedName =
+    useMemo(() => {
+      const fullName =
+        [
+          user?.firstName,
+          user?.lastName,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+
+      return (
+        fullName ||
+        user?.username ||
+        'Usuario'
+      );
+    }, [
+      user?.firstName,
+      user?.lastName,
+      user?.username,
+    ]);
+
+  const displayedRole =
+    user?.role?.name ??
+    'Usuario';
+
+  const displayedEmail =
+    user?.email ??
+    '';
+
+  const avatarUrl =
+    getMediaUrl(
+      user?.avatar?.url
+    );
+
+  const avatarLetter =
+    displayedName
+      .charAt(0)
+      .toUpperCase();
+
+  const companyName =
+    currentCompany
+      ?.name?.trim() ||
+    currentCompany
+      ?.companyName?.trim() ||
+    'Mi empresa';
+
+  const companyLogoUrl =
+    getMediaUrl(
+      currentCompany
+        ?.logo?.url
+    );
+
+  const companyLetter =
+    companyName
+      .charAt(0)
+      .toUpperCase();
+
+  function openDrawer() {
+    setDrawerVisible(
+      true
+    );
+
+    Animated.timing(
+      translateX,
+      {
+        toValue: 0,
+
+        duration: 220,
+
+        useNativeDriver:
+          true,
+      }
+    ).start();
+  }
+
+  function closeDrawer(
+    callback?:
+      () => void
+  ) {
+    Animated.timing(
+      translateX,
+      {
+        toValue:
+          -DRAWER_WIDTH,
+
+        duration: 200,
+
+        useNativeDriver:
+          true,
+      }
+    ).start(() => {
+      setDrawerVisible(
+        false
+      );
+
       callback?.();
     });
   }
 
+  function handleCompanyInfo() {
+    closeDrawer(
+      () => {
+        router.push({
+          pathname:
+            '/others/InfoCompany',
+
+          params:
+            currentCompany
+              ?.documentId
+              ? {
+                  documentId:
+                    currentCompany.documentId,
+                }
+              : {},
+        });
+      }
+    );
+  }
+
   function handleEditProfile() {
-    closeDrawer(() => {
-      router.push('/edit-profile');
-    });
+    closeDrawer(
+      () => {
+        router.push(
+          '/edit-profile'
+        );
+      }
+    );
   }
 
-  function handleLogin() {
-    closeDrawer(() => {
-      router.push('/login');
-    });
-  }
-
-  function handleRegister() {
-    closeDrawer(() => {
-      router.push('/register');
-    });
+  function handleLogout() {
+    closeDrawer(
+      () => {
+        setLogoutVisible(
+          true
+        );
+      }
+    );
   }
 
   async function performLogout() {
-  try {
-    // Cerramos primero el menú lateral.
-    closeDrawer();
+    if (
+      loggingOut
+    ) {
+      return;
+    }
 
-    // Eliminamos JWT y usuario guardado.
-    await logout();
+    setLoggingOut(
+      true
+    );
 
-    // Regresamos al inicio público.
-    router.replace('/(tabs)');
-  } catch (error) {
-    console.error('Error al cerrar sesión:', error);
+    try {
+      await logout();
 
-    if (Platform.OS === 'web') {
-      window.alert('No se pudo cerrar la sesión.');
-    } else {
-      Alert.alert(
-        'Error',
-        'No se pudo cerrar la sesión.'
+      setLogoutVisible(
+        false
+      );
+
+      router.replace(
+        '/(tabs)'
+      );
+    } catch (
+      error
+    ) {
+      console.error(
+        'Error al cerrar sesión:',
+        error
+      );
+
+      Toast.show({
+        type: 'error',
+
+        text1:
+          'No se pudo cerrar la sesión',
+
+        position:
+          'bottom',
+      });
+    } finally {
+      setLoggingOut(
+        false
       );
     }
   }
-}
 
-function handleLogout() {
-  if (Platform.OS === 'web') {
-    const confirmed = window.confirm(
-      '¿Estás seguro de que deseas cerrar tu sesión?'
-    );
-
-    if (confirmed) {
-      void performLogout();
-    }
-
-    return;
-  }
-
-  Alert.alert(
-    'Cerrar sesión',
-    '¿Estás seguro de que deseas cerrar tu sesión?',
-    [
-      {
-        text: 'Cancelar',
-        style: 'cancel',
-      },
-      {
-        text: 'Cerrar sesión',
-        style: 'destructive',
-        onPress: () => {
-          void performLogout();
-        },
-      },
-    ]
-  );
-}
   return (
     <>
-      <View style={styles.navbar}>
+      {/* ================================================= */}
+      {/* NAVBAR */}
+      {/* ================================================= */}
+
+      <View className="min-h-[72px] flex-row items-center justify-between bg-[#171A15] px-4 py-2.5">
+        {/* ============================================= */}
+        {/* IZQUIERDA - USUARIO */}
+        {/* ============================================= */}
+
         <Pressable
-          style={({ pressed }) => [
-            styles.avatarButton,
-            pressed && styles.pressed,
-          ]}
-          onPress={openDrawer}
+          onPress={
+            openDrawer
+          }
+          className="min-w-0 flex-1 flex-row items-center active:opacity-75"
         >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {avatarLetter}
-            </Text>
-          </View>
+          {avatarUrl ? (
+            <Image
+              source={{
+                uri:
+                  avatarUrl,
+              }}
+              resizeMode="cover"
+              className="h-11 w-11 rounded-[15px] border-2 border-[#7B9646]"
+            />
+          ) : (
+            <View className="h-11 w-11 items-center justify-center rounded-[15px] bg-[#7B9646]">
+              <Text className="text-[16px] font-extrabold text-white">
+                {
+                  avatarLetter
+                }
+              </Text>
+            </View>
+          )}
 
-          <View style={styles.userSummary}>
-            <Text style={styles.welcomeText}>
-              {isAuthenticated ? 'Hola,' : 'Bienvenido'}
+          <View className="ml-3 min-w-0 flex-1">
+            <Text
+              numberOfLines={1}
+              className="text-[14px] font-extrabold text-white"
+            >
+              {
+                displayedName
+              }
             </Text>
 
-            <Text style={styles.userName} numberOfLines={1}>
-              {displayedName}
-            </Text>
+            <View className="mt-0.5 flex-row items-center">
+              <View className="mr-1.5 h-1.5 w-1.5 rounded-full bg-[#9EBD62]" />
+
+              <Text
+                numberOfLines={1}
+                className="text-[10px] font-semibold text-[#AEB5A6]"
+              >
+                {
+                  displayedRole
+                }
+              </Text>
+            </View>
           </View>
         </Pressable>
 
-        <Text style={styles.navbarTitle} numberOfLines={1}>
-          {title}
-        </Text>
+        {/* ============================================= */}
+        {/* DERECHA - EMPRESA */}
+        {/* ============================================= */}
 
         <Pressable
-          style={({ pressed }) => [
-            styles.notificationButton,
-            pressed && styles.pressed,
-          ]}
+          onPress={
+            handleCompanyInfo
+          }
+          className="ml-4 max-w-[48%] flex-row items-center rounded-[18px] bg-[#22261F] py-1.5 pl-3 pr-1.5 active:opacity-75"
         >
-          <Ionicons
-            name="notifications-outline"
-            size={23}
-            color="#554D70"
-          />
+          <View className="mr-2 min-w-0 flex-1 items-end">
+            <Text
+              numberOfLines={1}
+              className="text-right text-[12px] font-extrabold text-white"
+            >
+              {
+                companyName
+              }
+            </Text>
 
-          <View style={styles.notificationDot} />
+            <Text
+              numberOfLines={1}
+              className="mt-0.5 text-right text-[9px] font-semibold text-[#A8C56C]"
+            >
+              {title}
+            </Text>
+          </View>
+
+          {companyLogoUrl ? (
+            <Image
+              source={{
+                uri:
+                  companyLogoUrl,
+              }}
+              resizeMode="cover"
+              className="h-10 w-10 rounded-[14px] border border-[#4B5540] bg-white"
+            />
+          ) : (
+            <View className="h-10 w-10 items-center justify-center rounded-[14px] bg-[#7B9646]">
+              <Text className="text-[14px] font-extrabold text-white">
+                {
+                  companyLetter
+                }
+              </Text>
+            </View>
+          )}
         </Pressable>
       </View>
 
+      {/* ================================================= */}
+      {/* DRAWER */}
+      {/* ================================================= */}
+
       <Modal
-        visible={drawerVisible}
+        visible={
+          drawerVisible
+        }
         transparent
         animationType="none"
         statusBarTranslucent
-        onRequestClose={() => closeDrawer()}
+        onRequestClose={() =>
+          closeDrawer()
+        }
       >
-        <View style={styles.modalContainer}>
+        <View className="flex-1 flex-row">
+          {/* Overlay solamente en la parte exterior */}
+
           <Pressable
-            style={styles.overlay}
-            onPress={() => closeDrawer()}
+            onPress={() =>
+              closeDrawer()
+            }
+            className="absolute inset-0 bg-black/55"
           />
 
+          {/* El drawer ahora es VERDE */}
+
           <Animated.View
-            style={[
-              styles.drawer,
-              {
-                width: DRAWER_WIDTH,
-                transform: [{ translateX }],
-              },
-            ]}
+            className="h-full overflow-hidden bg-[#6F8C3E]"
+            style={{
+              width:
+                DRAWER_WIDTH,
+
+              transform: [
+                {
+                  translateX,
+                },
+              ],
+            }}
           >
-            <View style={styles.drawerHeader}>
+            {/* ========================================= */}
+            {/* CABECERA USUARIO */}
+            {/* ========================================= */}
+
+            <View className="items-center px-6 pb-6 pt-14">
               <Pressable
-                style={styles.closeButton}
-                onPress={() => closeDrawer()}
+                onPress={() =>
+                  closeDrawer()
+                }
+                className="absolute right-4 top-12 h-10 w-10 items-center justify-center rounded-full bg-black/15 active:opacity-70"
               >
                 <Ionicons
                   name="close-outline"
@@ -221,100 +543,266 @@ function handleLogout() {
                 />
               </Pressable>
 
-              <View style={styles.largeAvatar}>
-                <Text style={styles.largeAvatarText}>
-                  {avatarLetter}
-                </Text>
-              </View>
+              {avatarUrl ? (
+                <Image
+                  source={{
+                    uri:
+                      avatarUrl,
+                  }}
+                  resizeMode="cover"
+                  className="h-[88px] w-[88px] rounded-full border-4 border-[#DDE9C5]"
+                />
+              ) : (
+                <View className="h-[88px] w-[88px] items-center justify-center rounded-full border-4 border-[#DDE9C5] bg-white">
+                  <Text className="text-[32px] font-extrabold text-[#607A35]">
+                    {
+                      avatarLetter
+                    }
+                  </Text>
+                </View>
+              )}
 
-              <Text style={styles.drawerName}>
-                {displayedName}
+              <Text
+                numberOfLines={1}
+                className="mt-4 max-w-[90%] text-center text-[21px] font-extrabold text-white"
+              >
+                {
+                  displayedName
+                }
               </Text>
 
-              <Text style={styles.drawerEmail} numberOfLines={1}>
-                {displayedEmail}
+              <Text
+                numberOfLines={1}
+                className="mt-1 max-w-[90%] text-center text-[12px] text-[#E1EACF]"
+              >
+                {
+                  displayedEmail
+                }
               </Text>
 
-              <View style={styles.roleBadge}>
+              <View className="mt-3 flex-row items-center rounded-full bg-black/15 px-3.5 py-2">
                 <Ionicons
-                  name={
-                    isAuthenticated
-                      ? 'shield-checkmark-outline'
-                      : 'person-outline'
-                  }
-                  size={16}
-                  color="#6548BE"
+                  name="shield-checkmark-outline"
+                  size={15}
+                  color="#FFFFFF"
                 />
 
-                <Text style={styles.roleText}>
-                  {displayedRole}
+                <Text className="ml-2 text-[11px] font-bold text-white">
+                  {
+                    displayedRole
+                  }
                 </Text>
               </View>
             </View>
 
-            <View style={styles.drawerBody}>
-              {isAuthenticated ? (
-                <>
-                  <DrawerOption
-                    icon="person-circle-outline"
-                    title="Mi perfil"
-                    description="Consulta la información de tu cuenta"
-                    onPress={() => closeDrawer()}
-                  />
+            {/* ========================================= */}
+            {/* EMPRESA */}
+            {/* ========================================= */}
 
-                  <DrawerOption
-                    icon="create-outline"
-                    title="Editar perfil"
-                    description="Modifica tus datos personales"
-                    onPress={handleEditProfile}
+            <View className="px-4">
+              <Pressable
+                onPress={
+                  handleCompanyInfo
+                }
+                className="flex-row items-center rounded-[22px] bg-white p-4 active:opacity-85"
+              >
+                {companyLogoUrl ? (
+                  <Image
+                    source={{
+                      uri:
+                        companyLogoUrl,
+                    }}
+                    resizeMode="cover"
+                    className="h-12 w-12 rounded-[15px] bg-[#EEF3E3]"
                   />
+                ) : (
+                  <View className="h-12 w-12 items-center justify-center rounded-[15px] bg-[#EEF3E3]">
+                    <Ionicons
+                      name="business-outline"
+                      size={22}
+                      color="#6F8C3E"
+                    />
+                  </View>
+                )}
 
-                  <View style={styles.separator} />
+                <View className="ml-3 min-w-0 flex-1">
+                  <Text className="text-[10px] font-bold uppercase tracking-wide text-[#979D8D]">
+                    Empresa
+                  </Text>
 
-                  <DrawerOption
-                    icon="log-out-outline"
-                    title="Cerrar sesión"
-                    description="Salir de la cuenta actual"
-                    danger
-                    onPress={handleLogout}
-                  />
-                </>
-              ) : (
-                <>
-                  <DrawerOption
-                    icon="log-in-outline"
-                    title="Iniciar sesión"
-                    description="Ingresa con tu cuenta"
-                    onPress={handleLogin}
-                  />
+                  <Text
+                    numberOfLines={1}
+                    className="mt-0.5 text-[15px] font-extrabold text-[#252A20]"
+                  >
+                    {
+                      companyName
+                    }
+                  </Text>
+                </View>
 
-                  <DrawerOption
-                    icon="person-add-outline"
-                    title="Crear una cuenta"
-                    description="Regístrate como cliente"
-                    onPress={handleRegister}
-                  />
-                </>
-              )}
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={20}
+                  color="#9BA18F"
+                />
+              </Pressable>
             </View>
 
-            <View style={styles.drawerFooter}>
-              <Text style={styles.footerText}>
+            {/* ========================================= */}
+            {/* OPCIONES */}
+            {/* ========================================= */}
+
+            <View className="flex-1 px-4 pt-5">
+              <DrawerOption
+                icon="business-outline"
+                title="Información compañía"
+                description="Consulta los datos generales de la empresa"
+                type="light"
+                onPress={
+                  handleCompanyInfo
+                }
+              />
+
+              <DrawerOption
+                icon="create-outline"
+                title="Editar perfil"
+                description="Actualiza tus datos personales"
+                type="orange"
+                onPress={
+                  handleEditProfile
+                }
+              />
+
+              <View className="my-3 h-px bg-white/25" />
+
+              <DrawerOption
+                icon="log-out-outline"
+                title="Cerrar sesión"
+                description="Salir de la cuenta actual"
+                type="danger"
+                onPress={
+                  handleLogout
+                }
+              />
+            </View>
+
+            {/* ========================================= */}
+            {/* FOOTER */}
+            {/* ========================================= */}
+
+            <View className="border-t border-white/20 px-5 py-5">
+              <Text className="text-center text-[11px] text-[#E0E8CF]">
                 Sistema móvil de restaurantes
+              </Text>
+
+              <Text className="mt-1 text-center text-[9px] text-[#CFDDB6]">
+                Administración segura
               </Text>
             </View>
           </Animated.View>
+        </View>
+      </Modal>
+
+      {/* ================================================= */}
+      {/* MODAL CERRAR SESIÓN */}
+      {/* ================================================= */}
+
+      <Modal
+        visible={
+          logoutVisible
+        }
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (
+            !loggingOut
+          ) {
+            setLogoutVisible(
+              false
+            );
+          }
+        }}
+      >
+        <View className="flex-1 items-center justify-center bg-black/55 px-5">
+          <View className="w-full max-w-[410px] rounded-[26px] bg-[#F7F8F2] p-5">
+            <View className="h-12 w-12 items-center justify-center rounded-[16px] bg-[#FFF0DD]">
+              <Ionicons
+                name="log-out-outline"
+                size={22}
+                color="#D47A24"
+              />
+            </View>
+
+            <Text className="mt-4 text-[19px] font-extrabold text-[#252A20]">
+              Cerrar sesión
+            </Text>
+
+            <Text className="mt-2 text-[13px] leading-5 text-[#858A7A]">
+              ¿Estás seguro de que deseas cerrar tu sesión actual?
+            </Text>
+
+            <View className="mt-6 flex-row gap-3">
+              <Pressable
+                disabled={
+                  loggingOut
+                }
+                onPress={() =>
+                  setLogoutVisible(
+                    false
+                  )
+                }
+                className="h-12 flex-1 items-center justify-center rounded-[16px] border border-[#E3E6DC] bg-white active:opacity-70"
+              >
+                <Text className="text-[13px] font-bold text-[#555C4E]">
+                  Cancelar
+                </Text>
+              </Pressable>
+
+              <Pressable
+                disabled={
+                  loggingOut
+                }
+                onPress={() =>
+                  void performLogout()
+                }
+                className="h-12 flex-1 flex-row items-center justify-center rounded-[16px] bg-[#171A15] active:opacity-80"
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={17}
+                  color="#FFFFFF"
+                />
+
+                <Text className="ml-2 text-[13px] font-bold text-white">
+                  {loggingOut
+                    ? 'Cerrando...'
+                    : 'Cerrar sesión'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
       </Modal>
     </>
   );
 }
 
+type DrawerOptionType =
+  | 'light'
+  | 'orange'
+  | 'danger';
+
 interface DrawerOptionProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon:
+    keyof typeof Ionicons.glyphMap;
+
   title: string;
+
   description: string;
-  danger?: boolean;
+
+  type:
+    DrawerOptionType;
+
   onPress: () => void;
 }
 
@@ -322,267 +810,64 @@ function DrawerOption({
   icon,
   title,
   description,
-  danger = false,
+  type,
   onPress,
 }: DrawerOptionProps) {
+  const containerClass =
+    type === 'orange'
+      ? 'bg-[#FFF1DF]'
+      : type ===
+          'danger'
+        ? 'bg-[#FBEAE6]'
+        : 'bg-white';
+
+  const iconColor =
+    type === 'orange'
+      ? '#D47A24'
+      : type ===
+          'danger'
+        ? '#B65D51'
+        : '#6F8C3E';
+
+  const titleColor =
+    type === 'danger'
+      ? 'text-[#B65D51]'
+      : 'text-[#252A20]';
+
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.drawerOption,
-        pressed && styles.optionPressed,
-      ]}
-      onPress={onPress}
+      onPress={
+        onPress
+      }
+      className={`mb-3 min-h-[72px] flex-row items-center rounded-[20px] px-3.5 active:opacity-85 ${containerClass}`}
     >
-      <View
-        style={[
-          styles.optionIcon,
-          danger && styles.dangerIcon,
-        ]}
-      >
+      <View className="mr-3 h-11 w-11 items-center justify-center rounded-[14px] bg-black/5">
         <Ionicons
           name={icon}
-          size={22}
-          color={danger ? '#D94F68' : '#7657D5'}
+          size={21}
+          color={
+            iconColor
+          }
         />
       </View>
 
-      <View style={styles.optionContent}>
+      <View className="min-w-0 flex-1">
         <Text
-          style={[
-            styles.optionTitle,
-            danger && styles.dangerText,
-          ]}
+          className={`text-[14px] font-extrabold ${titleColor}`}
         >
           {title}
         </Text>
 
-        <Text style={styles.optionDescription}>
+        <Text className="mt-1 text-[11px] leading-4 text-[#7F8578]">
           {description}
         </Text>
       </View>
 
       <Ionicons
         name="chevron-forward-outline"
-        size={19}
-        color="#AAA6B7"
+        size={18}
+        color="#9AA08F"
       />
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  navbar: {
-    minHeight: 70,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFEDF5',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarButton: {
-    maxWidth: '48%',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 45,
-    height: 45,
-    borderRadius: 23,
-    backgroundColor: '#7657D5',
-    borderWidth: 3,
-    borderColor: '#E8E2FA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  userSummary: {
-    marginLeft: 9,
-    flexShrink: 1,
-  },
-  welcomeText: {
-    fontSize: 11,
-    color: '#8C879B',
-  },
-  userName: {
-    marginTop: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#302D3E',
-  },
-  navbarTitle: {
-    flex: 1,
-    marginHorizontal: 10,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#302D3E',
-    textAlign: 'center',
-  },
-  notificationButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#F3F0FC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 9,
-    right: 10,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#55BDEB',
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-  },
-  pressed: {
-    opacity: 0.78,
-  },
-  modalContainer: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(22, 19, 31, 0.48)',
-  },
-  drawer: {
-    height: '100%',
-    backgroundColor: '#F8F7FC',
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 5,
-      height: 0,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 16,
-  },
-  drawerHeader: {
-    paddingTop: 55,
-    paddingHorizontal: 24,
-    paddingBottom: 26,
-    backgroundColor: '#7657D5',
-    alignItems: 'center',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 47,
-    right: 17,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  largeAvatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 4,
-    borderColor: '#9F8AE4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  largeAvatarText: {
-    fontSize: 37,
-    fontWeight: '800',
-    color: '#7657D5',
-  },
-  drawerName: {
-    marginTop: 14,
-    fontSize: 21,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  drawerEmail: {
-    maxWidth: '90%',
-    marginTop: 4,
-    fontSize: 13,
-    color: '#E8E2FA',
-  },
-  roleBadge: {
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  roleText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6548BE',
-  },
-  drawerBody: {
-    flex: 1,
-    paddingHorizontal: 15,
-    paddingTop: 20,
-  },
-  drawerOption: {
-    minHeight: 72,
-    paddingHorizontal: 10,
-    borderRadius: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  optionPressed: {
-    backgroundColor: '#EEEBF8',
-  },
-  optionIcon: {
-    width: 43,
-    height: 43,
-    marginRight: 12,
-    borderRadius: 14,
-    backgroundColor: '#EDE8FC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dangerIcon: {
-    backgroundColor: '#FCEAED',
-  },
-  optionContent: {
-    flex: 1,
-  },
-  optionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#343143',
-  },
-  optionDescription: {
-    marginTop: 3,
-    fontSize: 12,
-    color: '#8C879B',
-  },
-  dangerText: {
-    color: '#D94F68',
-  },
-  separator: {
-    height: 1,
-    marginVertical: 8,
-    backgroundColor: '#E7E4EE',
-  },
-  drawerFooter: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E7E4EE',
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#9A96A7',
-    textAlign: 'center',
-  },
-});

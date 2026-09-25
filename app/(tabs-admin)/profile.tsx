@@ -1,20 +1,90 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+// app/(tabs-admin)/profile.tsx
+
+import {
+  useState,
+} from 'react';
+
 import {
   ActivityIndicator,
-  Alert,
-  Platform,
+  Image,
+  Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
 
-import { useAuth } from '@/hooks/useAuth';
-import type { AppUser } from '@/types/user.types';
+import Ionicons from '@expo/vector-icons/Ionicons';
+
+import {
+  router,
+} from 'expo-router';
+
+import {
+  SafeAreaView,
+} from 'react-native-safe-area-context';
+
+import Toast from 'react-native-toast-message';
+
+import {
+  useAuth,
+} from '@/hooks/useAuth';
+
+import {
+  api,
+} from '@/services/api';
+
+import type {
+  AppUser,
+} from '@/types/user.types';
+
+// =====================================================
+// HELPERS
+// =====================================================
+
+function getAvatarUrl(
+  url?:
+    | string
+    | null
+): string | null {
+  if (!url) {
+    return null;
+  }
+
+  if (
+    url.startsWith(
+      'http://'
+    ) ||
+    url.startsWith(
+      'https://'
+    )
+  ) {
+    return url;
+  }
+
+  const baseUrl =
+    String(
+      api.defaults
+        .baseURL ?? ''
+    ).replace(
+      /\/$/,
+      ''
+    );
+
+  if (!baseUrl) {
+    return null;
+  }
+
+  return `${baseUrl}${
+    url.startsWith('/')
+      ? url
+      : `/${url}`
+  }`;
+}
+
+// =====================================================
+// SCREEN
+// =====================================================
 
 export default function ProfileScreen() {
   const {
@@ -24,82 +94,124 @@ export default function ProfileScreen() {
     logout,
   } = useAuth();
 
+  const [
+    logoutVisible,
+    setLogoutVisible,
+  ] =
+    useState(false);
+
+  const [
+    loggingOut,
+    setLoggingOut,
+  ] =
+    useState(false);
+
+  // ===================================================
+  // NAVEGACIÓN
+  // ===================================================
+
   const handleLogin = () => {
-    router.push('/login');
-  };
-
-  const handleRegister = () => {
-    router.push('/register');
-  };
-
-  const handleRegisterRestaurant = () => {
-    router.push('/registerRes');
-  };
-
-  const handleEditProfile = () => {
-    router.push('/edit-profile');
-  };
-
-  const performLogout = async () => {
-    try {
-      await logout();
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-
-      if (Platform.OS === 'web') {
-        window.alert('No se pudo cerrar la sesión.');
-      } else {
-        Alert.alert(
-          'Error',
-          'No se pudo cerrar la sesión.'
-        );
-      }
-    }
-  };
-
-  const handleLogout = () => {
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        '¿Estás seguro de que deseas cerrar tu sesión?'
-      );
-
-      if (confirmed) {
-        void performLogout();
-      }
-
-      return;
-    }
-
-    Alert.alert(
-      'Cerrar sesión',
-      '¿Estás seguro de que deseas cerrar tu sesión?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Cerrar sesión',
-          style: 'destructive',
-          onPress: () => {
-            void performLogout();
-          },
-        },
-      ]
+    router.push(
+      '/login'
     );
   };
 
+  const handleRegister = () => {
+    router.push(
+      '/register'
+    );
+  };
+
+  const handleRegisterRestaurant =
+    () => {
+      router.push(
+        '/registerRes'
+      );
+    };
+
+  const handleEditProfile =
+    () => {
+      router.push(
+        '/edit-profile'
+      );
+    };
+
+  // ===================================================
+  // LOGOUT
+  // ===================================================
+
+  const handleLogout =
+    () => {
+      setLogoutVisible(
+        true
+      );
+    };
+
+  const performLogout =
+    async () => {
+      if (
+        loggingOut
+      ) {
+        return;
+      }
+
+      setLoggingOut(
+        true
+      );
+
+      try {
+        await logout();
+
+        setLogoutVisible(
+          false
+        );
+
+        router.replace(
+          '/(tabs)'
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          'Error al cerrar sesión:',
+          error
+        );
+
+        Toast.show({
+          type: 'error',
+          text1:
+            'No se pudo cerrar la sesión',
+          position:
+            'bottom',
+        });
+      } finally {
+        setLoggingOut(
+          false
+        );
+      }
+    };
+
+  // ===================================================
+  // LOADING
+  // ===================================================
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator
-            size="large"
-            color="#7657D5"
-          />
+      <SafeAreaView
+        className="flex-1 bg-[#F7F8F2]"
+        edges={[
+          'top',
+        ]}
+      >
+        <View className="flex-1 items-center justify-center">
+          <View className="h-16 w-16 items-center justify-center rounded-[22px] bg-[#EEF3E3]">
+            <ActivityIndicator
+              size="large"
+              color="#7B9646"
+            />
+          </View>
 
-          <Text style={styles.loadingText}>
+          <Text className="mt-4 text-[13px] font-medium text-[#858A7A]">
             Cargando perfil...
           </Text>
         </View>
@@ -107,46 +219,179 @@ export default function ProfileScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Perfil</Text>
+  // ===================================================
+  // UI
+  // ===================================================
 
-          <View style={styles.headerIcon}>
+  return (
+    <SafeAreaView
+      className="flex-1 bg-[#F7F8F2]"
+      edges={[
+        'top',
+      ]}
+    >
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={
+          false
+        }
+        contentContainerStyle={{
+          paddingBottom:
+            120,
+        }}
+      >
+        {/* =========================================== */}
+        {/* HEADER */}
+        {/* =========================================== */}
+
+        <View className="flex-row items-center justify-between px-5 pb-4 pt-4">
+          <View>
+            <Text className="text-[25px] font-extrabold text-[#252A20]">
+              Perfil
+            </Text>
+
+            <Text className="mt-1 text-[12px] text-[#858A7A]">
+              Información de tu cuenta
+            </Text>
+          </View>
+
+          <View className="h-11 w-11 items-center justify-center rounded-[15px] bg-[#EEF3E3]">
             <Ionicons
-              name="settings-outline"
+              name="person-outline"
               size={21}
-              color="#7657D5"
+              color="#6F8C3E"
             />
           </View>
         </View>
 
-        {isAuthenticated && user ? (
+        {isAuthenticated &&
+        user ? (
           <AuthenticatedProfile
             user={user}
-            onEditProfile={handleEditProfile}
-            onLogout={handleLogout}
+            onEditProfile={
+              handleEditProfile
+            }
+            onLogout={
+              handleLogout
+            }
           />
         ) : (
           <GuestProfile
-            onLogin={handleLogin}
-            onRegister={handleRegister}
-            onRegisterRestaurant={handleRegisterRestaurant}
+            onLogin={
+              handleLogin
+            }
+            onRegister={
+              handleRegister
+            }
+            onRegisterRestaurant={
+              handleRegisterRestaurant
+            }
           />
         )}
       </ScrollView>
+
+      {/* ============================================= */}
+      {/* MODAL LOGOUT */}
+      {/* ============================================= */}
+
+      <Modal
+        visible={
+          logoutVisible
+        }
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (
+            !loggingOut
+          ) {
+            setLogoutVisible(
+              false
+            );
+          }
+        }}
+      >
+        <View className="flex-1 items-center justify-center bg-black/55 px-5">
+          <View className="w-full max-w-[410px] rounded-[26px] bg-[#F7F8F2] p-5">
+            <View className="h-12 w-12 items-center justify-center rounded-[16px] bg-[#FFF0DD]">
+              <Ionicons
+                name="log-out-outline"
+                size={22}
+                color="#D47A24"
+              />
+            </View>
+
+            <Text className="mt-4 text-[19px] font-extrabold text-[#252A20]">
+              Cerrar sesión
+            </Text>
+
+            <Text className="mt-2 text-[13px] leading-5 text-[#858A7A]">
+              ¿Estás seguro de que deseas cerrar tu sesión actual?
+            </Text>
+
+            <View className="mt-6 flex-row gap-3">
+              <Pressable
+                disabled={
+                  loggingOut
+                }
+                onPress={() =>
+                  setLogoutVisible(
+                    false
+                  )
+                }
+                className="h-12 flex-1 items-center justify-center rounded-[16px] border border-[#E3E6DC] bg-white active:opacity-70"
+              >
+                <Text className="text-[13px] font-bold text-[#555C4E]">
+                  Cancelar
+                </Text>
+              </Pressable>
+
+              <Pressable
+                disabled={
+                  loggingOut
+                }
+                onPress={() =>
+                  void performLogout()
+                }
+                className="h-12 flex-1 flex-row items-center justify-center rounded-[16px] bg-[#171A15] active:opacity-80"
+              >
+                {loggingOut ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#FFFFFF"
+                  />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="log-out-outline"
+                      size={17}
+                      color="#FFFFFF"
+                    />
+
+                    <Text className="ml-2 text-[13px] font-bold text-white">
+                      Cerrar sesión
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
+// =====================================================
+// PERFIL INVITADO
+// =====================================================
+
 interface GuestProfileProps {
   onLogin: () => void;
+
   onRegister: () => void;
-  onRegisterRestaurant: () => void;
+
+  onRegisterRestaurant:
+    () => void;
 }
 
 function GuestProfile({
@@ -155,103 +400,116 @@ function GuestProfile({
   onRegisterRestaurant,
 }: GuestProfileProps) {
   return (
-    <View style={styles.content}>
-      <LinearGradient
-        colors={['#7657D5', '#55BDEB']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.avatarGradient}
-      >
-        <View style={styles.avatarInner}>
-          <Ionicons
-            name="person-outline"
-            size={65}
-            color="#7657D5"
-          />
-        </View>
-      </LinearGradient>
+    <View className="items-center px-5 pb-10 pt-8">
+      {/* ============================================= */}
+      {/* ICONO */}
+      {/* ============================================= */}
 
-      <Text style={styles.title}>¡Bienvenido!</Text>
+      <View className="h-32 w-32 items-center justify-center rounded-full border-[5px] border-[#C8D8A8] bg-[#EEF3E3]">
+        <Ionicons
+          name="person-outline"
+          size={58}
+          color="#6F8C3E"
+        />
+      </View>
 
-      <Text style={styles.description}>
-        Inicia sesión o crea una cuenta para realizar pedidos,
-        guardar tus favoritos y administrar tu perfil.
+      {/* ============================================= */}
+      {/* PRESENTACIÓN */}
+      {/* ============================================= */}
+
+      <Text className="mt-6 text-center text-[26px] font-extrabold text-[#252A20]">
+        Bienvenido
       </Text>
 
-      <View style={styles.features}>
+      <Text className="mt-2 max-w-[360px] text-center text-[14px] leading-6 text-[#858A7A]">
+        Inicia sesión o crea una cuenta para realizar
+        pedidos, guardar tus favoritos y administrar tu
+        perfil.
+      </Text>
+
+      {/* ============================================= */}
+      {/* CARACTERÍSTICAS */}
+      {/* ============================================= */}
+
+      <View className="mt-7 w-full max-w-[560px] gap-3 rounded-[24px] border border-[#E6E9E0] bg-white p-4">
         <Feature
           icon="fast-food-outline"
           text="Realiza pedidos fácilmente"
+          color="green"
         />
 
         <Feature
           icon="receipt-outline"
           text="Consulta el estado de tus pedidos"
+          color="orange"
         />
 
         <Feature
           icon="heart-outline"
           text="Guarda tus productos favoritos"
+          color="green"
         />
       </View>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.loginButton,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={onLogin}
-      >
-        <LinearGradient
-          colors={['#7657D5', '#608EE4']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.buttonGradient}
-        >
-          <Ionicons
-            name="log-in-outline"
-            size={21}
-            color="#FFFFFF"
-          />
+      {/* ============================================= */}
+      {/* LOGIN */}
+      {/* ============================================= */}
 
-          <Text style={styles.loginButtonText}>
-            Iniciar sesión
-          </Text>
-        </LinearGradient>
+      <Pressable
+        onPress={
+          onLogin
+        }
+        className="mt-7 h-[54px] w-full max-w-[560px] flex-row items-center justify-center rounded-[18px] bg-[#171A15] active:opacity-80"
+      >
+        <Ionicons
+          name="log-in-outline"
+          size={20}
+          color="#FFFFFF"
+        />
+
+        <Text className="ml-2 text-[15px] font-extrabold text-white">
+          Iniciar sesión
+        </Text>
       </Pressable>
 
+      {/* ============================================= */}
+      {/* REGISTRO CLIENTE */}
+      {/* ============================================= */}
+
       <Pressable
-        style={({ pressed }) => [
-          styles.registerButton,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={onRegister}
+        onPress={
+          onRegister
+        }
+        className="mt-3 h-[54px] w-full max-w-[560px] flex-row items-center justify-center rounded-[18px] border border-[#B9C99A] bg-[#EEF3E3] active:opacity-75"
       >
         <Ionicons
           name="person-add-outline"
           size={20}
-          color="#7657D5"
+          color="#6F8C3E"
         />
 
-        <Text style={styles.registerButtonText}>
+        <Text className="ml-2 text-[15px] font-extrabold text-[#607A35]">
           Crear una cuenta
         </Text>
       </Pressable>
 
+      {/* ============================================= */}
+      {/* REGISTRO RESTAURANTE */}
+      {/* ============================================= */}
+
       <Pressable
-        style={({ pressed }) => [
-          styles.registerButton,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={onRegisterRestaurant}
+        onPress={
+          onRegisterRestaurant
+        }
+        className="mt-3 h-[54px] w-full max-w-[560px] flex-row items-center justify-center rounded-[18px] border border-[#F0CC9F] bg-[#FFF0DD] active:opacity-75"
       >
         <Ionicons
           name="restaurant-outline"
           size={20}
-          color="#7657D5"
+          color="#D47A24"
         />
 
-        <Text style={styles.registerButtonText}>
+        <Text className="ml-2 text-[15px] font-extrabold text-[#C16B1B]">
           Registrar tu negocio
         </Text>
       </Pressable>
@@ -259,9 +517,15 @@ function GuestProfile({
   );
 }
 
+// =====================================================
+// PERFIL AUTENTICADO
+// =====================================================
+
 interface AuthenticatedProfileProps {
   user: AppUser;
+
   onEditProfile: () => void;
+
   onLogout: () => void;
 }
 
@@ -270,407 +534,391 @@ function AuthenticatedProfile({
   onEditProfile,
   onLogout,
 }: AuthenticatedProfileProps) {
-  const fullName = [
-    user.firstName,
-    user.lastName,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const fullName =
+    [
+      user.firstName,
+      user.middleName,
+      user.lastName,
+      user.secondLastName,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
 
-  const displayedName = fullName || user.username;
+  const displayedName =
+    fullName ||
+    user.username;
 
   const displayedRole =
     user.role?.name ||
     user.role?.type ||
-    'Cliente';
+    'Usuario';
+
+  const avatarUrl =
+    getAvatarUrl(
+      user.avatar?.url
+    );
+
+  const avatarLetter =
+    displayedName
+      .charAt(0)
+      .toUpperCase();
 
   return (
-    <View style={styles.content}>
-      <LinearGradient
-        colors={['#7657D5', '#55BDEB']}
-        style={styles.avatarGradient}
-      >
-        <View style={styles.avatarInner}>
-          <Text style={styles.avatarLetter}>
-            {displayedName.charAt(0).toUpperCase()}
+    <View className="items-center px-5 pb-10 pt-5">
+      {/* ============================================= */}
+      {/* PERFIL PRINCIPAL */}
+      {/* ============================================= */}
+
+      <View className="w-full max-w-[620px] items-center rounded-[28px] bg-[#171A15] px-5 pb-7 pt-7">
+        <View className="h-32 w-32 items-center justify-center overflow-hidden rounded-full border-[5px] border-[#7B9646] bg-[#EEF3E3]">
+          {avatarUrl ? (
+            <Image
+              source={{
+                uri:
+                  avatarUrl,
+              }}
+              resizeMode="cover"
+              className="h-full w-full"
+            />
+          ) : (
+            <Text className="text-[48px] font-extrabold text-[#607A35]">
+              {
+                avatarLetter
+              }
+            </Text>
+          )}
+        </View>
+
+        <Text className="mt-5 text-center text-[24px] font-extrabold text-white">
+          {
+            displayedName
+          }
+        </Text>
+
+        <Text className="mt-1 text-center text-[13px] text-[#B6BDB0]">
+          {user.email}
+        </Text>
+
+        <View className="mt-4 flex-row items-center rounded-full bg-[#293021] px-4 py-2">
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={16}
+            color="#A8C56C"
+          />
+
+          <Text className="ml-2 text-[12px] font-extrabold text-[#D6E2BE]">
+            {
+              displayedRole
+            }
           </Text>
         </View>
-      </LinearGradient>
-
-      <Text style={styles.title}>{displayedName}</Text>
-
-      <Text style={styles.email}>{user.email}</Text>
-
-      <View style={styles.roleBadge}>
-        <Ionicons
-          name="shield-checkmark-outline"
-          size={17}
-          color="#6548BE"
-        />
-
-        <Text style={styles.roleText}>
-          {displayedRole}
-        </Text>
       </View>
 
-      <View style={styles.informationCard}>
-        <InformationRow
-          icon="person-outline"
-          label="Usuario"
-          value={user.username}
-        />
+      {/* ============================================= */}
+      {/* INFORMACIÓN */}
+      {/* ============================================= */}
 
-        <View style={styles.separator} />
+      <View className="mt-5 w-full max-w-[620px] rounded-[26px] border border-[#E5E8DE] bg-white p-5">
+        <View className="mb-5">
+          <Text className="text-[17px] font-extrabold text-[#252A20]">
+            Información personal
+          </Text>
 
-        <InformationRow
-          icon="mail-outline"
-          label="Correo"
-          value={user.email}
-        />
+          <Text className="mt-1 text-[11px] text-[#858A7A]">
+            Datos principales de tu cuenta
+          </Text>
+        </View>
 
-        <View style={styles.separator} />
+        <View className="gap-3">
+          <InformationRow
+            icon="person-outline"
+            label="Usuario"
+            value={
+              user.username
+            }
+            color="green"
+          />
 
-        <InformationRow
-          icon="briefcase-outline"
-          label="Rol"
-          value={displayedRole}
-        />
+          <InformationRow
+            icon="mail-outline"
+            label="Correo electrónico"
+            value={
+              user.email
+            }
+            color="orange"
+          />
 
-        {user.phone && (
-          <>
-            <View style={styles.separator} />
+          <InformationRow
+            icon="briefcase-outline"
+            label="Rol"
+            value={
+              displayedRole
+            }
+            color="green"
+          />
 
+          {user.phone ? (
             <InformationRow
               icon="call-outline"
               label="Teléfono"
-              value={user.phone}
+              value={
+                user.phone
+              }
+              color="orange"
             />
-          </>
-        )}
+          ) : null}
+
+          {user.ci ? (
+            <InformationRow
+              icon="card-outline"
+              label="Cédula de identidad"
+              value={
+                user.ci
+              }
+              color="green"
+            />
+          ) : null}
+        </View>
       </View>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.loginButton,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={onEditProfile}
-      >
-        <LinearGradient
-          colors={['#7657D5', '#608EE4']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.buttonGradient}
-        >
-          <Ionicons
-            name="grid-outline"
-            size={20}
-            color="#FFFFFF"
-          />
+      {/* ============================================= */}
+      {/* ESTADO */}
+      {/* ============================================= */}
 
-          <Text style={styles.loginButtonText}>
-            Ir a mi panel principal
+      <View className="mt-5 w-full max-w-[620px] flex-row gap-3">
+        <View className="flex-1 rounded-[22px] bg-[#EEF3E3] p-4">
+          <View className="h-10 w-10 items-center justify-center rounded-[14px] bg-[#DDE9C5]">
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={21}
+              color="#6F8C3E"
+            />
+          </View>
+
+          <Text className="mt-3 text-[13px] font-extrabold text-[#252A20]">
+            {user.confirmed
+              ? 'Confirmada'
+              : 'Pendiente'}
           </Text>
-        </LinearGradient>
+
+          <Text className="mt-1 text-[10px] text-[#858A7A]">
+            Estado de cuenta
+          </Text>
+        </View>
+
+        <View
+          className={
+            user.blocked
+              ? 'flex-1 rounded-[22px] bg-[#FBEAE6] p-4'
+              : 'flex-1 rounded-[22px] bg-[#FFF0DD] p-4'
+          }
+        >
+          <View
+            className={
+              user.blocked
+                ? 'h-10 w-10 items-center justify-center rounded-[14px] bg-[#F5D3CD]'
+                : 'h-10 w-10 items-center justify-center rounded-[14px] bg-[#FFE0B5]'
+            }
+          >
+            <Ionicons
+              name={
+                user.blocked
+                  ? 'lock-closed-outline'
+                  : 'lock-open-outline'
+              }
+              size={20}
+              color={
+                user.blocked
+                  ? '#B65D51'
+                  : '#D47A24'
+              }
+            />
+          </View>
+
+          <Text className="mt-3 text-[13px] font-extrabold text-[#252A20]">
+            {user.blocked
+              ? 'Bloqueada'
+              : 'Habilitada'}
+          </Text>
+
+          <Text className="mt-1 text-[10px] text-[#858A7A]">
+            Acceso al sistema
+          </Text>
+        </View>
+      </View>
+
+      {/* ============================================= */}
+      {/* EDITAR PERFIL */}
+      {/* ============================================= */}
+
+      <Pressable
+        onPress={
+          onEditProfile
+        }
+        className="mt-6 h-[54px] w-full max-w-[620px] flex-row items-center justify-center rounded-[18px] bg-[#7B9646] active:opacity-80"
+      >
+        <Ionicons
+          name="create-outline"
+          size={20}
+          color="#FFFFFF"
+        />
+
+        <Text className="ml-2 text-[15px] font-extrabold text-white">
+          Editar perfil
+        </Text>
       </Pressable>
 
+      {/* ============================================= */}
+      {/* CERRAR SESIÓN */}
+      {/* ============================================= */}
+
       <Pressable
-        style={({ pressed }) => [
-          styles.logoutButton,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={onLogout}
+        onPress={
+          onLogout
+        }
+        className="mt-3 h-[54px] w-full max-w-[620px] flex-row items-center justify-center rounded-[18px] border border-[#EBC3BC] bg-[#FBEAE6] active:opacity-75"
       >
         <Ionicons
           name="log-out-outline"
           size={20}
-          color="#DC506A"
+          color="#B65D51"
         />
 
-        <Text style={styles.logoutButtonText}>
+        <Text className="ml-2 text-[15px] font-extrabold text-[#B65D51]">
           Cerrar sesión
         </Text>
       </Pressable>
+
+      {/* ============================================= */}
+      {/* FOOTER */}
+      {/* ============================================= */}
+
+      <View className="items-center pb-2 pt-8">
+        <Ionicons
+          name="shield-checkmark-outline"
+          size={20}
+          color="#7B9646"
+        />
+
+        <Text className="mt-2 text-center text-[10px] text-[#989E8F]">
+          Tu información de perfil está protegida
+        </Text>
+      </View>
     </View>
   );
 }
 
+// =====================================================
+// FEATURE
+// =====================================================
+
 interface FeatureProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon:
+    keyof typeof Ionicons.glyphMap;
+
   text: string;
+
+  color:
+    | 'green'
+    | 'orange';
 }
 
-function Feature({ icon, text }: FeatureProps) {
+function Feature({
+  icon,
+  text,
+  color,
+}: FeatureProps) {
+  const green =
+    color ===
+    'green';
+
   return (
-    <View style={styles.featureRow}>
-      <View style={styles.featureIcon}>
+    <View className="min-h-[52px] flex-row items-center">
+      <View
+        className={
+          green
+            ? 'mr-3 h-11 w-11 items-center justify-center rounded-[14px] bg-[#EEF3E3]'
+            : 'mr-3 h-11 w-11 items-center justify-center rounded-[14px] bg-[#FFF0DD]'
+        }
+      >
         <Ionicons
           name={icon}
           size={20}
-          color="#7657D5"
+          color={
+            green
+              ? '#6F8C3E'
+              : '#D47A24'
+          }
         />
       </View>
 
-      <Text style={styles.featureText}>{text}</Text>
+      <Text className="flex-1 text-[13px] font-semibold text-[#555C4E]">
+        {text}
+      </Text>
     </View>
   );
 }
 
+// =====================================================
+// INFORMATION ROW
+// =====================================================
+
 interface InformationRowProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon:
+    keyof typeof Ionicons.glyphMap;
+
   label: string;
+
   value: string;
+
+  color:
+    | 'green'
+    | 'orange';
 }
 
 function InformationRow({
   icon,
   label,
   value,
+  color,
 }: InformationRowProps) {
+  const green =
+    color ===
+    'green';
+
   return (
-    <View style={styles.informationRow}>
-      <View style={styles.informationIcon}>
+    <View className="flex-row items-center rounded-[18px] bg-[#F7F8F2] p-3.5">
+      <View
+        className={
+          green
+            ? 'h-11 w-11 items-center justify-center rounded-[14px] bg-[#E9F0DB]'
+            : 'h-11 w-11 items-center justify-center rounded-[14px] bg-[#FFF0DD]'
+        }
+      >
         <Ionicons
           name={icon}
           size={20}
-          color="#7657D5"
+          color={
+            green
+              ? '#6F8C3E'
+              : '#D47A24'
+          }
         />
       </View>
 
-      <View style={styles.informationText}>
-        <Text style={styles.informationLabel}>
+      <View className="ml-3 min-w-0 flex-1">
+        <Text className="text-[10px] font-semibold uppercase tracking-wide text-[#989E8F]">
           {label}
         </Text>
 
-        <Text style={styles.informationValue}>
+        <Text
+          numberOfLines={2}
+          className="mt-1 text-[14px] font-bold text-[#30352A]"
+        >
           {value}
         </Text>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    backgroundColor: '#F7F7FC',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#242234',
-  },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F0ECFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    paddingHorizontal: 25,
-    paddingTop: 35,
-    paddingBottom: 35,
-    alignItems: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F7F7FC',
-  },
-  loadingText: {
-    marginTop: 12,
-    color: '#777487',
-  },
-  avatarGradient: {
-    width: 136,
-    height: 136,
-    padding: 5,
-    borderRadius: 68,
-  },
-  avatarInner: {
-    flex: 1,
-    borderRadius: 63,
-    backgroundColor: '#F5F2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarLetter: {
-    fontSize: 55,
-    fontWeight: '700',
-    color: '#7657D5',
-  },
-  title: {
-    marginTop: 22,
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#242234',
-    textAlign: 'center',
-  },
-  email: {
-    marginTop: 5,
-    fontSize: 14,
-    color: '#777487',
-  },
-  description: {
-    marginTop: 10,
-    maxWidth: 350,
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#777487',
-    textAlign: 'center',
-  },
-  roleBadge: {
-    marginTop: 13,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: '#EDE8FC',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  roleText: {
-    color: '#6548BE',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  features: {
-    width: '100%',
-    marginTop: 26,
-    padding: 18,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-  },
-  featureRow: {
-    minHeight: 45,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  featureIcon: {
-    width: 37,
-    height: 37,
-    marginRight: 12,
-    borderRadius: 12,
-    backgroundColor: '#F0ECFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#4D4A5C',
-  },
-  informationCard: {
-    width: '100%',
-    marginTop: 26,
-    padding: 18,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-  },
-  informationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  informationIcon: {
-    width: 40,
-    height: 40,
-    marginRight: 12,
-    borderRadius: 12,
-    backgroundColor: '#F0ECFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  informationText: {
-    flex: 1,
-  },
-  informationLabel: {
-    fontSize: 12,
-    color: '#9995A8',
-  },
-  informationValue: {
-    marginTop: 2,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#343143',
-  },
-  separator: {
-    height: 1,
-    marginVertical: 13,
-    backgroundColor: '#EFEDF5',
-  },
-  loginButton: {
-    width: '100%',
-    marginTop: 25,
-    borderRadius: 13,
-    overflow: 'hidden',
-  },
-  buttonGradient: {
-    minHeight: 52,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-  },
-  loginButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  registerButton: {
-    width: '100%',
-    minHeight: 52,
-    marginTop: 12,
-    borderWidth: 1.5,
-    borderColor: '#7657D5',
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-  },
-  registerButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#7657D5',
-  },
-  logoutButton: {
-    width: '100%',
-    minHeight: 52,
-    marginTop: 12,
-    borderWidth: 1.5,
-    borderColor: '#F1A8B5',
-    borderRadius: 13,
-    backgroundColor: '#FFF7F8',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-  },
-  logoutButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#DC506A',
-  },
-  buttonPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.99 }],
-  },
-});

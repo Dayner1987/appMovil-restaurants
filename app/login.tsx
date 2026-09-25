@@ -1,273 +1,628 @@
-import FormFeedback from "@/components/FormFeedback";
-import { useAuth } from "@/hooks/useAuth";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { LinearGradient } from "expo-linear-gradient";
-import { Link, router } from "expo-router";
-import LottieView from "lottie-react-native";
-import { useState } from "react";
-import type { TextInputProps } from "react-native";
-import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-} from "react-native";
+// app/login.tsx
 
-const LOGIN_ANIMATION = require("../assets/fonts/Login.json");
+import {
+  useState,
+} from 'react';
+
+import type {
+  TextInputProps,
+} from 'react-native';
+
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+
+import Ionicons from '@expo/vector-icons/Ionicons';
+
+import {
+  Link,
+  router,
+} from 'expo-router';
+
+import LottieView from 'lottie-react-native';
+
+import FormFeedback from '@/components/FormFeedback';
+
+import {
+  useAuth,
+} from '@/hooks/useAuth';
+
+const LOGIN_ANIMATION =
+  require('../assets/fonts/Login.json');
+
+// =====================================================
+// SCREEN
+// =====================================================
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const {
+    login,
+  } = useAuth();
 
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [
+    identifier,
+    setIdentifier,
+  ] =
+    useState('');
+
+  const [
+    password,
+    setPassword,
+  ] =
+    useState('');
+
+  const [
+    showPassword,
+    setShowPassword,
+  ] =
+    useState(false);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState('');
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] =
+    useState('');
+
+  const [
+    submitting,
+    setSubmitting,
+  ] =
+    useState(false);
+
+  // ===================================================
+  // MENSAJES
+  // ===================================================
 
   function clearMessages() {
-    if (errorMessage) {
-      setErrorMessage("");
+    if (
+      errorMessage
+    ) {
+      setErrorMessage('');
     }
 
-    if (successMessage) {
-      setSuccessMessage("");
+    if (
+      successMessage
+    ) {
+      setSuccessMessage('');
     }
   }
-function redirectByRole(user: {
-  role?: {
-    type?: string;
-    name?: string;
-  } | null;
-}) {
-  const role = (
-    user.role?.type ||
-    user.role?.name ||
-    ''
-  )
-    .trim()
-    .toLowerCase();
 
-  console.log('ROL RECIBIDO:', user.role);
-  console.log('ROL NORMALIZADO:', role);
+  // ===================================================
+  // REDIRECCIÓN POR ROL
+  // ===================================================
 
-  if (role === 'admin' || role.includes('admin')) {
-    router.replace('/(tabs-admin)');
-    return;
-  }
-
-  if (
-    role === 'restaurant' ||
-    role === 'restaurante' ||
-    role.includes('restaurant')
+  function redirectByRole(
+    user: {
+      role?: {
+        type?: string;
+        name?: string;
+      } | null;
+    }
   ) {
-    router.replace('/(tabs-restaurant)');
-    return;
-  }
+    const role =
+      (
+        user.role?.type ||
+        user.role?.name ||
+        ''
+      )
+        .trim()
+        .toLowerCase();
 
-  if (
-    role === 'employee' ||
-    role === 'empleado' ||
-    role.includes('employee')
-  ) {
-    router.replace('/(tabs-employee)');
-    return;
-  }
+    console.log(
+      'ROL RECIBIDO:',
+      user.role
+    );
 
-  router.replace('/(tabs)');
-}
+    console.log(
+      'ROL NORMALIZADO:',
+      role
+    );
 
-  async function handleLogin() {
-    if (submitting) return;
+    if (
+      role === 'admin' ||
+      role.includes(
+        'admin'
+      )
+    ) {
+      router.replace(
+        '/(tabs-admin)'
+      );
 
-    if (!identifier.trim() || !password) {
-      setErrorMessage("Ingresa tu correo o nombre de usuario y contraseña.");
       return;
     }
 
-    if (identifier.includes("@")) {
-      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (
+      role ===
+        'restaurant' ||
+      role ===
+        'restaurante' ||
+      role.includes(
+        'restaurant'
+      )
+    ) {
+      router.replace(
+        '/(tabs-restaurant)'
+      );
 
-      if (!emailPattern.test(identifier.trim())) {
-        setErrorMessage("Introduce un correo electrónico válido.");
+      return;
+    }
+
+    if (
+      role ===
+        'employee' ||
+      role ===
+        'empleado' ||
+      role.includes(
+        'employee'
+      )
+    ) {
+      router.replace(
+        '/(tabs-employee)'
+      );
+
+      return;
+    }
+
+    router.replace(
+      '/(tabs)'
+    );
+  }
+
+  // ===================================================
+  // LOGIN
+  // ===================================================
+
+  async function handleLogin() {
+    if (
+      submitting
+    ) {
+      return;
+    }
+
+    if (
+      !identifier.trim() ||
+      !password
+    ) {
+      setErrorMessage(
+        'Ingresa tu correo o nombre de usuario y contraseña.'
+      );
+
+      return;
+    }
+
+    if (
+      identifier.includes(
+        '@'
+      )
+    ) {
+      const emailPattern =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (
+        !emailPattern.test(
+          identifier.trim()
+        )
+      ) {
+        setErrorMessage(
+          'Introduce un correo electrónico válido.'
+        );
+
         return;
       }
     }
-    setErrorMessage("");
-    setSuccessMessage("");
+
+    setErrorMessage('');
+    setSuccessMessage('');
 
     try {
-      setSubmitting(true);
-      setErrorMessage("");
+      setSubmitting(
+        true
+      );
 
-      const user = await login({
-        identifier: identifier.trim().toLowerCase(),
-        password,
-      });
-      setSuccessMessage("Inicio de sesión exitoso. Redirigiendo...");
+      const user =
+        await login({
+          identifier:
+            identifier
+              .trim()
+              .toLowerCase(),
 
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, 1200);
-      });
+          password,
+        });
 
-      redirectByRole(user);
-    } catch (error: any) {
+      setSuccessMessage(
+        'Inicio de sesión exitoso. Redirigiendo...'
+      );
+
+      await new Promise<void>(
+        (
+          resolve
+        ) => {
+          setTimeout(
+            resolve,
+            1200
+          );
+        }
+      );
+
+      redirectByRole(
+        user
+      );
+    } catch (
+      error: any
+    ) {
       const backendMessage =
-        error.response?.data?.error?.message ?? error.response?.data?.message;
-      setSuccessMessage("");
-      const status = error.response?.status;
+        error.response
+          ?.data
+          ?.error
+          ?.message ??
+        error.response
+          ?.data
+          ?.message;
 
-      if (status === 400 || status === 401 || status === 403) {
-        setErrorMessage("El correo, usuario o contraseña son incorrectos.");
+      const status =
+        error.response
+          ?.status;
+
+      setSuccessMessage(
+        ''
+      );
+
+      if (
+        status === 400 ||
+        status === 401 ||
+        status === 403
+      ) {
+        setErrorMessage(
+          'El correo, usuario o contraseña son incorrectos.'
+        );
       } else {
         setErrorMessage(
-          backendMessage ?? "No se pudo iniciar sesión. Inténtalo nuevamente."
+          backendMessage ??
+            'No se pudo iniciar sesión. Inténtalo nuevamente.'
         );
       }
     } finally {
-      setSubmitting(false);
+      setSubmitting(
+        false
+      );
     }
   }
 
+  // ===================================================
+  // UI
+  // ===================================================
+
   return (
     <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      className="flex-1 bg-[#F7F8F2]"
+      behavior={
+        Platform.OS ===
+        'ios'
+          ? 'padding'
+          : undefined
+      }
     >
       <ScrollView
-        contentContainerStyle={styles.container}
+        className="flex-1 bg-[#F7F8F2]"
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={
+          false
+        }
+        contentContainerStyle={{
+          flexGrow: 1,
+
+          justifyContent:
+            'center',
+
+          paddingHorizontal:
+            20,
+
+          paddingVertical:
+            32,
+        }}
       >
-        <View style={styles.formCard}>
-          <View style={styles.lottieContainer}>
+        <View className="w-full self-center rounded-[28px] border border-[#E5E8DE] bg-white p-5 web:max-w-[520px]">
+          {/* ========================================= */}
+          {/* LOTTIE */}
+          {/* ========================================= */}
+
+          <View className="h-[165px] w-full items-center justify-center">
             {LOGIN_ANIMATION ? (
               <LottieView
-                source={LOGIN_ANIMATION}
+                source={
+                  LOGIN_ANIMATION
+                }
                 autoPlay
                 loop
-                style={styles.lottie}
+                style={{
+                  width:
+                    180,
+
+                  height:
+                    180,
+                }}
               />
             ) : (
-              <View style={styles.lottiePlaceholder}>
-                <Ionicons name="restaurant-outline" size={55} color="#7657D5" />
+              <View className="h-[145px] w-[145px] items-center justify-center rounded-full border-2 border-dashed border-[#B9C99A] bg-[#EEF3E3]">
+                <Ionicons
+                  name="restaurant-outline"
+                  size={52}
+                  color="#6F8C3E"
+                />
 
-                <Text style={styles.lottieText}>Espacio para Lottie</Text>
+                <Text className="mt-2 text-[11px] font-semibold text-[#788466]">
+                  Restaurantes
+                </Text>
               </View>
             )}
           </View>
 
-          <Text style={styles.title}>¡Bienvenido!</Text>
+          {/* ========================================= */}
+          {/* TITULO */}
+          {/* ========================================= */}
 
-          <Text style={styles.subtitle}>
-            Inicia sesión para continuar y disfrutar de todos nuestros
-            servicios.
+          <Text className="text-center text-[29px] font-extrabold text-[#252A20]">
+            ¡Bienvenido!
           </Text>
+
+          <Text className="mb-6 mt-2 text-center text-[13px] leading-5 text-[#858A7A]">
+            Inicia sesión para continuar y disfrutar de
+            todos nuestros servicios.
+          </Text>
+
+          {/* ========================================= */}
+          {/* IDENTIFICADOR */}
+          {/* ========================================= */}
 
           <FormInput
             icon="person-outline"
             placeholder="Correo o nombre de usuario"
-            value={identifier}
-            onChangeText={(value) => {
-              setIdentifier(value);
+            value={
+              identifier
+            }
+            onChangeText={(
+              value
+            ) => {
+              setIdentifier(
+                value
+              );
+
               clearMessages();
             }}
             autoCapitalize="none"
             keyboardType="email-address"
           />
 
+          {/* ========================================= */}
+          {/* PASSWORD */}
+          {/* ========================================= */}
+
           <FormInput
             icon="lock-closed-outline"
             placeholder="Contraseña"
-            value={password}
-            onChangeText={(value) => {
-              setPassword(value);
+            value={
+              password
+            }
+            onChangeText={(
+              value
+            ) => {
+              setPassword(
+                value
+              );
+
               clearMessages();
             }}
-            secureTextEntry={!showPassword}
+            secureTextEntry={
+              !showPassword
+            }
             autoCapitalize="none"
-            rightIcon={showPassword ? "eye-off-outline" : "eye-outline"}
-            onRightIconPress={() => setShowPassword((current) => !current)}
-            onSubmitEditing={handleLogin}
+            rightIcon={
+              showPassword
+                ? 'eye-off-outline'
+                : 'eye-outline'
+            }
+            onRightIconPress={() =>
+              setShowPassword(
+                (
+                  current
+                ) =>
+                  !current
+              )
+            }
+            onSubmitEditing={
+              handleLogin
+            }
           />
 
-          <Pressable style={styles.forgotButton}>
-            <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+          {/* ========================================= */}
+          {/* OLVIDASTE CONTRASEÑA */}
+          {/* ========================================= */}
+
+          <Pressable className="-mt-1 mb-4 self-end py-1 active:opacity-70">
+            <Text className="text-[12px] font-bold text-[#D47A24]">
+              ¿Olvidaste tu contraseña?
+            </Text>
           </Pressable>
 
-          <FormFeedback type="error" message={errorMessage} />
+          {/* ========================================= */}
+          {/* FEEDBACK */}
+          {/* ========================================= */}
 
-          <FormFeedback type="success" message={successMessage} />
+          <FormFeedback
+            type="error"
+            message={
+              errorMessage
+            }
+          />
+
+          <FormFeedback
+            type="success"
+            message={
+              successMessage
+            }
+          />
+
+          {/* ========================================= */}
+          {/* LOGIN BUTTON */}
+          {/* ========================================= */}
 
           <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              pressed && !submitting && styles.buttonPressed,
-              submitting && styles.buttonDisabled,
-            ]}
-            onPress={handleLogin}
-            disabled={submitting}
+            onPress={
+              handleLogin
+            }
+            disabled={
+              submitting
+            }
+            className={
+              submitting
+                ? 'mt-1 h-[54px] w-full flex-row items-center justify-center rounded-[18px] bg-[#171A15] opacity-60'
+                : 'mt-1 h-[54px] w-full flex-row items-center justify-center rounded-[18px] bg-[#171A15] active:opacity-80'
+            }
           >
-            <LinearGradient
-              colors={["#7657D5", "#55BDEB"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.buttonGradient}
-            >
-              {submitting ? (
-                <>
-                  <ActivityIndicator color="#FFFFFF" />
-                  <Text style={styles.buttonText}>Ingresando...</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="log-in-outline" size={21} color="#FFFFFF" />
-                  <Text style={styles.buttonText}>Ingresar</Text>
-                </>
-              )}
-            </LinearGradient>
+            {submitting ? (
+              <>
+                <ActivityIndicator
+                  size="small"
+                  color="#FFFFFF"
+                />
+
+                <Text className="ml-2 text-[15px] font-extrabold text-white">
+                  Ingresando...
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons
+                  name="log-in-outline"
+                  size={20}
+                  color="#FFFFFF"
+                />
+
+                <Text className="ml-2 text-[15px] font-extrabold text-white">
+                  Ingresar
+                </Text>
+              </>
+            )}
           </Pressable>
 
-          <View style={styles.registerRow}>
-            <Text style={styles.registerQuestion}>
-              ¿Todavía no tienes una cuenta?
+          {/* ========================================= */}
+          {/* REGISTRO */}
+          {/* ========================================= */}
+
+          <View className="mt-6 flex-row flex-wrap items-center justify-center">
+            <Text className="text-[13px] text-[#858A7A]">
+              ¿Todavía no tienes una cuenta?{' '}
             </Text>
 
-            <Link href="/register" style={styles.link}>
+            <Link
+              href="/register"
+              className="text-[13px] font-extrabold text-[#6F8C3E]"
+            >
               Regístrate
             </Link>
           </View>
 
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.replace("/(tabs)")}
-          >
-            <Ionicons name="arrow-back-outline" size={18} color="#7657D5" />
+          {/* ========================================= */}
+          {/* VOLVER */}
+          {/* ========================================= */}
 
-            <Text style={styles.backText}>Volver al inicio</Text>
+          <Pressable
+            onPress={() =>
+              router.replace(
+                '/(tabs)'
+              )
+            }
+            className="mt-5 min-h-[44px] flex-row items-center justify-center rounded-[15px] active:bg-[#EEF3E3]"
+          >
+            <Ionicons
+              name="arrow-back-outline"
+              size={18}
+              color="#6F8C3E"
+            />
+
+            <Text className="ml-1.5 text-[13px] font-bold text-[#607A35]">
+              Volver al inicio
+            </Text>
           </Pressable>
+        </View>
+
+        {/* =========================================== */}
+        {/* FOOTER */}
+        {/* =========================================== */}
+
+        <View className="items-center pt-6">
+          <View className="flex-row items-center">
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={14}
+              color="#7B9646"
+            />
+
+            <Text className="ml-1.5 text-[10px] text-[#929889]">
+              Acceso seguro
+            </Text>
+          </View>
+
+          <Text className="mt-2 text-[9px] text-[#A7AC9E]">
+            Sistema móvil de restaurantes
+          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+// =====================================================
+// INPUT
+// =====================================================
+
 interface FormInputProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon:
+    keyof typeof Ionicons.glyphMap;
+
   placeholder: string;
+
   value: string;
-  onChangeText: (value: string) => void;
-  secureTextEntry?: boolean;
-  keyboardType?: TextInputProps["keyboardType"];
-  autoCapitalize?: TextInputProps["autoCapitalize"];
-  rightIcon?: keyof typeof Ionicons.glyphMap;
-  onRightIconPress?: () => void;
-  onSubmitEditing?: () => void;
+
+  onChangeText:
+    (
+      value: string
+    ) => void;
+
+  secureTextEntry?:
+    boolean;
+
+  keyboardType?:
+    TextInputProps[
+      'keyboardType'
+    ];
+
+  autoCapitalize?:
+    TextInputProps[
+      'autoCapitalize'
+    ];
+
+  rightIcon?:
+    keyof typeof Ionicons.glyphMap;
+
+  onRightIconPress?:
+    () => void;
+
+  onSubmitEditing?:
+    () => void;
 }
 
 function FormInput({
@@ -276,183 +631,101 @@ function FormInput({
   value,
   onChangeText,
   secureTextEntry = false,
-  keyboardType = "default",
-  autoCapitalize = "sentences",
+  keyboardType = 'default',
+  autoCapitalize = 'sentences',
   rightIcon,
   onRightIconPress,
   onSubmitEditing,
 }: FormInputProps) {
-  const [focused, setFocused] = useState(false);
+  const [
+    focused,
+    setFocused,
+  ] =
+    useState(false);
 
   return (
     <View
-      style={[styles.inputContainer, focused && styles.inputContainerFocused]}
+      className={
+        focused
+          ? 'mb-3.5 min-h-[54px] flex-row items-center rounded-[16px] border-[1.5px] border-[#7B9646] bg-[#F3F6EC] px-4'
+          : 'mb-3.5 min-h-[54px] flex-row items-center rounded-[16px] border-[1.5px] border-[#DFE3D8] bg-[#FAFBF7] px-4'
+      }
     >
       {!value ? (
         <Ionicons
           name={icon}
-          size={21}
-          color={focused ? "#7657D5" : "#9995A8"}
+          size={20}
+          color={
+            focused
+              ? '#6F8C3E'
+              : '#929889'
+          }
         />
       ) : null}
 
       <TextInput
-        style={styles.input}
-        placeholder={placeholder}
-        placeholderTextColor="#9995A8"
-        value={value}
-        onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        autoCorrect={false}
-        // Propiedades añadidas para evitar el autocompletado nativo y el fondo amarillo:
+        value={
+          value
+        }
+        onChangeText={
+          onChangeText
+        }
+        placeholder={
+          placeholder
+        }
+        placeholderTextColor="#929889"
+        secureTextEntry={
+          secureTextEntry
+        }
+        keyboardType={
+          keyboardType
+        }
+        autoCapitalize={
+          autoCapitalize
+        }
+        autoCorrect={
+          false
+        }
         autoComplete="off"
         importantForAutofill="no"
-        returnKeyType={secureTextEntry ? "done" : "next"}
-        onSubmitEditing={onSubmitEditing}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+        returnKeyType={
+          secureTextEntry
+            ? 'done'
+            : 'next'
+        }
+        onSubmitEditing={
+          onSubmitEditing
+        }
+        onFocus={() =>
+          setFocused(
+            true
+          )
+        }
+        onBlur={() =>
+          setFocused(
+            false
+          )
+        }
+        className="ml-2 h-[52px] flex-1 p-0 text-[14px] font-medium text-[#252A20]"
       />
 
-      {rightIcon && onRightIconPress ? (
-        <Pressable style={styles.visibilityButton} onPress={onRightIconPress}>
-          <Ionicons name={rightIcon} size={21} color="#7657D5" />
+      {rightIcon &&
+      onRightIconPress ? (
+        <Pressable
+          onPress={
+            onRightIconPress
+          }
+          className="h-9 w-9 items-center justify-center rounded-full active:bg-[#E5ECD7]"
+        >
+          <Ionicons
+            name={
+              rightIcon
+            }
+            size={21}
+            color="#6F8C3E"
+          />
         </Pressable>
       ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F5F4FC" },
-  container: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingHorizontal: 22,
-    paddingVertical: 35,
-    backgroundColor: "#F5F4FC",
-  },
-  formCard: {
-    width: "100%",
-    maxWidth: 520,
-    alignSelf: "center",
-    padding: 24,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    boxShadow: "0px 8px 24px rgba(80, 65, 130, 0.12)",
-  },
-  lottieContainer: {
-    width: "100%",
-    height: 170,
-    marginBottom: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lottie: { width: 180, height: 180 },
-  lottiePlaceholder: {
-    width: 150,
-    height: 150,
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderColor: "#CFC5F2",
-    borderRadius: 75,
-    backgroundColor: "#F4F1FD",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lottieText: { marginTop: 8, fontSize: 12, color: "#8B7CBF" },
-  title: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#27233A",
-    textAlign: "center",
-  },
-  subtitle: {
-    marginTop: 8,
-    marginBottom: 25,
-    fontSize: 14,
-    lineHeight: 21,
-    color: "#777487",
-    textAlign: "center",
-  },
-  inputContainer: {
-    minHeight: 54,
-    marginBottom: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1.5,
-    borderColor: "#DDD8EB",
-    borderRadius: 14,
-    backgroundColor: "#FBFAFE",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  inputContainerFocused: { borderColor: "#7657D5", backgroundColor: "#F9F7FF" },
-  input: {
-    flex: 1,
-    height: 52,
-    paddingVertical: 0,
-    fontSize: 15,
-    color: "#0d091b",
-  },
-  visibilityButton: {
-    width: 34,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  forgotButton: { alignSelf: "flex-end", marginTop: -3, marginBottom: 15 },
-  forgotText: { fontSize: 13, fontWeight: "600", color: "#7657D5" },
-  errorBar: {
-    width: "100%",
-    marginBottom: 13,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: "#D94F68",
-    borderRadius: 10,
-    backgroundColor: "#FFF0F3",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-  },
-  errorText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "600",
-    color: "#A52F47",
-  },
-  button: { width: "100%", height: 54, borderRadius: 14, overflow: "hidden" },
-  buttonGradient: {
-    flex: 1,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-  },
-  buttonPressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
-  buttonDisabled: { opacity: 0.7 },
-  buttonText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
-  registerRow: {
-    marginTop: 22,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 5,
-  },
-  registerQuestion: { fontSize: 14, color: "#777487" },
-  link: { fontSize: 14, fontWeight: "700", color: "#7657D5" },
-  backButton: {
-    marginTop: 20,
-    minHeight: 42,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  backText: { fontSize: 14, fontWeight: "600", color: "#7657D5" },
-});

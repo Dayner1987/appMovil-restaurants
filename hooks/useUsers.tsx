@@ -205,117 +205,110 @@ export function useUser(
   // ===================================================
   // CARGAR UN USUARIO
   // ===================================================
+// hooks/useUsers.ts
 
-  const loadUser =
-    useCallback(
-      async (
-        id:
-          | number
-          | string
-      ) => {
-        setLoading(true);
-        setError(null);
+const loadUser =
+  useCallback(
+    async (
+      id: number | string
+    ) => {
+      setLoading(true);
+      setError(null);
 
-        try {
-          const response =
-            await userService.findOne(
-              id
-            );
+      try {
+        const loadedUser =
+          await userService.findOne(
+            id
+          );
 
-          const loadedUser =
-            response.data;
-
-          if (
-            mountedRef.current
-          ) {
-            setUser(
-              loadedUser
-            );
-
-            setAvatar(
-              loadedUser.avatar ??
-                null
-            );
-          }
-
-          return loadedUser;
-        } catch (
-          requestError
+        if (
+          mountedRef.current
         ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              'No se pudo cargar el usuario'
-            );
-          }
+          setUser(
+            loadedUser
+          );
 
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setLoading(
-              false
-            );
-          }
+          setAvatar(
+            loadedUser.avatar ??
+              null
+          );
         }
-      },
-      []
-    );
+
+        return loadedUser;
+      } catch (
+        requestError
+      ) {
+        if (
+          mountedRef.current
+        ) {
+          setError(
+            'No se pudo cargar el usuario'
+          );
+        }
+
+        throw requestError;
+      } finally {
+        if (
+          mountedRef.current
+        ) {
+          setLoading(false);
+        }
+      }
+    },
+    []
+  );
 
   // ===================================================
   // CARGAR USUARIOS
   // ===================================================
+// hooks/useUsers.ts
 
-  const loadUsers =
-    useCallback(
-      async (
-        params:
-          UserQueryParams = {}
-      ) => {
-        setLoading(true);
-        setError(null);
+const loadUsers =
+  useCallback(
+    async (
+      params:
+        UserQueryParams = {}
+    ) => {
+      setLoading(true);
+      setError(null);
 
-        try {
-          const response =
-            await userService.findAll(
-              params
-            );
+      try {
+        const response =
+          await userService.findAll(
+            params
+          );
 
-          if (
-            mountedRef.current
-          ) {
-            setUsers(
-              response.data
-            );
-          }
-
-          return response;
-        } catch (
-          requestError
+        if (
+          mountedRef.current
         ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              'No se pudieron cargar los usuarios'
-            );
-          }
-
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setLoading(
-              false
-            );
-          }
+          setUsers(
+            response
+          );
         }
-      },
-      []
-    );
+
+        return response;
+      } catch (
+        requestError
+      ) {
+        if (
+          mountedRef.current
+        ) {
+          setError(
+            'No se pudieron cargar los usuarios'
+          );
+        }
+
+        throw requestError;
+      } finally {
+        if (
+          mountedRef.current
+        ) {
+          setLoading(false);
+        }
+      }
+    },
+    []
+  );
 
   // ===================================================
   // ACTUALIZAR MI PERFIL
@@ -517,14 +510,11 @@ export function useUser(
         setError(null);
 
         try {
-          const response =
-            await userService.update(
-              id,
-              data
-            );
-
           const updatedUser =
-            response.data;
+  await userService.update(
+    id,
+    data
+  );
 
           if (
             mountedRef.current

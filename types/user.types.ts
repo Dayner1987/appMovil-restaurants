@@ -6,10 +6,12 @@ export type AppRole =
   | 'employee'
   | 'client'
   | 'authenticated'
-  | string;
+  | (string & {});
 
 export interface UserRole {
   id: number;
+  documentId?: string;
+
   name: string;
   description?: string | null;
   type: AppRole;
@@ -117,15 +119,10 @@ export interface AppUser {
 
 export interface UpdateMyProfileData {
   firstName?: string;
-
   middleName?: string | null;
-
   lastName?: string;
-
   secondLastName?: string | null;
-
   phone?: string | null;
-
   ci?: string | null;
 }
 
@@ -143,22 +140,18 @@ export interface RemoveMyAvatarResponse {
 }
 
 // =====================================================
-// PASSWORD
+// PASSWORD PROPIO
 // =====================================================
 
 export interface ChangePasswordData {
   currentPassword: string;
-
   newPassword: string;
-
   confirmPassword: string;
 }
 
 export interface ChangePasswordResponse {
   jwt: string;
-
   refreshToken?: string;
-
   user: AppUser;
 }
 
@@ -169,38 +162,40 @@ export interface ChangePasswordResponse {
 export interface UpdateUserData {
   username?: string;
   email?: string;
+
   firstName?: string;
   middleName?: string | null;
+
   lastName?: string;
   secondLastName?: string | null;
+
   ci?: string | null;
   phone?: string | null;
+
   confirmed?: boolean;
   blocked?: boolean;
+
   role?:
     | number
     | string
-    | {
-        id: number;
-      }
     | null;
-  restaurant?: number | string | null;
-}
-export interface UserPagination {
-  page: number;
-  pageSize: number;
-  pageCount: number;
-  total: number;
+
+  restaurant?:
+    | number
+    | string
+    | null;
 }
 
-export interface UserListResponse {
-  data: AppUser[];
+// GET /api/users
+// Strapi devuelve directamente un arreglo.
+export type UserListResponse =
+  AppUser[];
 
-  meta: {
-    pagination: UserPagination;
-  };
-}
-
+// PATCH personalizado del administrador.
+// Respuesta comprobada:
+// {
+//   data: { ...usuario }
+// }
 export interface UserResponse {
   data: AppUser;
 
@@ -217,11 +212,9 @@ export interface UserQueryParams {
   sort?: string | string[];
 
   username?: string;
-
   email?: string;
 
   blocked?: boolean;
-
   confirmed?: boolean;
 
   roleId?: number | string;
@@ -264,7 +257,7 @@ export interface AdminResetPasswordResponse {
 }
 
 // =====================================================
-// RESPUESTAS DE AVATAR ADMINISTRATIVO
+// AVATAR ADMINISTRATIVO
 // =====================================================
 
 export interface AdminAvatarResponse {
