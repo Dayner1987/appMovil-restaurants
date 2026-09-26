@@ -1,10 +1,11 @@
+// types/payment.types.ts
+
 export type PaymentMethod =
   | 'QR'
   | 'CASH'
   | 'CARD'
   | 'TRANSFER'
   | string;
-
 
 export type PaymentStatus =
   | 'PENDING'
@@ -14,82 +15,164 @@ export type PaymentStatus =
   | 'REFUNDED'
   | string;
 
+// =====================================================
+// RESTAURANT
+// =====================================================
+
+export interface PaymentRestaurant {
+  id: number;
+
+  documentId?: string;
+
+  name?: string;
+
+  email?: string;
+
+  phone?: string | null;
+
+  logo?:
+    | {
+        id: number;
+        documentId?: string;
+        name?: string;
+        url?: string;
+      }
+    | null;
+}
+
+// =====================================================
+// USER
+// =====================================================
+
+export interface PaymentUser {
+  id: number;
+
+  documentId?: string;
+
+  firstName?:
+    | string
+    | null;
+
+  middleName?:
+    | string
+    | null;
+
+  lastName?:
+    | string
+    | null;
+
+  secondLastName?:
+    | string
+    | null;
+
+  username?: string;
+
+  email?: string;
+}
+
+// =====================================================
+// ORDER
+// =====================================================
 
 export interface PaymentOrder {
   id: number;
+
   documentId?: string;
+
   orderCode?: string;
+
   orderType?: string;
+
   statusOrder?: string;
+
   paymentStatus?: string;
+
   subtotal?: number;
+
   discount?: number;
+
   total?: number;
-  restaurant?: PaymentRestaurant | null;
-  users?: PaymentUser | PaymentUser[] | null;
+
+  restaurant?:
+    | PaymentRestaurant
+    | null;
+
+  users?: PaymentUser[];
 }
 
-
+// =====================================================
+// PAYMENT
+// =====================================================
 
 export interface Payment {
-
   id: number;
 
   documentId: string;
 
-
   amount: number;
 
+  method:
+    PaymentMethod;
 
-  method: PaymentMethod;
+  statusPayment:
+    PaymentStatus;
 
-
-  statusPayment: PaymentStatus;
-
-
-  transactionReference: string | null;
-
+  transactionReference:
+    | string
+    | null;
 
   paidAt: string;
 
+  order?:
+    | PaymentOrder
+    | null;
 
   createdAt: string;
 
   updatedAt: string;
 
-  publishedAt: string | null;
-
-
-  // Relación manyToOne con Order
-  order?: PaymentOrder | null;
-
+  publishedAt:
+    | string
+    | null;
 }
 
-
+// =====================================================
+// CREATE
+// =====================================================
 
 export interface CreatePaymentData {
-
-
   amount: number;
-  method: PaymentMethod;
-  statusPayment?: PaymentStatus;
-  transactionReference?: string | null;
-  paidAt: string;
-  order?: number | string | null;
 
+  method:
+    PaymentMethod;
+
+  statusPayment?:
+    PaymentStatus;
+
+  transactionReference?:
+    | string
+    | null;
+
+  paidAt: string;
+
+  order?:
+    | number
+    | string
+    | null;
 }
 
-
+// =====================================================
+// UPDATE
+// =====================================================
 
 export type UpdatePaymentData =
   Partial<CreatePaymentData>;
 
-
-
-
+// =====================================================
+// PAGINACIÓN
+// =====================================================
 
 export interface PaymentPagination {
-
   page: number;
 
   pageSize: number;
@@ -97,68 +180,46 @@ export interface PaymentPagination {
   pageCount: number;
 
   total: number;
-
 }
 
-
-
-
 export interface PaymentListResponse {
-
   data: Payment[];
 
   meta: {
-
-    pagination: PaymentPagination;
-
+    pagination:
+      PaymentPagination;
   };
-
 }
-
-
-
-
 
 export interface PaymentResponse {
-
   data: Payment;
 
-  meta?: Record<string, unknown>;
-
+  meta?: Record<
+    string,
+    unknown
+  >;
 }
 
-
-
+// =====================================================
+// QUERY
+// =====================================================
 
 export interface PaymentQueryParams {
-
   page?: number;
 
   pageSize?: number;
 
-  sort?: string | string[];
+  sort?:
+    | string
+    | string[];
 
-  orderId?: number | string;
+  orderId?:
+    | number
+    | string;
 
-  statusPayment?: PaymentStatus;
+  statusPayment?:
+    PaymentStatus;
 
-  method?: PaymentMethod;
-
-}
-export interface PaymentRestaurant {
-  id: number;
-  documentId?: string;
-  name?: string;
-  logoImg?: unknown;
-}
-
-export interface PaymentUser {
-  id: number;
-  documentId?: string;
-  firstName?: string | null;
-  middleName?: string | null;
-  lastName?: string | null;
-  secondLastName?: string | null;
-  username?: string;
-  email?: string;
+  method?:
+    PaymentMethod;
 }

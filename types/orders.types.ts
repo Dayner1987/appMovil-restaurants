@@ -1,3 +1,5 @@
+// types/orders.types.ts
+
 export type OrderType =
   | 'ONLINE'
   | 'COUNTER'
@@ -20,107 +22,366 @@ export type PaymentStatus =
   | 'FAILED'
   | 'REFUNDED';
 
+// =====================================================
+// RESTAURANT
+// =====================================================
+
 export interface OrderRestaurant {
   id: number;
+
   documentId?: string;
+
   name?: string;
+
   email?: string;
-  number?: string;
-  logoImg?: unknown;
-  aditionalLink?: string | null;
+
+  address?:
+    | string
+    | null;
+
+  phone?:
+    | string
+    | null;
+
+  nit?:
+    | string
+    | null;
+
+  logo?:
+    | {
+        id: number;
+        documentId?: string;
+        url?: string;
+        name?: string;
+      }
+    | null;
 }
+
+// =====================================================
+// ORDER ITEM
+// =====================================================
 
 export interface OrderItem {
   id: number;
+
   documentId?: string;
+
   quantity?: number;
+
   unitPrice?: number;
+
   discount?: number;
+
   subtotal?: number;
-  productName?: string | null;
+
+  productName?:
+    | string
+    | null;
 }
+
+// =====================================================
+// PAYMENT
+// =====================================================
 
 export interface OrderPayment {
   id: number;
+
   documentId?: string;
+
   amount?: number;
+
   method?: string;
-  statusPayment?: PaymentStatus;
-  paidAt?: string | null;
+
+  statusPayment?:
+    PaymentStatus;
+
+  transactionReference?:
+    | string
+    | null;
+
+  paidAt?:
+    | string
+    | null;
 }
+
+// =====================================================
+// USER
+// =====================================================
 
 export interface OrderUser {
   id: number;
+
   documentId?: string;
+
   username?: string;
+
   email?: string;
-  firstName?: string | null;
-  lastName?: string | null;
+
+  firstName?:
+    | string
+    | null;
+
+  lastName?:
+    | string
+    | null;
 }
+
+// =====================================================
+// ORDER
+// =====================================================
 
 export interface Order {
   id: number;
+
   documentId: string;
+
   orderCode: string;
-  orderType: OrderType;
-  statusOrder: OrderStatus;
-  paymentStatus: PaymentStatus;
+
+  orderType:
+    OrderType;
+
+  statusOrder:
+    OrderStatus;
+
+  paymentStatus:
+    PaymentStatus;
+
   subtotal: number;
+
   discount: number;
+
   total: number;
+
   orderedAt: string;
-  completeAt: string | null;
+
+  completeAt:
+    | string
+    | null;
+
+  restaurant?:
+    | OrderRestaurant
+    | null;
+
+  order_items?:
+    OrderItem[];
+
+  payments?:
+    OrderPayment[];
+
+  /*
+   * En Strapi es manyToMany.
+   */
+  users?:
+    OrderUser[];
+
   createdAt: string;
+
   updatedAt: string;
-  publishedAt: string | null;
-  restaurant?: OrderRestaurant | null;
-  order_items?: OrderItem[];
-  payments?: OrderPayment[];
-  users?: OrderUser | OrderUser[] | null;
+
+  publishedAt:
+    | string
+    | null;
 }
+
+// =====================================================
+// CREATE
+// =====================================================
 
 export interface CreateOrderData {
-  orderType: OrderType;
-  restaurant?: number | string | null;
-  users?: number | string | null;
-  order_items?: number[];
+  orderType:
+    OrderType;
+
+  subtotal: number;
+
+  discount?: number;
+
+  total: number;
+
+  restaurant?:
+    | number
+    | string
+    | null;
+
+  users?:
+    (
+      | number
+      | string
+    )[];
+
+  order_items?:
+    (
+      | number
+      | string
+    )[];
+
+  payments?:
+    (
+      | number
+      | string
+    )[];
 }
 
+// =====================================================
+// UPDATE
+// =====================================================
+
 export interface UpdateOrderData {
-  orderType?: OrderType;
-  statusOrder?: OrderStatus;
-  paymentStatus?: PaymentStatus;
-  completeAt?: string | null;
-  restaurant?: number | string | null;
-  users?: number | string | null;
-  order_items?: number[];
+  orderCode?: string;
+
+  orderType?:
+    OrderType;
+
+  statusOrder?:
+    OrderStatus;
+
+  paymentStatus?:
+    PaymentStatus;
+
+  subtotal?: number;
+
+  discount?: number;
+
+  total?: number;
+
+  orderedAt?: string;
+
+  completeAt?:
+    | string
+    | null;
+
+  restaurant?:
+    | number
+    | string
+    | null;
+
+  users?:
+    (
+      | number
+      | string
+    )[];
+
+  order_items?:
+    (
+      | number
+      | string
+    )[];
+
+  payments?:
+    (
+      | number
+      | string
+    )[];
 }
+
+// =====================================================
+// PAGINACIÓN
+// =====================================================
 
 export interface OrderPagination {
   page: number;
+
   pageSize: number;
+
   pageCount: number;
+
   total: number;
 }
 
 export interface OrderListResponse {
   data: Order[];
+
   meta: {
-    pagination: OrderPagination;
+    pagination:
+      OrderPagination;
   };
 }
 
 export interface OrderResponse {
   data: Order;
-  meta?: Record<string, unknown>;
+
+  meta?: Record<
+    string,
+    unknown
+  >;
 }
+
+// =====================================================
+// QUERY
+// =====================================================
 
 export interface OrderQueryParams {
   page?: number;
+
   pageSize?: number;
-  sort?: string | string[];
+
+  sort?:
+    | string
+    | string[];
+
   orderCode?: string;
-  orderType?: OrderType;
-  statusOrder?: OrderStatus;
-  paymentStatus?: PaymentStatus;
+
+  orderType?:
+    OrderType;
+
+  statusOrder?:
+    OrderStatus;
+
+  paymentStatus?:
+    PaymentStatus;
+
+  restaurantId?:
+    | number
+    | string;
+
+  userId?:
+    | number
+    | string;
+}
+
+export interface CreateOrderData {
+  orderCode?: string;
+
+  orderType:
+    OrderType;
+
+  statusOrder?:
+    OrderStatus;
+
+  paymentStatus?:
+    PaymentStatus;
+
+  subtotal: number;
+
+  discount?: number;
+
+  total: number;
+
+  orderedAt?: string;
+
+  completeAt?:
+    | string
+    | null;
+
+  restaurant?:
+    | number
+    | string
+    | null;
+
+  users?:
+    (
+      | number
+      | string
+    )[];
+
+  order_items?:
+    (
+      | number
+      | string
+    )[];
+
+  payments?:
+    (
+      | number
+      | string
+    )[];
 }

@@ -1,4 +1,8 @@
-import { api } from './api';
+// services/order.service.ts
+
+import {
+  api,
+} from './api';
 
 import type {
   CreateOrderData,
@@ -8,104 +12,212 @@ import type {
   UpdateOrderData,
 } from '@/types/orders.types';
 
-const ORDER_URL = '/api/orders';
+const ORDER_URL =
+  '/api/orders';
 
-function generateOrderCode(): string {
-  const date = new Date();
+// =====================================================
+// GENERAR CÓDIGO
+// =====================================================
 
-  const year = String(date.getFullYear()).slice(-2);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const random = Math.floor(1000 + Math.random() * 9000);
+function generateOrderCode():
+  string {
+  const date =
+    new Date();
+
+  const year =
+    String(
+      date.getFullYear()
+    ).slice(-2);
+
+  const month =
+    String(
+      date.getMonth() +
+        1
+    ).padStart(
+      2,
+      '0'
+    );
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(
+      2,
+      '0'
+    );
+
+  const random =
+    Math.floor(
+      1000 +
+        Math.random() *
+          9000
+    );
 
   return `ORD-${year}${month}${day}-${random}`;
 }
 
+// =====================================================
+// SERVICE
+// =====================================================
+
 export const orderService = {
+  // ===================================================
+  // GET ALL
+  // ===================================================
+
   async findAll(
-    params: OrderQueryParams = {}
+    params:
+      OrderQueryParams = {}
   ): Promise<OrderListResponse> {
-    const response = await api.get<OrderListResponse>(
-      ORDER_URL,
-      {
-        params: {
-          populate: '*',
-          'pagination[page]': params.page ?? 1,
-          'pagination[pageSize]': params.pageSize ?? 25,
-          sort: params.sort,
-          'filters[orderCode][$eq]': params.orderCode,
-          'filters[orderType][$eq]': params.orderType,
-          'filters[statusOrder][$eq]': params.statusOrder,
-          'filters[paymentStatus][$eq]': params.paymentStatus,
-        },
-      }
-    );
+    const response =
+      await api.get<OrderListResponse>(
+        ORDER_URL,
+        {
+          params: {
+            populate:
+              '*',
+
+            'pagination[page]':
+              params.page ??
+              1,
+
+            'pagination[pageSize]':
+              params.pageSize ??
+              25,
+
+            sort:
+              params.sort,
+
+            'filters[orderCode][$containsi]':
+              params.orderCode,
+
+            'filters[orderType][$eq]':
+              params.orderType,
+
+            'filters[statusOrder][$eq]':
+              params.statusOrder,
+
+            'filters[paymentStatus][$eq]':
+              params.paymentStatus,
+
+            'filters[restaurant][id][$eq]':
+              params.restaurantId,
+
+            'filters[users][id][$eq]':
+              params.userId,
+          },
+        }
+      );
 
     return response.data;
   },
+
+  // ===================================================
+  // GET ONE
+  // ===================================================
 
   async findOne(
     documentId: string
   ): Promise<OrderResponse> {
-    const response = await api.get<OrderResponse>(
-      `${ORDER_URL}/${encodeURIComponent(documentId)}`,
-      {
-        params: {
-          populate: '*',
-        },
-      }
-    );
+    const response =
+      await api.get<OrderResponse>(
+        `${ORDER_URL}/${encodeURIComponent(
+          documentId
+        )}`,
+        {
+          params: {
+            populate:
+              '*',
+          },
+        }
+      );
 
     return response.data;
   },
+
+  // ===================================================
+  // CREATE
+  // ===================================================
 
   async create(
-    data: CreateOrderData
+    data:
+      CreateOrderData
   ): Promise<OrderResponse> {
-    const response = await api.post<OrderResponse>(
-      ORDER_URL,
-      {
-        data: {
-          ...data,
-          orderCode: generateOrderCode(),
-          orderType: data.orderType,
-          statusOrder: 'PENDING',
-          paymentStatus: 'PENDING',
-          orderedAt: new Date().toISOString(),
+    const response =
+      await api.post<OrderResponse>(
+        ORDER_URL,
+        {
+          data: {
+            ...data,
+
+            orderCode:
+              generateOrderCode(),
+
+            statusOrder:
+              'PENDING',
+
+            paymentStatus:
+              'PENDING',
+
+            discount:
+              data.discount ??
+              0,
+
+            orderedAt:
+              new Date()
+                .toISOString(),
+          },
         },
-      },
-      {
-        params: {
-          populate: '*',
-        },
-      }
-    );
+        {
+          params: {
+            populate:
+              '*',
+          },
+        }
+      );
 
     return response.data;
   },
+
+  // ===================================================
+  // UPDATE PARCIAL
+  // PATCH PERSONALIZADO
+  //
+  // PATCH /api/orders/:documentId
+  // ===================================================
 
   async update(
     documentId: string,
-    data: UpdateOrderData
+
+    data:
+      UpdateOrderData
   ): Promise<OrderResponse> {
-    const response = await api.put<OrderResponse>(
-      `${ORDER_URL}/${encodeURIComponent(documentId)}`,
-      {
-        data,
-      },
-      {
-        params: {
-          populate: '*',
-        },
-      }
-    );
+    const response =
+      await api.patch<OrderResponse>(
+        `${ORDER_URL}/${encodeURIComponent(
+          documentId
+        )}`,
+        {
+          data,
+        }
+      );
 
     return response.data;
   },
 
-  async remove(documentId: string): Promise<void> {
+  // ===================================================
+  // DELETE
+  // ===================================================
+
+  async remove(
+    documentId: string
+  ): Promise<void> {
     await api.delete(
-      `${ORDER_URL}/${encodeURIComponent(documentId)}`
+      `${ORDER_URL}/${encodeURIComponent(
+        documentId
+      )}`
     );
   },
+
+  
 };

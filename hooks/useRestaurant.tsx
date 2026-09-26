@@ -1,4 +1,4 @@
-// hooks/usePublication.ts
+// hooks/useRestaurant.ts
 
 import {
   useCallback,
@@ -10,31 +10,31 @@ import {
 import axios from 'axios';
 
 import {
-  publicationService,
-} from '@/services/publication.service';
+  restaurantService,
+} from '@/services/restaurant.service';
 
 import type {
-  CreatePublicationData,
-  Publication,
-  PublicationPagination,
-  PublicationQueryParams,
-  UpdatePublicationData,
-} from '@/types/publication.types';
+  CreateRestaurantData,
+  Restaurant,
+  RestaurantPagination,
+  RestaurantQueryParams,
+  UpdateRestaurantData,
+} from '@/types/restaurant.types';
 
-interface UsePublicationOptions {
+import type {
+  AppUser,
+} from '@/types/user.types';
+
+interface UseRestaurantOptions {
   documentId?: string;
-
-  restaurantId?:
-    | number
-    | string;
 
   autoLoad?: boolean;
 
   query?:
-    PublicationQueryParams;
+    RestaurantQueryParams;
 }
 
-export interface PublicationImageUpload {
+export interface RestaurantMediaUpload {
   uri: string;
 
   fileName?: string;
@@ -42,13 +42,13 @@ export interface PublicationImageUpload {
   mimeType?: string;
 }
 
-type PublicationChange =
+type RestaurantChange =
   | {
       type:
         'saved';
 
-      publication:
-        Publication;
+      restaurant:
+        Restaurant;
     }
   | {
       type:
@@ -62,13 +62,13 @@ const listeners =
   new Set<
     (
       change:
-        PublicationChange
+        RestaurantChange
     ) => void
   >();
 
 function notifyChange(
   change:
-    PublicationChange
+    RestaurantChange
 ) {
   listeners.forEach(
     (listener) =>
@@ -91,7 +91,7 @@ function getErrorMessage(
     return typeof message ===
       'string'
       ? message
-      : 'No se pudo completar la operación de publicaciones.';
+      : 'No se pudo completar la operación del restaurante.';
   }
 
   return error instanceof Error
@@ -99,8 +99,39 @@ function getErrorMessage(
     : 'Ocurrió un error inesperado.';
 }
 
+// =====================================================
+// SLUG
+// =====================================================
+
+export function createRestaurantSlug(
+  name: string
+): string {
+  return name
+    .normalize(
+      'NFD'
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ''
+    )
+    .toLowerCase()
+    .trim()
+    .replace(
+      /[^a-z0-9]+/g,
+      '-'
+    )
+    .replace(
+      /^-|-$/g,
+      ''
+    );
+}
+
+// =====================================================
+// PREPARE UPDATE
+// =====================================================
+
 function prepareData<
-  T extends UpdatePublicationData,
+  T extends UpdateRestaurantData,
 >(
   data: T
 ): T {
@@ -109,62 +140,113 @@ function prepareData<
   };
 
   if (
-    result.title !==
+    result.name !==
     undefined
   ) {
-    result.title =
-      result.title.trim();
+    result.name =
+      result.name.trim();
 
-    if (!result.title) {
+    if (!result.name) {
       throw new Error(
-        'Escribe el título de la publicación.'
+        'Escribe el nombre del restaurante.'
       );
+    }
+
+    if (
+      result.slug ===
+      undefined
+    ) {
+      result.slug =
+        createRestaurantSlug(
+          result.name
+        );
     }
   }
 
   if (
-    result.description !==
-    undefined
+    typeof result.slug ===
+    'string'
+  ) {
+    result.slug =
+      result.slug.trim();
+  }
+
+  if (
+    typeof result.description ===
+    'string'
   ) {
     result.description =
-      result.description.trim();
+      result.description
+        .trim() ||
+      null;
+  }
 
-    if (
-      !result.description
-    ) {
-      throw new Error(
-        'Escribe la descripción de la publicación.'
-      );
-    }
+  if (
+    typeof result.email ===
+    'string'
+  ) {
+    result.email =
+      result.email
+        .trim()
+        .toLowerCase();
+  }
+
+  if (
+    typeof result.address ===
+    'string'
+  ) {
+    result.address =
+      result.address
+        .trim() ||
+      null;
+  }
+
+  if (
+    typeof result.phone ===
+    'string'
+  ) {
+    result.phone =
+      result.phone
+        .trim() ||
+      null;
+  }
+
+  if (
+    typeof result.nit ===
+    'string'
+  ) {
+    result.nit =
+      result.nit
+        .trim() ||
+      null;
   }
 
   return result;
 }
 
-export function usePublication(
+export function useRestaurant(
   options:
-    UsePublicationOptions = {}
+    UseRestaurantOptions = {}
 ) {
   const {
     documentId,
-    restaurantId,
     autoLoad = true,
     query,
   } = options;
 
   const [
-    publication,
-    setPublication,
+    restaurant,
+    setRestaurant,
   ] =
-    useState<Publication | null>(
+    useState<Restaurant | null>(
       null
     );
 
   const [
-    publications,
-    setPublications,
+    restaurants,
+    setRestaurants,
   ] =
-    useState<Publication[]>(
+    useState<Restaurant[]>(
       []
     );
 
@@ -172,7 +254,7 @@ export function usePublication(
     pagination,
     setPagination,
   ] =
-    useState<PublicationPagination | null>(
+    useState<RestaurantPagination | null>(
       null
     );
 
@@ -225,15 +307,16 @@ export function usePublication(
       sort:
         query?.sort,
 
-      restaurantId:
-        restaurantId ??
-        query?.restaurantId,
+      statusRes:
+        query?.statusRes,
 
-      featured:
-        query?.featured,
+      name:
+        query?.name
+          ?.trim() ||
+        undefined,
 
-      title:
-        query?.title
+      email:
+        query?.email
           ?.trim() ||
         undefined,
     });
@@ -278,7 +361,7 @@ export function usePublication(
             documentId
           ) {
             const response =
-              await publicationService.findOne(
+              await restaurantService.findOne(
                 documentId
               );
 
@@ -287,7 +370,7 @@ export function usePublication(
               requestId ===
                 requestRef.current
             ) {
-              setPublication(
+              setRestaurant(
                 response.data
               );
             }
@@ -296,13 +379,13 @@ export function usePublication(
           }
 
           const params:
-            PublicationQueryParams =
+            RestaurantQueryParams =
             JSON.parse(
               queryKey
             );
 
           const response =
-            await publicationService.findAll(
+            await restaurantService.findAll(
               params
             );
 
@@ -311,7 +394,7 @@ export function usePublication(
             requestId ===
               requestRef.current
           ) {
-            setPublications(
+            setRestaurants(
               response.data
             );
 
@@ -356,8 +439,8 @@ export function usePublication(
     hasLoadedRef.current =
       false;
 
-    setPublication(null);
-    setPublications([]);
+    setRestaurant(null);
+    setRestaurants([]);
     setPagination(null);
     setError(null);
 
@@ -375,13 +458,13 @@ export function usePublication(
   ]);
 
   // ===================================================
-  // SINCRONIZAR PANTALLAS
+  // SINCRONIZAR CAMBIOS
   // ===================================================
 
   useEffect(() => {
     const onChange = (
       change:
-        PublicationChange
+        RestaurantChange
     ) => {
       if (
         !mountedRef.current
@@ -395,7 +478,7 @@ export function usePublication(
         const changedId =
           change.type ===
           'saved'
-            ? change.publication
+            ? change.restaurant
                 .documentId
             : change.documentId;
 
@@ -411,10 +494,10 @@ export function usePublication(
 
         setLoading(false);
 
-        setPublication(
+        setRestaurant(
           change.type ===
             'saved'
-            ? change.publication
+            ? change.restaurant
             : null
         );
 
@@ -503,33 +586,102 @@ export function usePublication(
     );
 
   // ===================================================
+  // RESTAURANTES DE UN USUARIO
+  // ===================================================
+
+  const getMyRestaurants =
+    useCallback(
+      (
+        user:
+          AppUser
+      ) => {
+        return restaurants.filter(
+          (
+            item
+          ) =>
+            item.users?.some(
+              (
+                restaurantUser
+              ) =>
+                restaurantUser.id ===
+                user.id
+            )
+        );
+      },
+      [
+        restaurants,
+      ]
+    );
+
+  const canCreateRestaurant =
+    useCallback(
+      (
+        user:
+          AppUser
+      ) =>
+        getMyRestaurants(
+          user
+        ).length <
+        3,
+      [
+        getMyRestaurants,
+      ]
+    );
+
+  // ===================================================
   // CREATE
   // ===================================================
 
-  const createPublication =
+  const createRestaurant =
     useCallback(
       (
         data:
-          CreatePublicationData
-      ): Promise<Publication> =>
+          CreateRestaurantData,
+
+        user?:
+          AppUser
+      ): Promise<Restaurant> =>
         runMutation(
           async () => {
+            if (
+              user &&
+              !canCreateRestaurant(
+                user
+              )
+            ) {
+              throw new Error(
+                'Solo puedes registrar hasta 3 restaurantes.'
+              );
+            }
+
             const payload =
               prepareData({
                 ...data,
 
-                featured:
-                  data.featured ??
-                  false,
+                name:
+                  data.name.trim(),
 
-                restaurant:
-                  data.restaurant ??
-                  restaurantId ??
-                  null,
+                slug:
+                  data.slug
+                    ?.trim() ||
+                  createRestaurantSlug(
+                    data.name
+                  ),
+
+                statusRes:
+                  data.statusRes ??
+                  'PENDING',
+
+                users:
+                  user
+                    ? [
+                        user.id,
+                      ]
+                    : data.users,
               });
 
             const response =
-              await publicationService.create(
+              await restaurantService.create(
                 payload
               );
 
@@ -537,7 +689,7 @@ export function usePublication(
               type:
                 'saved',
 
-              publication:
+              restaurant:
                 response.data,
             });
 
@@ -546,7 +698,7 @@ export function usePublication(
         ),
       [
         runMutation,
-        restaurantId,
+        canCreateRestaurant,
       ]
     );
 
@@ -554,18 +706,18 @@ export function usePublication(
   // UPDATE - PATCH
   // ===================================================
 
-  const updatePublication =
+  const updateRestaurant =
     useCallback(
       (
         id: string,
 
         data:
-          UpdatePublicationData
-      ): Promise<Publication> =>
+          UpdateRestaurantData
+      ): Promise<Restaurant> =>
         runMutation(
           async () => {
             const response =
-              await publicationService.patch(
+              await restaurantService.patch(
                 id,
                 prepareData(
                   data
@@ -576,7 +728,7 @@ export function usePublication(
               type:
                 'saved',
 
-              publication:
+              restaurant:
                 response.data,
             });
 
@@ -588,44 +740,26 @@ export function usePublication(
       ]
     );
 
-  const toggleFeatured =
-    useCallback(
-      (
-        id: string,
-        featured:
-          boolean
-      ) =>
-        updatePublication(
-          id,
-          {
-            featured,
-          }
-        ),
-      [
-        updatePublication,
-      ]
-    );
-
   // ===================================================
-  // CREATE IMAGE
+  // LOGO CREATE
   // ===================================================
 
-  const createImage =
+  const createLogo =
     useCallback(
       (
         id: string,
 
         image:
-          PublicationImageUpload
-      ): Promise<Publication> =>
+          RestaurantMediaUpload
+      ): Promise<Restaurant> =>
         runMutation(
           async () => {
             const response =
-              await publicationService.createImage(
+              await restaurantService.createLogo(
                 id,
                 image.uri,
                 image.fileName ??
-                  'publication.jpg',
+                  'restaurant-logo.jpg',
                 image.mimeType ??
                   'image/jpeg'
               );
@@ -634,7 +768,7 @@ export function usePublication(
               type:
                 'saved',
 
-              publication:
+              restaurant:
                 response.data,
             });
 
@@ -647,25 +781,25 @@ export function usePublication(
     );
 
   // ===================================================
-  // REPLACE IMAGE
+  // LOGO UPDATE
   // ===================================================
 
-  const updateImage =
+  const updateLogo =
     useCallback(
       (
         id: string,
 
         image:
-          PublicationImageUpload
-      ): Promise<Publication> =>
+          RestaurantMediaUpload
+      ): Promise<Restaurant> =>
         runMutation(
           async () => {
             const response =
-              await publicationService.updateImage(
+              await restaurantService.updateLogo(
                 id,
                 image.uri,
                 image.fileName ??
-                  'publication.jpg',
+                  'restaurant-logo.jpg',
                 image.mimeType ??
                   'image/jpeg'
               );
@@ -674,7 +808,7 @@ export function usePublication(
               type:
                 'saved',
 
-              publication:
+              restaurant:
                 response.data,
             });
 
@@ -687,18 +821,18 @@ export function usePublication(
     );
 
   // ===================================================
-  // DELETE IMAGE
+  // LOGO DELETE
   // ===================================================
 
-  const deleteImage =
+  const deleteLogo =
     useCallback(
       (
         id: string
-      ): Promise<Publication> =>
+      ): Promise<Restaurant> =>
         runMutation(
           async () => {
             const response =
-              await publicationService.deleteImage(
+              await restaurantService.deleteLogo(
                 id
               );
 
@@ -706,7 +840,7 @@ export function usePublication(
               type:
                 'saved',
 
-              publication:
+              restaurant:
                 response.data,
             });
 
@@ -719,48 +853,129 @@ export function usePublication(
     );
 
   // ===================================================
-  // SAVE IMAGE AUTOMÁTICO
+  // QR CREATE
   // ===================================================
 
-  const saveImage =
+  const createQRImage =
     useCallback(
       (
         id: string,
 
         image:
-          PublicationImageUpload,
+          RestaurantMediaUpload
+      ): Promise<Restaurant> =>
+        runMutation(
+          async () => {
+            const response =
+              await restaurantService.createQRImage(
+                id,
+                image.uri,
+                image.fileName ??
+                  'restaurant-qr.png',
+                image.mimeType ??
+                  'image/png'
+              );
 
-        hasImage:
-          boolean
-      ) => {
-        return hasImage
-          ? updateImage(
-              id,
-              image
-            )
-          : createImage(
-              id,
-              image
-            );
-      },
+            notifyChange({
+              type:
+                'saved',
+
+              restaurant:
+                response.data,
+            });
+
+            return response.data;
+          }
+        ),
       [
-        createImage,
-        updateImage,
+        runMutation,
       ]
     );
 
   // ===================================================
-  // DELETE PUBLICATION
+  // QR UPDATE
   // ===================================================
 
-  const deletePublication =
+  const updateQRImage =
+    useCallback(
+      (
+        id: string,
+
+        image:
+          RestaurantMediaUpload
+      ): Promise<Restaurant> =>
+        runMutation(
+          async () => {
+            const response =
+              await restaurantService.updateQRImage(
+                id,
+                image.uri,
+                image.fileName ??
+                  'restaurant-qr.png',
+                image.mimeType ??
+                  'image/png'
+              );
+
+            notifyChange({
+              type:
+                'saved',
+
+              restaurant:
+                response.data,
+            });
+
+            return response.data;
+          }
+        ),
+      [
+        runMutation,
+      ]
+    );
+
+  // ===================================================
+  // QR DELETE
+  // ===================================================
+
+  const deleteQRImage =
+    useCallback(
+      (
+        id: string
+      ): Promise<Restaurant> =>
+        runMutation(
+          async () => {
+            const response =
+              await restaurantService.deleteQRImage(
+                id
+              );
+
+            notifyChange({
+              type:
+                'saved',
+
+              restaurant:
+                response.data,
+            });
+
+            return response.data;
+          }
+        ),
+      [
+        runMutation,
+      ]
+    );
+
+  // ===================================================
+  // DELETE RESTAURANT
+  // ===================================================
+
+  const deleteRestaurant =
     useCallback(
       (
         id: string
       ): Promise<void> =>
         runMutation(
           async () => {
-            await publicationService.remove(
+            await restaurantService.remove(
               id
             );
 
@@ -778,6 +993,43 @@ export function usePublication(
       ]
     );
 
+  // ===================================================
+  // HELPERS
+  // ===================================================
+
+  const getRestaurantProducts =
+    useCallback(
+      () =>
+        restaurant
+          ?.products ??
+        [],
+      [
+        restaurant,
+      ]
+    );
+
+  const getRestaurantOrders =
+    useCallback(
+      () =>
+        restaurant
+          ?.orders ??
+        [],
+      [
+        restaurant,
+      ]
+    );
+
+  const getRestaurantCategories =
+    useCallback(
+      () =>
+        restaurant
+          ?.categories ??
+        [],
+      [
+        restaurant,
+      ]
+    );
+
   const clearError =
     useCallback(
       () =>
@@ -788,8 +1040,8 @@ export function usePublication(
     );
 
   return {
-    publication,
-    publications,
+    restaurant,
+    restaurants,
     pagination,
 
     loading,
@@ -798,23 +1050,28 @@ export function usePublication(
 
     refresh,
 
-    createPublication,
-    updatePublication,
-    deletePublication,
+    createRestaurant,
+    updateRestaurant,
+    deleteRestaurant,
 
-    toggleFeatured,
+    createLogo,
+    updateLogo,
+    deleteLogo,
 
-    createImage,
-    updateImage,
-    deleteImage,
+    createQRImage,
+    updateQRImage,
+    deleteQRImage,
 
-    /*
-     * Si sabes si ya existe imagen:
-     *
-     * saveImage(id, image, !!publication.image)
-     */
-    saveImage,
+    getMyRestaurants,
+    canCreateRestaurant,
+
+    getRestaurantProducts,
+    getRestaurantCategories,
+    getRestaurantOrders,
 
     clearError,
+
+    createSlug:
+      createRestaurantSlug,
   };
 }

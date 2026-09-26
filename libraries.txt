@@ -2,6 +2,8 @@ npx expo install expo-linear-gradient lottie-react-native
 npx expo install expo-image-picker
 npm i react-native-toast-message
 
+npx expo install expo-print expo-sharing
+
 npm install nativewind@4.2.7
 npm install --save-dev babel-preset-expo@54.0.12
 npx expo install react-native-reanimated react-native-safe-area-context

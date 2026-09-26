@@ -1,244 +1,146 @@
-import { api } from './api';
+// services/payment.service.ts
 
+import {
+  api,
+} from './api';
 
 import type {
-
   CreatePaymentData,
-
   PaymentListResponse,
-
   PaymentQueryParams,
-
   PaymentResponse,
-
   UpdatePaymentData,
-
 } from '@/types/payment.types';
 
-
-
-const PAYMENT_URL = '/api/payments';
-
-
-
+const PAYMENT_URL =
+  '/api/payments';
 
 export const paymentService = {
-
-
+  // ===================================================
+  // GET ALL
+  // ===================================================
 
   async findAll(
-
-    params: PaymentQueryParams = {}
-
+    params:
+      PaymentQueryParams = {}
   ): Promise<PaymentListResponse> {
+    const response =
+      await api.get<PaymentListResponse>(
+        PAYMENT_URL,
+        {
+          params: {
+            populate:
+              'order',
 
+            'pagination[page]':
+              params.page ??
+              1,
 
-    const response = await api.get<PaymentListResponse>(
+            'pagination[pageSize]':
+              params.pageSize ??
+              25,
 
-      PAYMENT_URL,
+            sort:
+              params.sort,
 
-      {
+            'filters[order][id][$eq]':
+              params.orderId,
 
-        params: {
+            'filters[statusPayment][$eq]':
+              params.statusPayment,
 
-
-          populate: 'order',
-
-
-          'pagination[page]':
-
-            params.page ?? 1,
-
-
-          'pagination[pageSize]':
-
-            params.pageSize ?? 25,
-
-
-
-          sort: params.sort,
-
-
-
-          'filters[order][id][$eq]':
-
-            params.orderId,
-
-
-
-          'filters[statusPayment][$eq]':
-
-            params.statusPayment,
-
-
-
-          'filters[method][$eq]':
-
-            params.method,
-
-
-        },
-
-      }
-
-    );
-
-
+            'filters[method][$eq]':
+              params.method,
+          },
+        }
+      );
 
     return response.data;
-
   },
 
-
-
-
-
-
+  // ===================================================
+  // GET ONE
+  // ===================================================
 
   async findOne(
-
     documentId: string
-
   ): Promise<PaymentResponse> {
-
-
-
-    const response = await api.get<PaymentResponse>(
-
-      `${PAYMENT_URL}/${documentId}`,
-
-      {
-
-        params: {
-
-          populate: 'order',
-
-        },
-
-      }
-
-    );
-
-
+    const response =
+      await api.get<PaymentResponse>(
+        `${PAYMENT_URL}/${encodeURIComponent(
+          documentId
+        )}`,
+        {
+          params: {
+            populate:
+              'order',
+          },
+        }
+      );
 
     return response.data;
-
   },
 
-
-
-
-
-
-
+  // ===================================================
+  // CREATE
+  // ===================================================
 
   async create(
-
-    data: CreatePaymentData
-
+    data:
+      CreatePaymentData
   ): Promise<PaymentResponse> {
-
-
-
-    const response = await api.post<PaymentResponse>(
-
-      PAYMENT_URL,
-
-      {
-
-        data,
-
-      },
-
-      {
-
-        params: {
-
-          populate: 'order',
-
+    const response =
+      await api.post<PaymentResponse>(
+        PAYMENT_URL,
+        {
+          data,
         },
-
-      }
-
-    );
-
-
+        {
+          params: {
+            populate:
+              'order',
+          },
+        }
+      );
 
     return response.data;
-
   },
 
-
-
-
-
-
-
-
+  // ===================================================
+  // UPDATE PARCIAL
+  // PATCH PERSONALIZADO
+  // ===================================================
 
   async update(
-
     documentId: string,
 
-    data: UpdatePaymentData
-
+    data:
+      UpdatePaymentData
   ): Promise<PaymentResponse> {
-
-
-
-    const response = await api.put<PaymentResponse>(
-
-      `${PAYMENT_URL}/${documentId}`,
-
-      {
-
-        data,
-
-      },
-
-      {
-
-        params: {
-
-          populate: 'order',
-
-        },
-
-      }
-
-    );
-
-
+    const response =
+      await api.patch<PaymentResponse>(
+        `${PAYMENT_URL}/${encodeURIComponent(
+          documentId
+        )}`,
+        {
+          data,
+        }
+      );
 
     return response.data;
-
   },
 
-
-
-
-
-
-
-
+  // ===================================================
+  // DELETE
+  // ===================================================
 
   async remove(
-
     documentId: string
-
   ): Promise<void> {
-
-
-
     await api.delete(
-
-      `${PAYMENT_URL}/${documentId}`
-
+      `${PAYMENT_URL}/${encodeURIComponent(
+        documentId
+      )}`
     );
-
-
-
   },
-
-
 };
