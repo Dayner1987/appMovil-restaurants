@@ -16,11 +16,14 @@ import {
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   Text,
   View,
 } from 'react-native';
+
+import {
+  SafeAreaView,
+} from 'react-native-safe-area-context';
 
 import Toast from 'react-native-toast-message';
 
@@ -40,6 +43,7 @@ import {
 
 import type {
   ProductImageUpload,
+  ProductMedia,
 } from '@/types/product.types';
 
 // =====================================================
@@ -47,26 +51,37 @@ import type {
 // =====================================================
 
 function getAbsoluteUrl(
-  url?: string | null
+  url?:
+    | string
+    | null
 ): string | null {
   if (!url) {
     return null;
   }
 
   if (
-    url.startsWith('http://') ||
-    url.startsWith('https://')
+    url.startsWith(
+      'http://'
+    ) ||
+    url.startsWith(
+      'https://'
+    )
   ) {
     return url;
   }
 
   const baseUrl =
     String(
-      api.defaults.baseURL ?? ''
+      api.defaults.baseURL ??
+      ''
     ).replace(
       /\/$/,
       ''
     );
+
+  if (!baseUrl) {
+    return null;
+  }
 
   return `${baseUrl}${
     url.startsWith('/')
@@ -80,10 +95,6 @@ function getAbsoluteUrl(
 // =====================================================
 
 export default function EditProductScreen() {
-  // ===================================================
-  // PARAMS
-  // ===================================================
-
   const params =
     useLocalSearchParams<{
       documentId?: string;
@@ -104,9 +115,9 @@ export default function EditProductScreen() {
       ? params.restaurantDocumentId[0]
       : params.restaurantDocumentId;
 
-  // ===================================================
+  // =====================================================
   // FORM
-  // ===================================================
+  // =====================================================
 
   const [
     values,
@@ -129,13 +140,17 @@ export default function EditProductScreen() {
       null
     );
 
-  // ===================================================
+  const [
+    selectedGalleryImages,
+    setSelectedGalleryImages,
+  ] =
+    useState<ProductImageUpload[]>(
+      []
+    );
+
+  // =====================================================
   // PRODUCT
-  //
-  // IMPORTANTE:
-  // Ya NO mandamos restaurantId al hook.
-  // Las categorías también son globales.
-  // ===================================================
+  // =====================================================
 
   const {
     product,
@@ -154,6 +169,9 @@ export default function EditProductScreen() {
     createMainImage,
     updateMainImage,
     deleteMainImage,
+
+    addGalleryImages,
+    deleteGalleryImage,
   } =
     useProduct({
       documentId,
@@ -164,31 +182,40 @@ export default function EditProductScreen() {
         ),
     });
 
-  // ===================================================
-  // RESTAURANT REAL
-  //
-  // Primero usamos el param.
-  // Si no existe, usamos el restaurante del producto.
-  // ===================================================
-
   const restaurantDocumentId =
     restaurantDocumentIdParam ??
     product?.restaurant?.documentId ??
     null;
 
-  // ===================================================
-  // CATEGORÍAS GLOBALES
-  // ===================================================
+  // =====================================================
+  // CATEGORIES
+  // =====================================================
 
   useEffect(() => {
-    void loadCategories();
+    void loadCategories().catch(
+      () => {
+        Toast.show({
+          type:
+            'error',
+
+          text1:
+            'No se pudieron cargar las categorías',
+
+          text2:
+            'Intenta nuevamente.',
+
+          position:
+            'bottom',
+        });
+      }
+    );
   }, [
     loadCategories,
   ]);
 
-  // ===================================================
-  // CARGAR DATOS DEL PRODUCTO AL FORM
-  // ===================================================
+  // =====================================================
+  // LOAD PRODUCT INTO FORM
+  // =====================================================
 
   useEffect(() => {
     if (!product) {
@@ -211,7 +238,7 @@ export default function EditProductScreen() {
       stock:
         String(
           product.stock ??
-            0
+          0
         ),
 
       categoryDocumentId:
@@ -226,9 +253,9 @@ export default function EditProductScreen() {
     product,
   ]);
 
-  // ===================================================
+  // =====================================================
   // CURRENT IMAGE
-  // ===================================================
+  // =====================================================
 
   const currentImageUrl =
     useMemo(
@@ -245,11 +272,9 @@ export default function EditProductScreen() {
       ]
     );
 
-  // ===================================================
-  // CREATE GLOBAL CATEGORY
-  //
-  // Ya NO mandamos restaurant.
-  // ===================================================
+  // =====================================================
+  // CATEGORY
+  // =====================================================
 
   const handleCreateCategory =
     async (
@@ -263,9 +288,9 @@ export default function EditProductScreen() {
       });
     };
 
-  // ===================================================
-  // DELETE CURRENT IMAGE
-  // ===================================================
+  // =====================================================
+  // DELETE MAIN IMAGE
+  // =====================================================
 
   const handleDeleteImage =
     async () => {
@@ -293,7 +318,7 @@ export default function EditProductScreen() {
             'Imagen eliminada',
 
           text2:
-            'La imagen del producto fue eliminada.',
+            'La imagen principal fue eliminada.',
 
           position:
             'bottom',
@@ -320,9 +345,65 @@ export default function EditProductScreen() {
       }
     };
 
-  // ===================================================
+  // =====================================================
+  // DELETE GALLERY
+  // =====================================================
+
+  const handleDeleteGalleryImage =
+    async (
+      media:
+        ProductMedia
+    ) => {
+      if (
+        !documentId
+      ) {
+        return;
+      }
+
+      try {
+        await deleteGalleryImage(
+          documentId,
+          media.id
+        );
+
+        Toast.show({
+          type:
+            'success',
+
+          text1:
+            'Imagen eliminada',
+
+          text2:
+            'La imagen fue eliminada de la galería.',
+
+          position:
+            'bottom',
+        });
+      } catch (
+        requestError
+      ) {
+        Toast.show({
+          type:
+            'error',
+
+          text1:
+            'No se pudo eliminar',
+
+          text2:
+            requestError instanceof
+              Error
+              ? requestError.message
+              : 'No se pudo eliminar la imagen de la galería.',
+
+          position:
+            'bottom',
+        });
+      }
+    };
+
+  // =====================================================
   // SUBMIT
-  // ===================================================
+  // =====================================================
 
   const handleSubmit =
     async () => {
@@ -376,10 +457,6 @@ export default function EditProductScreen() {
         Number(
           values.stock
         );
-
-      // ===============================================
-      // VALIDACIONES
-      // ===============================================
 
       if (!name) {
         Toast.show({
@@ -443,72 +520,176 @@ export default function EditProductScreen() {
         return;
       }
 
-      // ===============================================
-      // UPDATE
-      // ===============================================
+      /*
+       * IMPORTANTE:
+       *
+       * Guardamos esta información ANTES
+       * de hacer PATCH al producto.
+       *
+       * Así no dependemos de lo que devuelva
+       * updateProduct().
+       */
+      const hadMainImageBeforeUpdate =
+        Boolean(
+          product
+            ?.mainImage
+            ?.id ||
+          product
+            ?.mainImage
+            ?.documentId ||
+          product
+            ?.mainImage
+            ?.url
+        );
 
       try {
-        const updatedProduct =
-          await updateProduct(
-            documentId,
-            {
-              name,
+        // ===============================================
+        // UPDATE PRODUCT DATA
+        // ===============================================
 
-              description:
-                values.description
-                  .trim() ||
-                null,
+        await updateProduct(
+          documentId,
+          {
+            name,
 
-              price,
+            description:
+              values.description
+                .trim() ||
+              null,
 
-              stock:
-                Number.isFinite(
-                  stock
-                )
-                  ? Math.max(
-                      0,
-                      Math.floor(
-                        stock
-                      )
+            price,
+
+            stock:
+              Number.isFinite(
+                stock
+              )
+                ? Math.max(
+                    0,
+                    Math.floor(
+                      stock
                     )
-                  : 0,
+                  )
+                : 0,
 
-              isAvailable:
-                values.isAvailable,
+            isAvailable:
+              values.isAvailable,
 
-              // documentId categoría global
-              category:
-                values
-                  .categoryDocumentId,
+            category:
+              values
+                .categoryDocumentId,
 
-              // documentId restaurante real
-              restaurant:
-                restaurantDocumentId,
-            }
-          );
+            restaurant:
+              restaurantDocumentId,
+          }
+        );
 
-        // =============================================
-        // UPDATE IMAGE
-        // =============================================
+        const mediaErrors:
+          string[] = [];
+
+        // ===============================================
+        // MAIN IMAGE
+        // ===============================================
 
         if (
           selectedImage
         ) {
-          if (
-            updatedProduct.mainImage ||
-            product?.mainImage
+          try {
+            /*
+             * EXISTÍA IMAGEN:
+             * PATCH
+             */
+            if (
+              hadMainImageBeforeUpdate
+            ) {
+              await updateMainImage(
+                documentId,
+                selectedImage
+              );
+            } else {
+              /*
+               * NO EXISTÍA IMAGEN:
+               * POST
+               */
+              await createMainImage(
+                documentId,
+                selectedImage
+              );
+            }
+          } catch (
+            requestError
           ) {
-            await updateMainImage(
-              documentId,
-              selectedImage
+            console.error(
+              'Error mainImage:',
+              requestError
             );
-          } else {
-            await createMainImage(
-              documentId,
-              selectedImage
+
+            mediaErrors.push(
+              'imagen principal'
             );
           }
         }
+
+        // ===============================================
+        // GALLERY
+        // ===============================================
+
+        if (
+          selectedGalleryImages
+            .length >
+          0
+        ) {
+          try {
+            await addGalleryImages(
+              documentId,
+              selectedGalleryImages
+            );
+          } catch (
+            requestError
+          ) {
+            console.error(
+              'Error gallery:',
+              requestError
+            );
+
+            mediaErrors.push(
+              'galería'
+            );
+          }
+        }
+
+        // ===============================================
+        // PARTIAL ERROR
+        // ===============================================
+
+        if (
+          mediaErrors.length >
+          0
+        ) {
+          Toast.show({
+            type:
+              'error',
+
+            text1:
+              'Producto actualizado parcialmente',
+
+            text2:
+              `Los datos se guardaron, pero falló: ${mediaErrors.join(
+                ' y '
+              )}.`,
+
+            position:
+              'bottom',
+
+            visibilityTime:
+              3500,
+          });
+
+          return;
+        }
+
+        // ===============================================
+        // SUCCESS
+        // ===============================================
 
         Toast.show({
           type:
@@ -522,9 +703,17 @@ export default function EditProductScreen() {
 
           position:
             'bottom',
+
+          visibilityTime:
+            2500,
         });
 
-        router.back();
+        setTimeout(
+          () => {
+            router.back();
+          },
+          700
+        );
       } catch (
         requestError
       ) {
@@ -547,9 +736,9 @@ export default function EditProductScreen() {
       }
     };
 
-  // ===================================================
+  // =====================================================
   // INVALID ID
-  // ===================================================
+  // =====================================================
 
   if (!documentId) {
     return (
@@ -558,6 +747,9 @@ export default function EditProductScreen() {
           flex-1
           bg-[#F7F8F2]
         "
+        edges={[
+          'top',
+        ]}
       >
         <View
           className="
@@ -567,44 +759,21 @@ export default function EditProductScreen() {
             px-6
           "
         >
-          <View
-            className="
-              h-16
-              w-16
-              items-center
-              justify-center
-              rounded-3xl
-              bg-[#FFF0DD]
-            "
-          >
-            <Ionicons
-              name="alert-circle-outline"
-              size={30}
-              color="#D47A24"
-            />
-          </View>
+          <Ionicons
+            name="alert-circle-outline"
+            size={40}
+            color="#D47A24"
+          />
 
           <Text
             className="
               mt-4
-              text-center
               text-xl
               font-extrabold
               text-[#171A15]
             "
           >
             Producto no encontrado
-          </Text>
-
-          <Text
-            className="
-              mt-2
-              text-center
-              text-sm
-              text-[#777D71]
-            "
-          >
-            No se recibió el identificador del producto.
           </Text>
 
           <Pressable
@@ -633,9 +802,9 @@ export default function EditProductScreen() {
     );
   }
 
-  // ===================================================
+  // =====================================================
   // LOADING
-  // ===================================================
+  // =====================================================
 
   if (
     loading &&
@@ -649,6 +818,9 @@ export default function EditProductScreen() {
           justify-center
           bg-[#F7F8F2]
         "
+        edges={[
+          'top',
+        ]}
       >
         <ActivityIndicator
           size="large"
@@ -668,9 +840,9 @@ export default function EditProductScreen() {
     );
   }
 
-  // ===================================================
+  // =====================================================
   // UI
-  // ===================================================
+  // =====================================================
 
   return (
     <SafeAreaView
@@ -678,9 +850,10 @@ export default function EditProductScreen() {
         flex-1
         bg-[#F7F8F2]
       "
+      edges={[
+        'top',
+      ]}
     >
-      {/* HEADER */}
-
       <View
         className="
           flex-row
@@ -695,6 +868,9 @@ export default function EditProductScreen() {
         <Pressable
           onPress={() =>
             router.back()
+          }
+          disabled={
+            saving
           }
           className="
             h-11
@@ -749,69 +925,90 @@ export default function EditProductScreen() {
         ) : null}
       </View>
 
-      {/* FORM */}
-
       <ScrollView
         className="flex-1"
-        keyboardShouldPersistTaps="always"
+        showsVerticalScrollIndicator={
+          false
+        }
+        keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        nestedScrollEnabled
-        showsVerticalScrollIndicator
-        contentContainerClassName="
-          grow
-          px-5
-          pb-24
-          pt-6
-        "
+        contentContainerStyle={{
+          paddingBottom:
+            160,
+        }}
       >
-        <ProductForm
-          values={
-            values
-          }
+        <View
+          className="
+            px-5
+            pt-6
+          "
+        >
+          <ProductForm
+            values={
+              values
+            }
 
-          categories={
-            categories
-          }
+            categories={
+              categories
+            }
 
-          image={
-            selectedImage
-          }
+            image={
+              selectedImage
+            }
 
-          currentImageUrl={
-            currentImageUrl
-          }
+            currentImageUrl={
+              currentImageUrl
+            }
 
-          saving={
-            saving
-          }
+            galleryImages={
+              selectedGalleryImages
+            }
 
-          categorySaving={
-            loadingCategories ||
-            saving
-          }
+            currentGallery={
+              product?.gallery ??
+              []
+            }
 
-          submitLabel="Guardar cambios"
+            saving={
+              saving
+            }
 
-          onChange={
-            setValues
-          }
+            categorySaving={
+              loadingCategories ||
+              saving
+            }
 
-          onImageChange={
-            setSelectedImage
-          }
+            submitLabel="Guardar cambios"
 
-          onCreateCategory={
-            handleCreateCategory
-          }
+            onChange={
+              setValues
+            }
 
-          onDeleteCurrentImage={
-            handleDeleteImage
-          }
+            onImageChange={
+              setSelectedImage
+            }
 
-          onSubmit={
-            handleSubmit
-          }
-        />
+            onGalleryImagesChange={
+              setSelectedGalleryImages
+            }
+
+            onCreateCategory={
+              handleCreateCategory
+            }
+
+            onDeleteCurrentImage={
+              handleDeleteImage
+            }
+
+            onDeleteCurrentGalleryImage={
+              handleDeleteGalleryImage
+            }
+
+            onSubmit={
+              handleSubmit
+            }
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

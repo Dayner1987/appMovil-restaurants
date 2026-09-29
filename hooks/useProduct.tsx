@@ -869,130 +869,122 @@ export function useProduct(
   // =====================================================
   // MAIN IMAGE
   // =====================================================
+const createMainImage =
+  useCallback(
+    async (
+      id: string,
 
-  const createMainImage =
-    useCallback(
-      async (
-        id: string,
+      image:
+        ProductImageUpload
+    ) => {
+      setSaving(
+        true
+      );
 
-        image:
-          ProductImageUpload
-      ) => {
-        setSaving(
-          true
-        );
+      setError(
+        null
+      );
 
-        setError(
-          null
-        );
-
-        try {
-          const response =
-            await productService.createMainImage(
+      try {
+        const response =
+          await productService
+            .createMainImage(
               id,
-              image.uri,
-              image.fileName ??
-                'product.jpg',
-              image.mimeType ??
-                'image/jpeg'
+              image
             );
 
-          syncProduct(
-            response.data
-          );
+        syncProduct(
+          response.data
+        );
 
-          return response.data;
-        } catch (
-          requestError
+        return response.data;
+      } catch (
+        requestError
+      ) {
+        if (
+          mountedRef.current
         ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              getErrorMessage(
-                requestError,
-                'No se pudo guardar la imagen del producto.'
-              )
-            );
-          }
-
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setSaving(
-              false
-            );
-          }
+          setError(
+            getErrorMessage(
+              requestError,
+              'No se pudo guardar la imagen del producto.'
+            )
+          );
         }
-      },
-      [
-        syncProduct,
-      ]
-    );
 
-  const updateMainImage =
-    useCallback(
-      async (
-        id: string,
+        throw requestError;
+      } finally {
+        if (
+          mountedRef.current
+        ) {
+          setSaving(
+            false
+          );
+        }
+      }
+    },
+    [
+      syncProduct,
+    ]
+  );
+const updateMainImage =
+  useCallback(
+    async (
+      id: string,
 
-        image:
-          ProductImageUpload
-      ) => {
-        setSaving(
-          true
-        );
+      image:
+        ProductImageUpload
+    ) => {
+      setSaving(
+        true
+      );
 
-        setError(
-          null
-        );
+      setError(
+        null
+      );
 
-        try {
-          const response =
-            await productService.updateMainImage(
+      try {
+        const response =
+          await productService
+            .updateMainImage(
               id,
-              image.uri,
-              image.fileName ??
-                'product.jpg',
-              image.mimeType ??
-                'image/jpeg'
+              image
             );
 
-          syncProduct(
-            response.data
-          );
+        syncProduct(
+          response.data
+        );
 
-          return response.data;
-        } catch (
-          requestError
+        return response.data;
+      } catch (
+        requestError
+      ) {
+        if (
+          mountedRef.current
         ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              getErrorMessage(
-                requestError,
-                'No se pudo actualizar la imagen del producto.'
-              )
-            );
-          }
-
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setSaving(
-              false
-            );
-          }
+          setError(
+            getErrorMessage(
+              requestError,
+              'No se pudo actualizar la imagen del producto.'
+            )
+          );
         }
-      },
-      [
-        syncProduct,
-      ]
-    );
+
+        throw requestError;
+      } finally {
+        if (
+          mountedRef.current
+        ) {
+          setSaving(
+            false
+          );
+        }
+      }
+    },
+    [
+      syncProduct,
+    ]
+  );
 
   const deleteMainImage =
     useCallback(
@@ -1109,73 +1101,70 @@ export function useProduct(
         syncProduct,
       ]
     );
+const updateGalleryImage =
+  useCallback(
+    async (
+      id:
+        string,
 
-  const updateGalleryImage =
-    useCallback(
-      async (
-        id: string,
+      fileId:
+        | number
+        | string,
 
-        fileId:
-          | number
-          | string,
+      image:
+        ProductImageUpload
+    ) => {
+      setSaving(
+        true
+      );
 
-        image:
-          ProductImageUpload
-      ) => {
-        setSaving(
-          true
-        );
+      setError(
+        null
+      );
 
-        setError(
-          null
-        );
-
-        try {
-          const response =
-            await productService.updateGalleryImage(
+      try {
+        const response =
+          await productService
+            .updateGalleryImage(
               id,
               fileId,
-              image.uri,
-              image.fileName ??
-                'gallery.jpg',
-              image.mimeType ??
-                'image/jpeg'
+              image
             );
 
-          syncProduct(
-            response.data
-          );
+        syncProduct(
+          response.data
+        );
 
-          return response.data;
-        } catch (
-          requestError
+        return response.data;
+      } catch (
+        requestError
+      ) {
+        if (
+          mountedRef.current
         ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              getErrorMessage(
-                requestError,
-                'No se pudo actualizar la imagen.'
-              )
-            );
-          }
-
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setSaving(
-              false
-            );
-          }
+          setError(
+            getErrorMessage(
+              requestError,
+              'No se pudo actualizar la imagen.'
+            )
+          );
         }
-      },
-      [
-        syncProduct,
-      ]
-    );
+
+        throw requestError;
+      } finally {
+        if (
+          mountedRef.current
+        ) {
+          setSaving(
+            false
+          );
+        }
+      }
+    },
+    [
+      syncProduct,
+    ]
+  );
 
   const deleteGalleryImage =
     useCallback(

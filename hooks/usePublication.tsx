@@ -16,17 +16,21 @@ import {
 import type {
   CreatePublicationData,
   Publication,
+  PublicationImageUpload,
   PublicationPagination,
   PublicationQueryParams,
   UpdatePublicationData,
 } from '@/types/publication.types';
 
+// =====================================================
+// OPTIONS
+// =====================================================
+
 interface UsePublicationOptions {
   documentId?: string;
 
-  restaurantId?:
-    | number
-    | string;
+  restaurantDocumentId?:
+    string;
 
   autoLoad?: boolean;
 
@@ -34,13 +38,9 @@ interface UsePublicationOptions {
     PublicationQueryParams;
 }
 
-export interface PublicationImageUpload {
-  uri: string;
-
-  fileName?: string;
-
-  mimeType?: string;
-}
+// =====================================================
+// CHANGE EVENT
+// =====================================================
 
 type PublicationChange =
   | {
@@ -71,10 +71,19 @@ function notifyChange(
     PublicationChange
 ) {
   listeners.forEach(
-    (listener) =>
-      listener(change)
+    (
+      listener
+    ) => {
+      listener(
+        change
+      );
+    }
   );
 }
+
+// =====================================================
+// ERROR
+// =====================================================
 
 function getErrorMessage(
   error: unknown
@@ -84,23 +93,39 @@ function getErrorMessage(
       error
     )
   ) {
-    const message =
-      error.response?.data
-        ?.error?.message;
+    const data =
+      error.response
+        ?.data as
+        | {
+            error?: {
+              message?: string;
+            };
 
-    return typeof message ===
-      'string'
-      ? message
-      : 'No se pudo completar la operación de publicaciones.';
+            message?: string;
+          }
+        | undefined;
+
+    return (
+      data?.error
+        ?.message ??
+      data?.message ??
+      'No se pudo completar la operación de publicaciones.'
+    );
   }
 
-  return error instanceof Error
+  return error instanceof
+    Error
     ? error.message
     : 'Ocurrió un error inesperado.';
 }
 
+// =====================================================
+// PREPARE DATA
+// =====================================================
+
 function prepareData<
-  T extends UpdatePublicationData,
+  T extends
+    UpdatePublicationData,
 >(
   data: T
 ): T {
@@ -115,7 +140,9 @@ function prepareData<
     result.title =
       result.title.trim();
 
-    if (!result.title) {
+    if (
+      !result.title
+    ) {
       throw new Error(
         'Escribe el título de la publicación.'
       );
@@ -141,14 +168,21 @@ function prepareData<
   return result;
 }
 
+// =====================================================
+// HOOK
+// =====================================================
+
 export function usePublication(
   options:
     UsePublicationOptions = {}
 ) {
   const {
     documentId,
-    restaurantId,
+
+    restaurantDocumentId,
+
     autoLoad = true,
+
     query,
   } = options;
 
@@ -192,18 +226,18 @@ export function usePublication(
     error,
     setError,
   ] =
-    useState<string | null>(
-      null
-    );
+    useState<
+      string | null
+    >(null);
 
   const mountedRef =
     useRef(false);
 
-  const requestRef =
-    useRef(0);
-
   const mutationRef =
     useRef(false);
+
+  const requestRef =
+    useRef(0);
 
   const hasLoadedRef =
     useRef(false);
@@ -223,11 +257,13 @@ export function usePublication(
         25,
 
       sort:
-        query?.sort,
+        query?.sort ??
+        'createdAt:desc',
 
-      restaurantId:
-        restaurantId ??
-        query?.restaurantId,
+      restaurantDocumentId:
+        restaurantDocumentId ??
+        query
+          ?.restaurantDocumentId,
 
       featured:
         query?.featured,
@@ -237,6 +273,10 @@ export function usePublication(
           ?.trim() ||
         undefined,
     });
+
+  // ===================================================
+  // MOUNT
+  // ===================================================
 
   useEffect(() => {
     mountedRef.current =
@@ -250,6 +290,51 @@ export function usePublication(
         1;
     };
   }, []);
+
+  // ===================================================
+  // SYNC LOCAL
+  // ===================================================
+
+  const syncPublication =
+    useCallback(
+      (
+        updated:
+          Publication
+      ) => {
+        if (
+          !mountedRef.current
+        ) {
+          return;
+        }
+
+        setPublication(
+          (
+            current
+          ) =>
+            current
+              ?.documentId ===
+            updated.documentId
+              ? updated
+              : current
+        );
+
+        setPublications(
+          (
+            current
+          ) =>
+            current.map(
+              (
+                item
+              ) =>
+                item.documentId ===
+                updated.documentId
+                  ? updated
+                  : item
+            )
+        );
+      },
+      []
+    );
 
   // ===================================================
   // REFRESH
@@ -270,17 +355,27 @@ export function usePublication(
         hasLoadedRef.current =
           true;
 
-        setLoading(true);
-        setError(null);
+        setLoading(
+          true
+        );
+
+        setError(
+          null
+        );
 
         try {
+          // =============================================
+          // ONE
+          // =============================================
+
           if (
             documentId
           ) {
             const response =
-              await publicationService.findOne(
-                documentId
-              );
+              await publicationService
+                .findOne(
+                  documentId
+                );
 
             if (
               mountedRef.current &&
@@ -295,16 +390,20 @@ export function usePublication(
             return;
           }
 
-          const params:
-            PublicationQueryParams =
+          // =============================================
+          // LIST
+          // =============================================
+
+          const params =
             JSON.parse(
               queryKey
-            );
+            ) as PublicationQueryParams;
 
           const response =
-            await publicationService.findAll(
-              params
-            );
+            await publicationService
+              .findAll(
+                params
+              );
 
           if (
             mountedRef.current &&
@@ -334,6 +433,8 @@ export function usePublication(
               )
             );
           }
+
+          throw requestError;
         } finally {
           if (
             mountedRef.current &&
@@ -352,17 +453,36 @@ export function usePublication(
       ]
     );
 
+  // ===================================================
+  // AUTO LOAD
+  // ===================================================
+
   useEffect(() => {
     hasLoadedRef.current =
       false;
 
-    setPublication(null);
-    setPublications([]);
-    setPagination(null);
-    setError(null);
+    setPublication(
+      null
+    );
 
-    if (autoLoad) {
-      void refresh();
+    setPublications(
+      []
+    );
+
+    setPagination(
+      null
+    );
+
+    setError(
+      null
+    );
+
+    if (
+      autoLoad
+    ) {
+      void refresh().catch(
+        () => undefined
+      );
     }
 
     return () => {
@@ -375,59 +495,74 @@ export function usePublication(
   ]);
 
   // ===================================================
-  // SINCRONIZAR PANTALLAS
+  // GLOBAL SYNC
   // ===================================================
 
   useEffect(() => {
-    const onChange = (
-      change:
-        PublicationChange
-    ) => {
-      if (
-        !mountedRef.current
-      ) {
-        return;
-      }
-
-      if (
-        documentId
-      ) {
-        const changedId =
-          change.type ===
-          'saved'
-            ? change.publication
-                .documentId
-            : change.documentId;
-
+    const onChange =
+      (
+        change:
+          PublicationChange
+      ) => {
         if (
-          changedId !==
-          documentId
+          !mountedRef.current
         ) {
           return;
         }
 
-        requestRef.current +=
-          1;
+        // =============================================
+        // DETAIL SCREEN
+        // =============================================
 
-        setLoading(false);
-
-        setPublication(
-          change.type ===
+        if (
+          documentId
+        ) {
+          const changedId =
+            change.type ===
             'saved'
-            ? change.publication
-            : null
-        );
+              ? change
+                  .publication
+                  .documentId
+              : change
+                  .documentId;
 
-        return;
-      }
+          if (
+            changedId !==
+            documentId
+          ) {
+            return;
+          }
 
-      if (
-        autoLoad ||
-        hasLoadedRef.current
-      ) {
-        void refresh();
-      }
-    };
+          requestRef.current +=
+            1;
+
+          setLoading(
+            false
+          );
+
+          setPublication(
+            change.type ===
+            'saved'
+              ? change.publication
+              : null
+          );
+
+          return;
+        }
+
+        // =============================================
+        // LIST SCREEN
+        // =============================================
+
+        if (
+          autoLoad ||
+          hasLoadedRef.current
+        ) {
+          void refresh().catch(
+            () => undefined
+          );
+        }
+      };
 
     listeners.add(
       onChange
@@ -468,8 +603,13 @@ export function usePublication(
         if (
           mountedRef.current
         ) {
-          setSaving(true);
-          setError(null);
+          setSaving(
+            true
+          );
+
+          setError(
+            null
+          );
         }
 
         try {
@@ -495,7 +635,9 @@ export function usePublication(
           if (
             mountedRef.current
           ) {
-            setSaving(false);
+            setSaving(
+              false
+            );
           }
         }
       },
@@ -524,14 +666,15 @@ export function usePublication(
 
                 restaurant:
                   data.restaurant ??
-                  restaurantId ??
+                  restaurantDocumentId ??
                   null,
               });
 
             const response =
-              await publicationService.create(
-                payload
-              );
+              await publicationService
+                .create(
+                  payload
+                );
 
             notifyChange({
               type:
@@ -546,18 +689,19 @@ export function usePublication(
         ),
       [
         runMutation,
-        restaurantId,
+        restaurantDocumentId,
       ]
     );
 
   // ===================================================
-  // UPDATE - PATCH
+  // UPDATE DATA
   // ===================================================
 
   const updatePublication =
     useCallback(
       (
-        id: string,
+        id:
+          string,
 
         data:
           UpdatePublicationData
@@ -565,12 +709,17 @@ export function usePublication(
         runMutation(
           async () => {
             const response =
-              await publicationService.patch(
-                id,
-                prepareData(
-                  data
-                )
-              );
+              await publicationService
+                .patch(
+                  id,
+                  prepareData(
+                    data
+                  )
+                );
+
+            syncPublication(
+              response.data
+            );
 
             notifyChange({
               type:
@@ -585,13 +734,20 @@ export function usePublication(
         ),
       [
         runMutation,
+        syncPublication,
       ]
     );
+
+  // ===================================================
+  // FEATURED
+  // ===================================================
 
   const toggleFeatured =
     useCallback(
       (
-        id: string,
+        id:
+          string,
+
         featured:
           boolean
       ) =>
@@ -608,12 +764,15 @@ export function usePublication(
 
   // ===================================================
   // CREATE IMAGE
+  //
+  // POST
   // ===================================================
 
   const createImage =
     useCallback(
       (
-        id: string,
+        id:
+          string,
 
         image:
           PublicationImageUpload
@@ -621,14 +780,15 @@ export function usePublication(
         runMutation(
           async () => {
             const response =
-              await publicationService.createImage(
-                id,
-                image.uri,
-                image.fileName ??
-                  'publication.jpg',
-                image.mimeType ??
-                  'image/jpeg'
-              );
+              await publicationService
+                .createImage(
+                  id,
+                  image
+                );
+
+            syncPublication(
+              response.data
+            );
 
             notifyChange({
               type:
@@ -643,17 +803,21 @@ export function usePublication(
         ),
       [
         runMutation,
+        syncPublication,
       ]
     );
 
   // ===================================================
-  // REPLACE IMAGE
+  // UPDATE IMAGE
+  //
+  // PATCH
   // ===================================================
 
   const updateImage =
     useCallback(
       (
-        id: string,
+        id:
+          string,
 
         image:
           PublicationImageUpload
@@ -661,14 +825,15 @@ export function usePublication(
         runMutation(
           async () => {
             const response =
-              await publicationService.updateImage(
-                id,
-                image.uri,
-                image.fileName ??
-                  'publication.jpg',
-                image.mimeType ??
-                  'image/jpeg'
-              );
+              await publicationService
+                .updateImage(
+                  id,
+                  image
+                );
+
+            syncPublication(
+              response.data
+            );
 
             notifyChange({
               type:
@@ -683,6 +848,7 @@ export function usePublication(
         ),
       [
         runMutation,
+        syncPublication,
       ]
     );
 
@@ -693,14 +859,20 @@ export function usePublication(
   const deleteImage =
     useCallback(
       (
-        id: string
+        id:
+          string
       ): Promise<Publication> =>
         runMutation(
           async () => {
             const response =
-              await publicationService.deleteImage(
-                id
-              );
+              await publicationService
+                .deleteImage(
+                  id
+                );
+
+            syncPublication(
+              response.data
+            );
 
             notifyChange({
               type:
@@ -715,25 +887,31 @@ export function usePublication(
         ),
       [
         runMutation,
+        syncPublication,
       ]
     );
 
   // ===================================================
-  // SAVE IMAGE AUTOMÁTICO
+  // SAVE IMAGE
+  //
+  // hasImage:
+  // true  -> PATCH
+  // false -> POST
   // ===================================================
 
   const saveImage =
     useCallback(
       (
-        id: string,
+        id:
+          string,
 
         image:
           PublicationImageUpload,
 
         hasImage:
           boolean
-      ) => {
-        return hasImage
+      ) =>
+        hasImage
           ? updateImage(
               id,
               image
@@ -741,8 +919,7 @@ export function usePublication(
           : createImage(
               id,
               image
-            );
-      },
+            ),
       [
         createImage,
         updateImage,
@@ -756,13 +933,43 @@ export function usePublication(
   const deletePublication =
     useCallback(
       (
-        id: string
+        id:
+          string
       ): Promise<void> =>
         runMutation(
           async () => {
-            await publicationService.remove(
-              id
-            );
+            await publicationService
+              .remove(
+                id
+              );
+
+            if (
+              mountedRef.current
+            ) {
+              setPublications(
+                (
+                  current
+                ) =>
+                  current.filter(
+                    (
+                      item
+                    ) =>
+                      item.documentId !==
+                      id
+                  )
+              );
+
+              setPublication(
+                (
+                  current
+                ) =>
+                  current
+                    ?.documentId ===
+                  id
+                    ? null
+                    : current
+              );
+            }
 
             notifyChange({
               type:
@@ -778,12 +985,17 @@ export function usePublication(
       ]
     );
 
+  // ===================================================
+  // CLEAR ERROR
+  // ===================================================
+
   const clearError =
     useCallback(
-      () =>
+      () => {
         setError(
           null
-        ),
+        );
+      },
       []
     );
 
@@ -807,12 +1019,6 @@ export function usePublication(
     createImage,
     updateImage,
     deleteImage,
-
-    /*
-     * Si sabes si ya existe imagen:
-     *
-     * saveImage(id, image, !!publication.image)
-     */
     saveImage,
 
     clearError,

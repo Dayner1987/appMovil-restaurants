@@ -7,9 +7,15 @@ import {
   useState,
 } from 'react';
 
+import axios from 'axios';
+
 import {
   orderItemService,
 } from '@/services/order-item.service';
+
+import {
+  emitOrderChange,
+} from '@/hooks/useOrder';
 
 import type {
   CreateOrderItemData,
@@ -39,17 +45,67 @@ interface UseOrderItemOptions {
 // =====================================================
 
 interface OrderItemCalculation {
-  quantity: number;
+  quantity:
+    number;
 
-  unitPrice: number;
+  unitPrice:
+    number;
 
-  discount?: number;
+  discount?:
+    number;
 }
+
+// =====================================================
+// ERROR
+// =====================================================
+
+function getErrorMessage(
+  error:
+    unknown,
+
+  fallback:
+    string
+): string {
+  if (
+    axios.isAxiosError(
+      error
+    )
+  ) {
+    const data =
+      error.response
+        ?.data as
+        | {
+            error?: {
+              message?: string;
+            };
+
+            message?: string;
+          }
+        | undefined;
+
+    return (
+      data?.error
+        ?.message ??
+      data?.message ??
+      fallback
+    );
+  }
+
+  return error instanceof
+    Error
+    ? error.message
+    : fallback;
+}
+
+// =====================================================
+// SUBTOTAL
+// =====================================================
 
 export function calculateSubtotal({
   quantity,
   unitPrice,
-  discount = 0,
+  discount =
+    0,
 }: OrderItemCalculation): number {
   const safeQuantity =
     Math.max(
@@ -57,7 +113,8 @@ export function calculateSubtotal({
       Math.floor(
         Number(
           quantity
-        ) || 1
+        ) ||
+        1
       )
     );
 
@@ -66,7 +123,8 @@ export function calculateSubtotal({
       0,
       Number(
         unitPrice
-      ) || 0
+      ) ||
+      0
     );
 
   const gross =
@@ -78,7 +136,8 @@ export function calculateSubtotal({
       Math.max(
         Number(
           discount
-        ) || 0,
+        ) ||
+        0,
         0
       ),
       gross
@@ -88,7 +147,9 @@ export function calculateSubtotal({
     (
       gross -
       safeDiscount
-    ).toFixed(2)
+    ).toFixed(
+      2
+    )
   );
 }
 
@@ -102,7 +163,9 @@ export function useOrderItem(
 ) {
   const {
     documentId,
+
     autoLoad = true,
+
     query,
   } = options;
 
@@ -145,7 +208,40 @@ export function useOrderItem(
   const mountedRef =
     useRef(true);
 
+  const mutationRef =
+    useRef(false);
+
+  const queryKey =
+    JSON.stringify({
+      page:
+        query?.page ??
+        1,
+
+      pageSize:
+        query?.pageSize ??
+        100,
+
+      sort:
+        query?.sort ??
+        'createdAt:asc',
+
+      orderDocumentId:
+        query
+          ?.orderDocumentId,
+
+      productDocumentId:
+        query
+          ?.productDocumentId,
+    });
+
+  // ===================================================
+  // MOUNT
+  // ===================================================
+
   useEffect(() => {
+    mountedRef.current =
+      true;
+
     return () => {
       mountedRef.current =
         false;
@@ -159,21 +255,27 @@ export function useOrderItem(
   const loadOrderItem =
     useCallback(
       async (
-        id: string
+        id:
+          string
       ) => {
-        setLoading(
-          true
-        );
+        if (
+          mountedRef.current
+        ) {
+          setLoading(
+            true
+          );
 
-        setError(
-          null
-        );
+          setError(
+            null
+          );
+        }
 
         try {
           const response =
-            await orderItemService.findOne(
-              id
-            );
+            await orderItemService
+              .findOne(
+                id
+              );
 
           if (
             mountedRef.current
@@ -191,7 +293,10 @@ export function useOrderItem(
             mountedRef.current
           ) {
             setError(
-              'No se pudo cargar el detalle de la orden'
+              getErrorMessage(
+                requestError,
+                'No se pudo cargar el detalle de la orden.'
+              )
             );
           }
 
@@ -219,19 +324,24 @@ export function useOrderItem(
         params:
           OrderItemQueryParams = {}
       ) => {
-        setLoading(
-          true
-        );
+        if (
+          mountedRef.current
+        ) {
+          setLoading(
+            true
+          );
 
-        setError(
-          null
-        );
+          setError(
+            null
+          );
+        }
 
         try {
           const response =
-            await orderItemService.findAll(
-              params
-            );
+            await orderItemService
+              .findAll(
+                params
+              );
 
           if (
             mountedRef.current
@@ -249,7 +359,10 @@ export function useOrderItem(
             mountedRef.current
           ) {
             setError(
-              'No se pudieron cargar los detalles de la orden'
+              getErrorMessage(
+                requestError,
+                'No se pudieron cargar los detalles de la orden.'
+              )
             );
           }
 
@@ -268,111 +381,40 @@ export function useOrderItem(
     );
 
   // ===================================================
-  // CREATE
+  // MUTATION
   // ===================================================
 
-  const createOrderItem =
+  const runMutation =
     useCallback(
-      async (
-        data:
-          CreateOrderItemData
-      ) => {
-        setSaving(
-          true
-        );
+      async <T,>(
+        operation:
+          () => Promise<T>
+      ): Promise<T> => {
+        if (
+          mutationRef.current
+        ) {
+          throw new Error(
+            'Espera a que termine la operación actual.'
+          );
+        }
 
-        setError(
-          null
-        );
+        mutationRef.current =
+          true;
+
+        if (
+          mountedRef.current
+        ) {
+          setSaving(
+            true
+          );
+
+          setError(
+            null
+          );
+        }
 
         try {
-          const quantity =
-            Math.max(
-              1,
-              Math.floor(
-                Number(
-                  data.quantity
-                ) || 1
-              )
-            );
-
-          const unitPrice =
-            Number(
-              Math.max(
-                Number(
-                  data.unitPrice
-                ) || 0,
-                0
-              ).toFixed(2)
-            );
-
-          const gross =
-            quantity *
-            unitPrice;
-
-          const discount =
-            Number(
-              Math.min(
-                Math.max(
-                  Number(
-                    data.discount ??
-                      0
-                  ) || 0,
-                  0
-                ),
-                gross
-              ).toFixed(2)
-            );
-
-          const itemData:
-            CreateOrderItemData = {
-              ...data,
-
-              quantity,
-
-              unitPrice,
-
-              discount,
-
-              subtotal:
-                calculateSubtotal({
-                  quantity,
-                  unitPrice,
-                  discount,
-                }),
-
-              productName:
-                data.productName
-                  ?.trim() ||
-                null,
-            };
-
-          const response =
-            await orderItemService.create(
-              itemData
-            );
-
-          const newItem =
-            response.data;
-
-          if (
-            mountedRef.current
-          ) {
-            setOrderItem(
-              newItem
-            );
-
-            setOrderItems(
-              (
-                current
-              ) => [
-                newItem,
-                ...current,
-              ]
-            );
-          }
-
-          return newItem;
+          return await operation();
         } catch (
           requestError
         ) {
@@ -380,12 +422,18 @@ export function useOrderItem(
             mountedRef.current
           ) {
             setError(
-              'No se pudo crear el detalle de la orden'
+              getErrorMessage(
+                requestError,
+                'No se pudo completar la operación.'
+              )
             );
           }
 
           throw requestError;
         } finally {
+          mutationRef.current =
+            false;
+
           if (
             mountedRef.current
           ) {
@@ -399,15 +447,174 @@ export function useOrderItem(
     );
 
   // ===================================================
+  // CREATE
+  // ===================================================
+
+  const createOrderItem =
+    useCallback(
+      (
+        data:
+          CreateOrderItemData
+      ): Promise<OrderItem> =>
+        runMutation(
+          async () => {
+            if (
+              !data.order
+            ) {
+              throw new Error(
+                'El detalle debe pertenecer a una orden.'
+              );
+            }
+
+            if (
+              !data.product
+            ) {
+              throw new Error(
+                'El detalle debe tener un producto.'
+              );
+            }
+
+            const quantity =
+              Math.max(
+                1,
+                Math.floor(
+                  Number(
+                    data.quantity
+                  ) ||
+                  1
+                )
+              );
+
+            const unitPrice =
+              Number(
+                Math.max(
+                  Number(
+                    data.unitPrice
+                  ) ||
+                  0,
+                  0
+                ).toFixed(
+                  2
+                )
+              );
+
+            if (
+              unitPrice <=
+              0
+            ) {
+              throw new Error(
+                'El precio del producto debe ser mayor a 0.'
+              );
+            }
+
+            const gross =
+              quantity *
+              unitPrice;
+
+            const discount =
+              Number(
+                Math.min(
+                  Math.max(
+                    Number(
+                      data.discount ??
+                      0
+                    ) ||
+                    0,
+                    0
+                  ),
+                  gross
+                ).toFixed(
+                  2
+                )
+              );
+
+            const payload:
+              CreateOrderItemData = {
+                ...data,
+
+                quantity,
+
+                unitPrice,
+
+                discount,
+
+                subtotal:
+                  calculateSubtotal({
+                    quantity,
+
+                    unitPrice,
+
+                    discount,
+                  }),
+
+                productName:
+                  data.productName
+                    ?.trim() ||
+                  null,
+              };
+
+            const response =
+              await orderItemService
+                .create(
+                  payload
+                );
+
+            const created =
+              response.data;
+
+            if (
+              mountedRef.current
+            ) {
+              setOrderItem(
+                created
+              );
+
+              setOrderItems(
+                (
+                  current
+                ) => [
+                  created,
+                  ...current,
+                ]
+              );
+            }
+
+            const parentId =
+              typeof data.order ===
+              'string'
+                ? data.order
+                : created.order
+                    ?.documentId;
+
+            if (
+              parentId
+            ) {
+              emitOrderChange({
+                type:
+                  'refresh',
+
+                documentId:
+                  parentId,
+              });
+            }
+
+            return created;
+          }
+        ),
+      [
+        runMutation,
+      ]
+    );
+
+  // ===================================================
   // CREATE FROM PRODUCT
   // ===================================================
 
   const createOrderItemFromProduct =
     useCallback(
-      async (
-        orderId:
-          | number
-          | string,
+      (
+        orderDocumentId:
+          string,
 
         product:
           Product,
@@ -418,9 +625,17 @@ export function useOrderItem(
         discount =
           0
       ) => {
+        if (
+          !product.documentId
+        ) {
+          throw new Error(
+            'El producto no tiene documentId.'
+          );
+        }
+
         return createOrderItem({
           order:
-            orderId,
+            orderDocumentId,
 
           product:
             product.documentId,
@@ -450,146 +665,166 @@ export function useOrderItem(
 
   const updateOrderItem =
     useCallback(
-      async (
-        id: string,
+      (
+        id:
+          string,
 
         data:
           UpdateOrderItemData
-      ) => {
-        setSaving(
-          true
-        );
+      ): Promise<OrderItem> =>
+        runMutation(
+          async () => {
+            let currentItem =
+              orderItem
+                ?.documentId ===
+              id
+                ? orderItem
+                : orderItems.find(
+                    (
+                      item
+                    ) =>
+                      item.documentId ===
+                      id
+                  );
 
-        setError(
-          null
-        );
+            if (
+              !currentItem
+            ) {
+              try {
+                currentItem =
+                  await orderItemService
+                    .findOne(
+                      id
+                    )
+                    .then(
+                      (
+                        response
+                      ) =>
+                        response.data
+                    );
+              } catch {
+                currentItem =
+                  undefined;
+              }
+            }
 
-        try {
-          const currentItem =
-            orderItem
-              ?.documentId ===
-            id
-              ? orderItem
-              : orderItems.find(
-                  (
-                    item
-                  ) =>
-                    item.documentId ===
-                    id
+            const payload:
+              UpdateOrderItemData = {
+                ...data,
+              };
+
+            if (
+              data.quantity !==
+                undefined ||
+              data.unitPrice !==
+                undefined ||
+              data.discount !==
+                undefined
+            ) {
+              const quantity =
+                data.quantity ??
+                currentItem
+                  ?.quantity ??
+                1;
+
+              const unitPrice =
+                data.unitPrice ??
+                currentItem
+                  ?.unitPrice ??
+                0;
+
+              const discount =
+                data.discount ??
+                currentItem
+                  ?.discount ??
+                0;
+
+              payload.subtotal =
+                calculateSubtotal({
+                  quantity,
+
+                  unitPrice,
+
+                  discount:
+                    discount ??
+                    0,
+                });
+            }
+
+            if (
+              data.productName !==
+              undefined
+            ) {
+              payload.productName =
+                data.productName
+                  ?.trim() ||
+                null;
+            }
+
+            const response =
+              await orderItemService
+                .update(
+                  id,
+                  payload
                 );
 
-          const updatedData:
-            UpdateOrderItemData = {
-              ...data,
-          };
+            const updated =
+              response.data;
 
-          if (
-            data.quantity !==
-              undefined ||
-            data.unitPrice !==
-              undefined ||
-            data.discount !==
-              undefined
-          ) {
-            const quantity =
-              data.quantity ??
+            if (
+              mountedRef.current
+            ) {
+              setOrderItem(
+                (
+                  current
+                ) =>
+                  current
+                    ?.documentId ===
+                  updated.documentId
+                    ? updated
+                    : current
+              );
+
+              setOrderItems(
+                (
+                  current
+                ) =>
+                  current.map(
+                    (
+                      item
+                    ) =>
+                      item.documentId ===
+                      updated.documentId
+                        ? updated
+                        : item
+                  )
+              );
+            }
+
+            const parentId =
+              updated.order
+                ?.documentId ??
               currentItem
-                ?.quantity ??
-              1;
+                ?.order
+                ?.documentId;
 
-            const unitPrice =
-              data.unitPrice ??
-              currentItem
-                ?.unitPrice ??
-              0;
+            if (
+              parentId
+            ) {
+              emitOrderChange({
+                type:
+                  'refresh',
 
-            const discount =
-              data.discount ??
-              currentItem
-                ?.discount ??
-              0;
-
-            updatedData.subtotal =
-              calculateSubtotal({
-                quantity,
-                unitPrice,
-                discount,
+                documentId:
+                  parentId,
               });
+            }
+
+            return updated;
           }
-
-          if (
-            data.productName !==
-            undefined
-          ) {
-            updatedData.productName =
-              data.productName
-                ?.trim() ||
-              null;
-          }
-
-          const response =
-            await orderItemService.update(
-              id,
-              updatedData
-            );
-
-          const updated =
-            response.data;
-
-          if (
-            mountedRef.current
-          ) {
-            setOrderItem(
-              (
-                current
-              ) =>
-                current
-                  ?.documentId ===
-                updated.documentId
-                  ? updated
-                  : current
-            );
-
-            setOrderItems(
-              (
-                current
-              ) =>
-                current.map(
-                  (
-                    item
-                  ) =>
-                    item.documentId ===
-                    updated.documentId
-                      ? updated
-                      : item
-                )
-            );
-          }
-
-          return updated;
-        } catch (
-          requestError
-        ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              'No se pudo actualizar el detalle de la orden'
-            );
-          }
-
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setSaving(
-              false
-            );
-          }
-        }
-      },
+        ),
       [
+        runMutation,
         orderItem,
         orderItems,
       ]
@@ -601,72 +836,102 @@ export function useOrderItem(
 
   const deleteOrderItem =
     useCallback(
-      async (
-        id: string
-      ) => {
-        setSaving(
-          true
-        );
+      (
+        id:
+          string
+      ): Promise<void> =>
+        runMutation(
+          async () => {
+            let currentItem =
+              orderItem
+                ?.documentId ===
+              id
+                ? orderItem
+                : orderItems.find(
+                    (
+                      item
+                    ) =>
+                      item.documentId ===
+                      id
+                  );
 
-        setError(
-          null
-        );
+            if (
+              !currentItem
+            ) {
+              try {
+                currentItem =
+                  await orderItemService
+                    .findOne(
+                      id
+                    )
+                    .then(
+                      (
+                        response
+                      ) =>
+                        response.data
+                    );
+              } catch {
+                currentItem =
+                  undefined;
+              }
+            }
 
-        try {
-          await orderItemService.remove(
-            id
-          );
+            const parentId =
+              currentItem
+                ?.order
+                ?.documentId;
 
-          if (
-            mountedRef.current
-          ) {
-            setOrderItems(
-              (
-                current
-              ) =>
-                current.filter(
-                  (
-                    item
-                  ) =>
-                    item.documentId !==
-                    id
-                )
-            );
-
-            setOrderItem(
-              (
-                current
-              ) =>
-                current
-                  ?.documentId ===
+            await orderItemService
+              .remove(
                 id
-                  ? null
-                  : current
-            );
-          }
-        } catch (
-          requestError
-        ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              'No se pudo eliminar el detalle de la orden'
-            );
-          }
+              );
 
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setSaving(
-              false
-            );
+            if (
+              mountedRef.current
+            ) {
+              setOrderItems(
+                (
+                  current
+                ) =>
+                  current.filter(
+                    (
+                      item
+                    ) =>
+                      item.documentId !==
+                      id
+                  )
+              );
+
+              setOrderItem(
+                (
+                  current
+                ) =>
+                  current
+                    ?.documentId ===
+                  id
+                    ? null
+                    : current
+              );
+            }
+
+            if (
+              parentId
+            ) {
+              emitOrderChange({
+                type:
+                  'refresh',
+
+                documentId:
+                  parentId,
+              });
+            }
           }
-        }
-      },
-      []
+        ),
+      [
+        runMutation,
+        orderItem,
+        orderItems,
+      ]
     );
 
   // ===================================================
@@ -674,7 +939,9 @@ export function useOrderItem(
   // ===================================================
 
   useEffect(() => {
-    if (!autoLoad) {
+    if (
+      !autoLoad
+    ) {
       return;
     }
 
@@ -683,24 +950,26 @@ export function useOrderItem(
     ) {
       void loadOrderItem(
         documentId
+      ).catch(
+        () =>
+          undefined
       );
 
       return;
     }
 
     void loadOrderItems(
-      query
+      JSON.parse(
+        queryKey
+      ) as OrderItemQueryParams
+    ).catch(
+      () =>
+        undefined
     );
   }, [
     autoLoad,
     documentId,
-
-    query?.page,
-    query?.pageSize,
-    query?.sort,
-    query?.orderId,
-    query?.productId,
-
+    queryKey,
     loadOrderItem,
     loadOrderItems,
   ]);
@@ -732,7 +1001,9 @@ export function useOrderItem(
             )
         : () =>
             loadOrderItems(
-              query
+              JSON.parse(
+                queryKey
+              ) as OrderItemQueryParams
             ),
   };
 }

@@ -1,4 +1,7 @@
 // app/(tabs-restaurant)/products.tsx
+import {
+  SafeAreaView,
+} from 'react-native-safe-area-context';
 
 import {
   useCallback,
@@ -17,7 +20,7 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
-  SafeAreaView,
+  
   ScrollView,
   Text,
   View,

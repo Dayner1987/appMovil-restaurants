@@ -1,4 +1,8 @@
-// services/product.service.ts
+// services/products.service.ts
+
+import {
+  Platform,
+} from 'react-native';
 
 import {
   api,
@@ -18,28 +22,80 @@ const PRODUCT_URL =
   '/api/products';
 
 // =====================================================
-// FORM DATA - IMAGEN INDIVIDUAL
+// APPEND IMAGE
 // =====================================================
 
-function createImageFormData(
+async function appendImage(
+  formData: FormData,
+
   fieldName:
     | 'mainImage'
     | 'gallery',
 
-  imageUri: string,
+  image:
+    ProductImageUpload,
 
-  fileName: string,
-
-  mimeType: string
+  defaultFileName:
+    string
 ) {
-  const formData =
-    new FormData();
+  const fileName =
+    image.fileName?.trim() ||
+    defaultFileName;
+
+  const mimeType =
+    image.mimeType?.trim() ||
+    'image/jpeg';
+
+  // ===================================================
+  // WEB
+  // ===================================================
+
+  if (
+    Platform.OS ===
+    'web'
+  ) {
+    if (image.file) {
+      formData.append(
+        fieldName,
+        image.file,
+        fileName
+      );
+
+      return;
+    }
+
+    const response =
+      await fetch(
+        image.uri
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        'No se pudo preparar la imagen seleccionada.'
+      );
+    }
+
+    const blob =
+      await response.blob();
+
+    formData.append(
+      fieldName,
+      blob,
+      fileName
+    );
+
+    return;
+  }
+
+  // ===================================================
+  // ANDROID / IOS
+  // ===================================================
 
   formData.append(
     fieldName,
     {
       uri:
-        imageUri,
+        image.uri,
 
       name:
         fileName,
@@ -47,6 +103,32 @@ function createImageFormData(
       type:
         mimeType,
     } as any
+  );
+}
+
+// =====================================================
+// FORM DATA - UNA IMAGEN
+// =====================================================
+
+async function createImageFormData(
+  fieldName:
+    | 'mainImage'
+    | 'gallery',
+
+  image:
+    ProductImageUpload,
+
+  defaultFileName:
+    string
+) {
+  const formData =
+    new FormData();
+
+  await appendImage(
+    formData,
+    fieldName,
+    image,
+    defaultFileName
   );
 
   return formData;
@@ -56,7 +138,7 @@ function createImageFormData(
 // FORM DATA - GALERÍA
 // =====================================================
 
-function createGalleryFormData(
+async function createGalleryFormData(
   images:
     ProductImageUpload[]
 ) {
@@ -64,23 +146,16 @@ function createGalleryFormData(
     new FormData();
 
   for (
-    const image of
-    images
+    const [
+      index,
+      image,
+    ] of images.entries()
   ) {
-    formData.append(
+    await appendImage(
+      formData,
       'gallery',
-      {
-        uri:
-          image.uri,
-
-        name:
-          image.fileName ??
-          'product-gallery.jpg',
-
-        type:
-          image.mimeType ??
-          'image/jpeg',
-      } as any
+      image,
+      `product-gallery-${index + 1}.jpg`
     );
   }
 
@@ -95,55 +170,61 @@ export const productService = {
   // ===================================================
   // GET ALL
   // ===================================================
-// services/products.service.ts
 
-async findAll(
-  params:
-    ProductQueryParams = {}
-): Promise<ProductListResponse> {
-  const response =
-    await api.get<ProductListResponse>(
-      PRODUCT_URL,
-      {
-        params: {
-          populate:
-            '*',
+  async findAll(
+    params:
+      ProductQueryParams = {}
+  ): Promise<ProductListResponse> {
+    const response =
+      await api.get<ProductListResponse>(
+        PRODUCT_URL,
+        {
+          params: {
+            // IMPORTANTE:
+            // Los productos actuales están en draft.
+            status:
+              'draft',
 
-          'pagination[page]':
-            params.page ??
-            1,
+            populate:
+              '*',
 
-          'pagination[pageSize]':
-            params.pageSize ??
-            25,
+            'pagination[page]':
+              params.page ??
+              1,
 
-          sort:
-            params.sort ??
-            'name:asc',
+            'pagination[pageSize]':
+              params.pageSize ??
+              25,
 
-          'filters[name][$containsi]':
-            params.name,
+            sort:
+              params.sort ??
+              'name:asc',
 
-          'filters[isAvailable][$eq]':
-            params.available,
+            'filters[name][$containsi]':
+              params.name,
 
-          'filters[restaurant][documentId][$eq]':
-            params.restaurantDocumentId,
+            'filters[isAvailable][$eq]':
+              params.available,
 
-          'filters[category][documentId][$eq]':
-            params.categoryDocumentId,
-        },
-      }
-    );
+            'filters[restaurant][documentId][$eq]':
+              params.restaurantDocumentId,
 
-  return response.data;
-},
+            'filters[category][documentId][$eq]':
+              params.categoryDocumentId,
+          },
+        }
+      );
+
+    return response.data;
+  },
+
   // ===================================================
   // GET ONE
   // ===================================================
 
   async findOne(
-    documentId: string
+    documentId:
+      string
   ): Promise<ProductResponse> {
     const response =
       await api.get<ProductResponse>(
@@ -152,6 +233,9 @@ async findAll(
         )}`,
         {
           params: {
+            status:
+              'draft',
+
             populate:
               '*',
           },
@@ -162,7 +246,7 @@ async findAll(
   },
 
   // ===================================================
-  // CREATE
+  // CREATE PRODUCT
   // ===================================================
 
   async create(
@@ -177,6 +261,9 @@ async findAll(
         },
         {
           params: {
+            status:
+              'draft',
+
             populate:
               '*',
           },
@@ -187,11 +274,12 @@ async findAll(
   },
 
   // ===================================================
-  // PUT NATIVO STRAPI
+  // PUT NATIVO
   // ===================================================
 
   async update(
-    documentId: string,
+    documentId:
+      string,
 
     data:
       UpdateProductData
@@ -206,6 +294,9 @@ async findAll(
         },
         {
           params: {
+            status:
+              'draft',
+
             populate:
               '*',
           },
@@ -216,14 +307,12 @@ async findAll(
   },
 
   // ===================================================
-  // PATCH PERSONALIZADO
-  //
-  // PATCH
-  // /api/products/:documentId
+  // PATCH PRODUCT
   // ===================================================
 
   async patch(
-    documentId: string,
+    documentId:
+      string,
 
     data:
       UpdateProductData
@@ -235,6 +324,15 @@ async findAll(
         )}`,
         {
           data,
+        },
+        {
+          params: {
+            status:
+              'draft',
+
+            populate:
+              '*',
+          },
         }
       );
 
@@ -244,27 +342,24 @@ async findAll(
   // ===================================================
   // CREATE MAIN IMAGE
   //
+  // SOLO PARA CREAR IMAGEN POR PRIMERA VEZ
+  //
   // POST
   // /api/products/:documentId/main-image
   // ===================================================
 
   async createMainImage(
-    documentId: string,
+    documentId:
+      string,
 
-    imageUri: string,
-
-    fileName =
-      'product-main-image.jpg',
-
-    mimeType =
-      'image/jpeg'
+    image:
+      ProductImageUpload
   ): Promise<ProductMediaResponse> {
     const formData =
-      createImageFormData(
+      await createImageFormData(
         'mainImage',
-        imageUri,
-        fileName,
-        mimeType
+        image,
+        'product-main-image.jpg'
       );
 
     const response =
@@ -272,13 +367,7 @@ async findAll(
         `${PRODUCT_URL}/${encodeURIComponent(
           documentId
         )}/main-image`,
-        formData,
-        {
-          headers: {
-            'Content-Type':
-              'multipart/form-data',
-          },
-        }
+        formData
       );
 
     return response.data;
@@ -287,27 +376,24 @@ async findAll(
   // ===================================================
   // UPDATE MAIN IMAGE
   //
+  // PARA REEMPLAZAR IMAGEN EXISTENTE
+  //
   // PATCH
   // /api/products/:documentId/main-image
   // ===================================================
 
   async updateMainImage(
-    documentId: string,
+    documentId:
+      string,
 
-    imageUri: string,
-
-    fileName =
-      'product-main-image.jpg',
-
-    mimeType =
-      'image/jpeg'
+    image:
+      ProductImageUpload
   ): Promise<ProductMediaResponse> {
     const formData =
-      createImageFormData(
+      await createImageFormData(
         'mainImage',
-        imageUri,
-        fileName,
-        mimeType
+        image,
+        'product-main-image.jpg'
       );
 
     const response =
@@ -315,13 +401,7 @@ async findAll(
         `${PRODUCT_URL}/${encodeURIComponent(
           documentId
         )}/main-image`,
-        formData,
-        {
-          headers: {
-            'Content-Type':
-              'multipart/form-data',
-          },
-        }
+        formData
       );
 
     return response.data;
@@ -329,13 +409,11 @@ async findAll(
 
   // ===================================================
   // DELETE MAIN IMAGE
-  //
-  // DELETE
-  // /api/products/:documentId/main-image
   // ===================================================
 
   async deleteMainImage(
-    documentId: string
+    documentId:
+      string
   ): Promise<ProductMediaResponse> {
     const response =
       await api.delete<ProductMediaResponse>(
@@ -355,7 +433,8 @@ async findAll(
   // ===================================================
 
   async addGalleryImages(
-    documentId: string,
+    documentId:
+      string,
 
     images:
       ProductImageUpload[]
@@ -365,12 +444,12 @@ async findAll(
       0
     ) {
       throw new Error(
-        'Debe seleccionar al menos una imagen'
+        'Debes seleccionar al menos una imagen.'
       );
     }
 
     const formData =
-      createGalleryFormData(
+      await createGalleryFormData(
         images
       );
 
@@ -379,46 +458,35 @@ async findAll(
         `${PRODUCT_URL}/${encodeURIComponent(
           documentId
         )}/gallery`,
-        formData,
-        {
-          headers: {
-            'Content-Type':
-              'multipart/form-data',
-          },
-        }
+        formData
       );
 
     return response.data;
   },
 
   // ===================================================
-  // UPDATE ONE GALLERY IMAGE
+  // UPDATE GALLERY IMAGE
   //
   // PATCH
   // /api/products/:documentId/gallery/:fileId
   // ===================================================
 
   async updateGalleryImage(
-    documentId: string,
+    documentId:
+      string,
 
     fileId:
       | number
       | string,
 
-    imageUri: string,
-
-    fileName =
-      'product-gallery.jpg',
-
-    mimeType =
-      'image/jpeg'
+    image:
+      ProductImageUpload
   ): Promise<ProductMediaResponse> {
     const formData =
-      createImageFormData(
+      await createImageFormData(
         'gallery',
-        imageUri,
-        fileName,
-        mimeType
+        image,
+        'product-gallery.jpg'
       );
 
     const response =
@@ -430,27 +498,19 @@ async findAll(
             fileId
           )
         )}`,
-        formData,
-        {
-          headers: {
-            'Content-Type':
-              'multipart/form-data',
-          },
-        }
+        formData
       );
 
     return response.data;
   },
 
   // ===================================================
-  // DELETE ONE GALLERY IMAGE
-  //
-  // DELETE
-  // /api/products/:documentId/gallery/:fileId
+  // DELETE GALLERY IMAGE
   // ===================================================
 
   async deleteGalleryImage(
-    documentId: string,
+    documentId:
+      string,
 
     fileId:
       | number
@@ -475,7 +535,8 @@ async findAll(
   // ===================================================
 
   async remove(
-    documentId: string
+    documentId:
+      string
   ): Promise<void> {
     await api.delete(
       `${PRODUCT_URL}/${encodeURIComponent(

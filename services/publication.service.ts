@@ -1,12 +1,17 @@
 // services/publication.service.ts
 
 import {
+  Platform,
+} from 'react-native';
+
+import {
   api,
 } from './api';
 
 import type {
   CreatePublicationData,
   PublicationImageResponse,
+  PublicationImageUpload,
   PublicationListResponse,
   PublicationQueryParams,
   PublicationResponse,
@@ -20,19 +25,71 @@ const PUBLICATION_URL =
 // FORM DATA
 // =====================================================
 
-function createImageFormData(
-  imageUri: string,
-  fileName: string,
-  mimeType: string
+async function createImageFormData(
+  image:
+    PublicationImageUpload
 ) {
   const formData =
     new FormData();
+
+  const fileName =
+    image.fileName?.trim() ||
+    'publication-image.jpg';
+
+  const mimeType =
+    image.mimeType?.trim() ||
+    'image/jpeg';
+
+  // ===================================================
+  // WEB
+  // ===================================================
+
+  if (
+    Platform.OS ===
+    'web'
+  ) {
+    if (image.file) {
+      formData.append(
+        'image',
+        image.file,
+        fileName
+      );
+
+      return formData;
+    }
+
+    const response =
+      await fetch(
+        image.uri
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        'No se pudo preparar la imagen seleccionada.'
+      );
+    }
+
+    const blob =
+      await response.blob();
+
+    formData.append(
+      'image',
+      blob,
+      fileName
+    );
+
+    return formData;
+  }
+
+  // ===================================================
+  // ANDROID / IOS
+  // ===================================================
 
   formData.append(
     'image',
     {
       uri:
-        imageUri,
+        image.uri,
 
       name:
         fileName,
@@ -63,6 +120,14 @@ export const publicationService = {
         PUBLICATION_URL,
         {
           params: {
+            /*
+             * Para la gestión del restaurante
+             * necesitamos trabajar con el draft
+             * actual.
+             */
+            status:
+              'draft',
+
             populate:
               '*',
 
@@ -75,10 +140,17 @@ export const publicationService = {
               25,
 
             sort:
-              params.sort,
+              params.sort ??
+              'createdAt:desc',
 
-            'filters[restaurant][id][$eq]':
-              params.restaurantId,
+            /*
+             * API comprobada en Insomnia:
+             *
+             * filters[restaurant]
+             * [documentId][$eq]
+             */
+            'filters[restaurant][documentId][$eq]':
+              params.restaurantDocumentId,
 
             'filters[featured][$eq]':
               params.featured,
@@ -97,7 +169,8 @@ export const publicationService = {
   // ===================================================
 
   async findOne(
-    documentId: string
+    documentId:
+      string
   ): Promise<PublicationResponse> {
     const response =
       await api.get<PublicationResponse>(
@@ -106,6 +179,9 @@ export const publicationService = {
         )}`,
         {
           params: {
+            status:
+              'draft',
+
             populate:
               '*',
           },
@@ -117,12 +193,20 @@ export const publicationService = {
 
   // ===================================================
   // CREATE
+  //
+  // POST /api/publications
   // ===================================================
 
   async create(
     data:
       CreatePublicationData
   ): Promise<PublicationResponse> {
+    /*
+     * No forzamos status=draft aquí.
+     *
+     * Dejamos exactamente el comportamiento
+     * que ya comprobaste en Insomnia.
+     */
     const response =
       await api.post<PublicationResponse>(
         PUBLICATION_URL,
@@ -145,7 +229,9 @@ export const publicationService = {
   // ===================================================
 
   async update(
-    documentId: string,
+    documentId:
+      string,
+
     data:
       UpdatePublicationData
   ): Promise<PublicationResponse> {
@@ -159,6 +245,9 @@ export const publicationService = {
         },
         {
           params: {
+            status:
+              'draft',
+
             populate:
               '*',
           },
@@ -170,10 +259,14 @@ export const publicationService = {
 
   // ===================================================
   // PATCH PERSONALIZADO
+  //
+  // PATCH /api/publications/:documentId
   // ===================================================
 
   async patch(
-    documentId: string,
+    documentId:
+      string,
+
     data:
       UpdatePublicationData
   ): Promise<PublicationResponse> {
@@ -184,6 +277,15 @@ export const publicationService = {
         )}`,
         {
           data,
+        },
+        {
+          params: {
+            status:
+              'draft',
+
+            populate:
+              '*',
+          },
         }
       );
 
@@ -193,23 +295,22 @@ export const publicationService = {
   // ===================================================
   // CREATE IMAGE
   //
+  // SOLO SI image === null
+  //
   // POST
   // /api/publications/:documentId/image
   // ===================================================
 
   async createImage(
-    documentId: string,
-    imageUri: string,
-    fileName =
-      'publication-image.jpg',
-    mimeType =
-      'image/jpeg'
+    documentId:
+      string,
+
+    image:
+      PublicationImageUpload
   ): Promise<PublicationImageResponse> {
     const formData =
-      createImageFormData(
-        imageUri,
-        fileName,
-        mimeType
+      await createImageFormData(
+        image
       );
 
     const response =
@@ -217,38 +318,31 @@ export const publicationService = {
         `${PUBLICATION_URL}/${encodeURIComponent(
           documentId
         )}/image`,
-        formData,
-        {
-          headers: {
-            'Content-Type':
-              'multipart/form-data',
-          },
-        }
+        formData
       );
 
     return response.data;
   },
 
   // ===================================================
-  // UPDATE / REPLACE IMAGE
+  // UPDATE IMAGE
+  //
+  // SOLO SI YA EXISTE image
   //
   // PATCH
   // /api/publications/:documentId/image
   // ===================================================
 
   async updateImage(
-    documentId: string,
-    imageUri: string,
-    fileName =
-      'publication-image.jpg',
-    mimeType =
-      'image/jpeg'
+    documentId:
+      string,
+
+    image:
+      PublicationImageUpload
   ): Promise<PublicationImageResponse> {
     const formData =
-      createImageFormData(
-        imageUri,
-        fileName,
-        mimeType
+      await createImageFormData(
+        image
       );
 
     const response =
@@ -256,13 +350,7 @@ export const publicationService = {
         `${PUBLICATION_URL}/${encodeURIComponent(
           documentId
         )}/image`,
-        formData,
-        {
-          headers: {
-            'Content-Type':
-              'multipart/form-data',
-          },
-        }
+        formData
       );
 
     return response.data;
@@ -273,7 +361,8 @@ export const publicationService = {
   // ===================================================
 
   async deleteImage(
-    documentId: string
+    documentId:
+      string
   ): Promise<PublicationImageResponse> {
     const response =
       await api.delete<PublicationImageResponse>(
@@ -290,7 +379,8 @@ export const publicationService = {
   // ===================================================
 
   async remove(
-    documentId: string
+    documentId:
+      string
   ): Promise<void> {
     await api.delete(
       `${PUBLICATION_URL}/${encodeURIComponent(

@@ -1,9 +1,12 @@
 // types/orders.types.ts
 
+// =====================================================
+// ENUMS
+// =====================================================
+
 export type OrderType =
   | 'ONLINE'
   | 'COUNTER'
-  | 'DELIVERY'
   | 'PICKUP';
 
 export type OrderStatus =
@@ -11,11 +14,15 @@ export type OrderStatus =
   | 'CONFIRMED'
   | 'PREPARING'
   | 'READY'
-  | 'DELIVERED'
   | 'COMPLETED'
   | 'CANCELLED';
 
-export type PaymentStatus =
+/**
+ * Estado general de pago de la ORDEN.
+ *
+ * Es diferente de Payment.statusPayment.
+ */
+export type OrderPaymentStatus =
   | 'PENDING'
   | 'PAID'
   | 'PARTIAL'
@@ -33,6 +40,14 @@ export interface OrderRestaurant {
 
   name?: string;
 
+  slug?:
+    | string
+    | null;
+
+  description?:
+    | string
+    | null;
+
   email?: string;
 
   address?:
@@ -47,59 +62,87 @@ export interface OrderRestaurant {
     | string
     | null;
 
-  logo?:
-    | {
-        id: number;
-        documentId?: string;
-        url?: string;
-        name?: string;
-      }
-    | null;
-}
-
-// =====================================================
-// ORDER ITEM
-// =====================================================
-
-export interface OrderItem {
-  id: number;
-
-  documentId?: string;
-
-  quantity?: number;
-
-  unitPrice?: number;
-
-  discount?: number;
-
-  subtotal?: number;
-
-  productName?:
+  statusRes?:
     | string
     | null;
 }
 
 // =====================================================
-// PAYMENT
+// ORDER ITEM RESUMIDO
+//
+// Es el OrderItem que llega dentro de:
+// Order.order_items
+//
+// El tipo completo está en:
+// types/order-item.types.ts
 // =====================================================
 
-export interface OrderPayment {
+export interface OrderItemSummary {
   id: number;
 
   documentId?: string;
 
-  amount?: number;
+  quantity: number;
 
-  method?: string;
+  unitPrice: number;
+
+  discount:
+    | number
+    | null;
+
+  subtotal: number;
+
+  productName:
+    | string
+    | null;
+
+  createdAt?: string;
+
+  updatedAt?: string;
+
+  publishedAt?:
+    | string
+    | null;
+}
+
+// =====================================================
+// PAYMENT RESUMIDO
+//
+// Es el Payment que llega dentro de:
+// Order.payments
+//
+// El tipo completo está en:
+// types/payment.types.ts
+// =====================================================
+
+export interface OrderPaymentSummary {
+  id: number;
+
+  documentId?: string;
+
+  amount: number;
+
+  method?:
+    | string
+    | null;
 
   statusPayment?:
-    PaymentStatus;
+    | string
+    | null;
 
   transactionReference?:
     | string
     | null;
 
-  paidAt?:
+  paidAt:
+    | string
+    | null;
+
+  createdAt?: string;
+
+  updatedAt?: string;
+
+  publishedAt?:
     | string
     | null;
 }
@@ -121,7 +164,15 @@ export interface OrderUser {
     | string
     | null;
 
+  middleName?:
+    | string
+    | null;
+
   lastName?:
+    | string
+    | null;
+
+  secondLastName?:
     | string
     | null;
 }
@@ -137,18 +188,33 @@ export interface Order {
 
   orderCode: string;
 
+  /**
+   * No es required en Strapi.
+   */
   orderType:
-    OrderType;
+    | OrderType
+    | null;
 
+  /**
+   * No es required en Strapi.
+   */
   statusOrder:
-    OrderStatus;
+    | OrderStatus
+    | null;
 
+  /**
+   * Actualmente comprobamos incluso:
+   * paymentStatus: null
+   */
   paymentStatus:
-    PaymentStatus;
+    | OrderPaymentStatus
+    | null;
 
   subtotal: number;
 
-  discount: number;
+  discount:
+    | number
+    | null;
 
   total: number;
 
@@ -163,13 +229,14 @@ export interface Order {
     | null;
 
   order_items?:
-    OrderItem[];
+    OrderItemSummary[];
 
   payments?:
-    OrderPayment[];
+    OrderPaymentSummary[];
 
-  /*
-   * En Strapi es manyToMany.
+  /**
+   * Strapi:
+   * manyToMany con users-permissions User.
    */
   users?:
     OrderUser[];
@@ -188,37 +255,61 @@ export interface Order {
 // =====================================================
 
 export interface CreateOrderData {
-  orderType:
-    OrderType;
+  /**
+   * Required en Strapi.
+   */
+  orderCode: string;
 
+  orderType?:
+    | OrderType
+    | null;
+
+  statusOrder?:
+    | OrderStatus
+    | null;
+
+  paymentStatus?:
+    | OrderPaymentStatus
+    | null;
+
+  /**
+   * Required en Strapi.
+   */
   subtotal: number;
 
-  discount?: number;
+  discount?:
+    | number
+    | null;
 
+  /**
+   * Required en Strapi.
+   */
   total: number;
 
-  restaurant?:
-    | number
+  /**
+   * Required en Strapi.
+   */
+  orderedAt: string;
+
+  completeAt?:
     | string
     | null;
 
-  users?:
-    (
-      | number
-      | string
-    )[];
+  /**
+   * documentId del Restaurant.
+   */
+  restaurant?:
+    | string
+    | number
+    | null;
 
-  order_items?:
-    (
-      | number
-      | string
-    )[];
-
-  payments?:
-    (
-      | number
-      | string
-    )[];
+  /**
+   * Usuarios relacionados a la orden.
+   */
+  users?: (
+    | string
+    | number
+  )[];
 }
 
 // =====================================================
@@ -229,17 +320,22 @@ export interface UpdateOrderData {
   orderCode?: string;
 
   orderType?:
-    OrderType;
+    | OrderType
+    | null;
 
   statusOrder?:
-    OrderStatus;
+    | OrderStatus
+    | null;
 
   paymentStatus?:
-    PaymentStatus;
+    | OrderPaymentStatus
+    | null;
 
   subtotal?: number;
 
-  discount?: number;
+  discount?:
+    | number
+    | null;
 
   total?: number;
 
@@ -250,31 +346,18 @@ export interface UpdateOrderData {
     | null;
 
   restaurant?:
-    | number
     | string
+    | number
     | null;
 
-  users?:
-    (
-      | number
-      | string
-    )[];
-
-  order_items?:
-    (
-      | number
-      | string
-    )[];
-
-  payments?:
-    (
-      | number
-      | string
-    )[];
+  users?: (
+    | string
+    | number
+  )[];
 }
 
 // =====================================================
-// PAGINACIÓN
+// PAGINATION
 // =====================================================
 
 export interface OrderPagination {
@@ -288,7 +371,8 @@ export interface OrderPagination {
 }
 
 export interface OrderListResponse {
-  data: Order[];
+  data:
+    Order[];
 
   meta: {
     pagination:
@@ -297,7 +381,8 @@ export interface OrderListResponse {
 }
 
 export interface OrderResponse {
-  data: Order;
+  data:
+    Order;
 
   meta?: Record<
     string,
@@ -327,61 +412,32 @@ export interface OrderQueryParams {
     OrderStatus;
 
   paymentStatus?:
-    PaymentStatus;
+    OrderPaymentStatus;
 
-  restaurantId?:
-    | number
-    | string;
+  /**
+   * IMPORTANTE:
+   *
+   * Usamos documentId del restaurante.
+   *
+   * NO el id numérico porque con
+   * Draft & Publish cambia.
+   */
+  restaurantDocumentId?:
+    string;
 
   userId?:
     | number
     | string;
-}
 
-export interface CreateOrderData {
-  orderCode?: string;
+  orderedFrom?:
+    string;
 
-  orderType:
-    OrderType;
+  orderedTo?:
+    string;
 
-  statusOrder?:
-    OrderStatus;
+  completedFrom?:
+    string;
 
-  paymentStatus?:
-    PaymentStatus;
-
-  subtotal: number;
-
-  discount?: number;
-
-  total: number;
-
-  orderedAt?: string;
-
-  completeAt?:
-    | string
-    | null;
-
-  restaurant?:
-    | number
-    | string
-    | null;
-
-  users?:
-    (
-      | number
-      | string
-    )[];
-
-  order_items?:
-    (
-      | number
-      | string
-    )[];
-
-  payments?:
-    (
-      | number
-      | string
-    )[];
+  completedTo?:
+    string;
 }

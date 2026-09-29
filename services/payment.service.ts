@@ -29,8 +29,11 @@ export const paymentService = {
         PAYMENT_URL,
         {
           params: {
+            status:
+              'draft',
+
             populate:
-              'order',
+              '*',
 
             'pagination[page]':
               params.page ??
@@ -38,19 +41,55 @@ export const paymentService = {
 
             'pagination[pageSize]':
               params.pageSize ??
-              25,
+              100,
 
             sort:
-              params.sort,
+              params.sort ??
+              'paidAt:desc',
 
-            'filters[order][id][$eq]':
-              params.orderId,
+            // =========================================
+            // ORDER
+            // =========================================
+
+            'filters[order][documentId][$eq]':
+              params.orderDocumentId,
+
+            // =========================================
+            // RESTAURANT
+            //
+            // API comprobada en Insomnia:
+            //
+            // Payment
+            // -> Order
+            // -> Restaurant
+            // =========================================
+
+            'filters[order][restaurant][documentId][$eq]':
+              params.restaurantDocumentId,
+
+            // =========================================
+            // PAYMENT STATUS
+            // =========================================
 
             'filters[statusPayment][$eq]':
               params.statusPayment,
 
+            // =========================================
+            // METHOD
+            // =========================================
+
             'filters[method][$eq]':
               params.method,
+
+            // =========================================
+            // PAID DATE RANGE
+            // =========================================
+
+            'filters[paidAt][$gte]':
+              params.paidFrom,
+
+            'filters[paidAt][$lte]':
+              params.paidTo,
           },
         }
       );
@@ -63,7 +102,8 @@ export const paymentService = {
   // ===================================================
 
   async findOne(
-    documentId: string
+    documentId:
+      string
   ): Promise<PaymentResponse> {
     const response =
       await api.get<PaymentResponse>(
@@ -72,8 +112,11 @@ export const paymentService = {
         )}`,
         {
           params: {
+            status:
+              'draft',
+
             populate:
-              'order',
+              '*',
           },
         }
       );
@@ -83,6 +126,8 @@ export const paymentService = {
 
   // ===================================================
   // CREATE
+  //
+  // POST /api/payments
   // ===================================================
 
   async create(
@@ -98,7 +143,7 @@ export const paymentService = {
         {
           params: {
             populate:
-              'order',
+              '*',
           },
         }
       );
@@ -107,23 +152,36 @@ export const paymentService = {
   },
 
   // ===================================================
-  // UPDATE PARCIAL
-  // PATCH PERSONALIZADO
+  // UPDATE
+  //
+  // Payment no tiene PATCH personalizado.
+  //
+  // Usamos PUT nativo.
   // ===================================================
 
   async update(
-    documentId: string,
+    documentId:
+      string,
 
     data:
       UpdatePaymentData
   ): Promise<PaymentResponse> {
     const response =
-      await api.patch<PaymentResponse>(
+      await api.put<PaymentResponse>(
         `${PAYMENT_URL}/${encodeURIComponent(
           documentId
         )}`,
         {
           data,
+        },
+        {
+          params: {
+            status:
+              'draft',
+
+            populate:
+              '*',
+          },
         }
       );
 
@@ -135,7 +193,8 @@ export const paymentService = {
   // ===================================================
 
   async remove(
-    documentId: string
+    documentId:
+      string
   ): Promise<void> {
     await api.delete(
       `${PAYMENT_URL}/${encodeURIComponent(

@@ -1,4 +1,4 @@
-// components/restaurant/RestaurantProductCard.tsx
+// components/restaurant/PublicationCard.tsx
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -14,25 +14,29 @@ import {
 } from '@/services/api';
 
 import type {
-  Product,
-  ProductMedia,
-} from '@/types/product.types';
+  Publication,
+  PublicationImage,
+} from '@/types/publication.types';
 
-interface RestaurantProductCardProps {
-  product:
-    Product;
+interface PublicationCardProps {
+  publication:
+    Publication;
 
-  onEdit: (
-    product: Product
-  ) => void;
+  onEdit:
+    (
+      publication:
+        Publication
+    ) => void;
 
-  onDelete: (
-    product: Product
-  ) => void;
+  onDelete:
+    (
+      publication:
+        Publication
+    ) => void;
 }
 
 // =====================================================
-// URL
+// IMAGE
 // =====================================================
 
 function getAbsoluteUrl(
@@ -75,59 +79,87 @@ function getAbsoluteUrl(
   }`;
 }
 
-// =====================================================
-// MEDIA URL
-// =====================================================
-
-function getMediaUrl(
-  media?:
-    | ProductMedia
+function getImageUrl(
+  image?:
+    | PublicationImage
     | null
 ): string | null {
-  if (!media) {
+  if (!image) {
     return null;
   }
 
-  const preferredUrl =
-    media.formats
-      ?.small
-      ?.url ??
-    media.formats
+  return getAbsoluteUrl(
+    image.formats
       ?.thumbnail
       ?.url ??
-    media.url ??
-    null;
-
-  return getAbsoluteUrl(
-    preferredUrl
+    image.formats
+      ?.small
+      ?.url ??
+    image.url ??
+    null
   );
 }
 
-export default function RestaurantProductCard({
-  product,
-  onEdit,
-  onDelete,
-}: RestaurantProductCardProps) {
-  const media =
-    product.mainImage ??
-    product.gallery?.[0] ??
-    null;
+// =====================================================
+// DATE
+// =====================================================
 
-  const imageUrl =
-    getMediaUrl(
-      media
+function formatDate(
+  value?:
+    string
+): string {
+  if (!value) {
+    return '';
+  }
+
+  const date =
+    new Date(
+      value
     );
 
-  const stock =
-    product.stock ??
-    0;
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return '';
+  }
+
+  return date.toLocaleDateString(
+    'es-BO',
+    {
+      day:
+        '2-digit',
+
+      month:
+        'short',
+
+      year:
+        'numeric',
+    }
+  );
+}
+
+// =====================================================
+// COMPONENT
+// =====================================================
+
+export default function PublicationCard({
+  publication,
+  onEdit,
+  onDelete,
+}: PublicationCardProps) {
+  const imageUrl =
+    getImageUrl(
+      publication.image
+    );
 
   return (
     <View
       className="
         rounded-3xl
         border
-        border-[#E7EAE1]
+        border-[#E6E9E0]
         bg-white
         p-3
       "
@@ -171,7 +203,7 @@ export default function RestaurantProductCard({
               <Ionicons
                 name="image-outline"
                 size={29}
-                color="#7B9646"
+                color="#78934A"
               />
 
               <Text
@@ -179,7 +211,7 @@ export default function RestaurantProductCard({
                   mt-1
                   text-[10px]
                   font-semibold
-                  text-[#7B9646]
+                  text-[#78934A]
                 "
               >
                 Sin imagen
@@ -203,81 +235,60 @@ export default function RestaurantProductCard({
               justify-between
             "
           >
-            <View
+            <Text
+              numberOfLines={2}
               className="
                 flex-1
                 pr-2
+                text-base
+                font-extrabold
+                text-[#171A15]
               "
             >
-              <Text
-                numberOfLines={2}
+              {publication.title}
+            </Text>
+
+            {publication.featured ? (
+              <View
                 className="
-                  text-base
-                  font-extrabold
-                  text-[#171A15]
+                  flex-row
+                  items-center
+                  rounded-full
+                  bg-[#FFF0DD]
+                  px-2.5
+                  py-1
                 "
               >
-                {product.name}
-              </Text>
+                <Ionicons
+                  name="star"
+                  size={12}
+                  color="#D47A24"
+                />
 
-              <Text
-                className="
-                  mt-1
-                  text-lg
-                  font-extrabold
-                  text-[#6F8C3E]
-                "
-              >
-                Bs{' '}
-                {Number(
-                  product.price
-                ).toFixed(
-                  2
-                )}
-              </Text>
-            </View>
-
-            <View
-              className={`
-                rounded-full
-                px-2.5
-                py-1
-                ${
-                  product.isAvailable
-                    ? 'bg-[#EEF3E3]'
-                    : 'bg-[#FBECEA]'
-                }
-              `}
-            >
-              <Text
-                className={`
-                  text-xs
-                  font-bold
-                  ${
-                    product.isAvailable
-                      ? 'text-[#607B35]'
-                      : 'text-[#A95249]'
-                  }
-                `}
-              >
-                {product.isAvailable
-                  ? 'Disponible'
-                  : 'No disponible'}
-              </Text>
-            </View>
+                <Text
+                  className="
+                    ml-1
+                    text-[10px]
+                    font-bold
+                    text-[#B86216]
+                  "
+                >
+                  Destacada
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <Text
-            numberOfLines={2}
+            numberOfLines={3}
             className="
               mt-2
               text-sm
               leading-5
-              text-[#7B8175]
+              text-[#747B6D]
             "
           >
-            {product.description ||
-              'Sin descripción'}
+            {publication.description}
           </Text>
 
           <View
@@ -288,55 +299,23 @@ export default function RestaurantProductCard({
             "
           >
             <Ionicons
-              name="cube-outline"
-              size={15}
-              color="#777D71"
+              name="calendar-outline"
+              size={14}
+              color="#8A9084"
             />
 
             <Text
               className="
-                ml-1
+                ml-1.5
                 text-xs
-                font-semibold
-                text-[#777D71]
+                text-[#8A9084]
               "
             >
-              Stock:{' '}
-              {stock}
+              {formatDate(
+                publication.updatedAt
+              )}
             </Text>
           </View>
-
-          {product.gallery
-            ?.length >
-          0 ? (
-            <View
-              className="
-                mt-2
-                flex-row
-                items-center
-              "
-            >
-              <Ionicons
-                name="images-outline"
-                size={15}
-                color="#777D71"
-              />
-
-              <Text
-                className="
-                  ml-1
-                  text-xs
-                  text-[#777D71]
-                "
-              >
-                {product.gallery.length}{' '}
-                {product.gallery.length ===
-                1
-                  ? 'imagen en galería'
-                  : 'imágenes en galería'}
-              </Text>
-            </View>
-          ) : null}
         </View>
       </View>
 
@@ -352,7 +331,7 @@ export default function RestaurantProductCard({
         <Pressable
           onPress={() =>
             onEdit(
-              product
+              publication
             )
           }
           className="
@@ -367,7 +346,7 @@ export default function RestaurantProductCard({
         >
           <Ionicons
             name="create-outline"
-            size={19}
+            size={18}
             color="#607B35"
           />
 
@@ -385,7 +364,7 @@ export default function RestaurantProductCard({
         <Pressable
           onPress={() =>
             onDelete(
-              product
+              publication
             )
           }
           className="

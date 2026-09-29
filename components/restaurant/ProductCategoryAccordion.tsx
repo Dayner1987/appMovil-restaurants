@@ -19,24 +19,19 @@ import type {
 import RestaurantProductCard from './RestaurantProductCard';
 
 interface ProductCategoryAccordionProps {
-  title:
-    string;
+  title: string;
 
-  products:
-    Product[];
+  products: Product[];
 
-  defaultOpen?:
-    boolean;
+  defaultOpen?: boolean;
 
-  onEdit:
-    (
-      product: Product
-    ) => void;
+  onEdit: (
+    product: Product
+  ) => void;
 
-  onDelete:
-    (
-      product: Product
-    ) => void;
+  onDelete: (
+    product: Product
+  ) => void;
 }
 
 export default function ProductCategoryAccordion({
@@ -54,6 +49,16 @@ export default function ProductCategoryAccordion({
       defaultOpen
     );
 
+  const handleToggle =
+    () => {
+      setOpen(
+        (
+          current
+        ) =>
+          !current
+      );
+    };
+
   return (
     <View
       className="
@@ -62,15 +67,20 @@ export default function ProductCategoryAccordion({
         bg-white
       "
     >
+      {/* ===================================================
+          HEADER DE CATEGORÍA
+      =================================================== */}
+
       <Pressable
-        onPress={() =>
-          setOpen(
-            (
-              current
-            ) =>
-              !current
-          )
+        onPress={
+          handleToggle
         }
+        accessibilityRole="button"
+        accessibilityLabel={`${
+          open
+            ? 'Cerrar'
+            : 'Abrir'
+        } categoría ${title}`}
         className="
           flex-row
           items-center
@@ -102,6 +112,7 @@ export default function ProductCategoryAccordion({
           "
         >
           <Text
+            numberOfLines={1}
             className="
               text-base
               font-extrabold
@@ -126,16 +137,32 @@ export default function ProductCategoryAccordion({
           </Text>
         </View>
 
-        <Ionicons
-          name={
-            open
-              ? 'chevron-up-outline'
-              : 'chevron-down-outline'
-          }
-          size={21}
-          color="#777D71"
-        />
+        <View
+          className="
+            ml-3
+            h-9
+            w-9
+            items-center
+            justify-center
+            rounded-full
+            bg-[#F2F3EE]
+          "
+        >
+          <Ionicons
+            name={
+              open
+                ? 'chevron-up-outline'
+                : 'chevron-down-outline'
+            }
+            size={20}
+            color="#777D71"
+          />
+        </View>
       </Pressable>
+
+      {/* ===================================================
+          PRODUCTOS
+      =================================================== */}
 
       {open ? (
         <View
@@ -179,21 +206,33 @@ export default function ProductCategoryAccordion({
                 py-8
               "
             >
-              <Ionicons
-                name="cube-outline"
-                size={28}
-                color="#A2A79C"
-              />
+              <View
+                className="
+                  h-14
+                  w-14
+                  items-center
+                  justify-center
+                  rounded-2xl
+                  bg-[#F2F3EE]
+                "
+              >
+                <Ionicons
+                  name="cube-outline"
+                  size={27}
+                  color="#A2A79C"
+                />
+              </View>
 
               <Text
                 className="
-                  mt-2
+                  mt-3
+                  text-center
                   text-sm
+                  font-semibold
                   text-[#858B80]
                 "
               >
-                No hay productos en
-                esta categoría.
+                No hay productos en esta categoría.
               </Text>
             </View>
           )}

@@ -15,51 +15,6 @@ import type {
 const ORDER_URL =
   '/api/orders';
 
-// =====================================================
-// GENERAR CÓDIGO
-// =====================================================
-
-function generateOrderCode():
-  string {
-  const date =
-    new Date();
-
-  const year =
-    String(
-      date.getFullYear()
-    ).slice(-2);
-
-  const month =
-    String(
-      date.getMonth() +
-        1
-    ).padStart(
-      2,
-      '0'
-    );
-
-  const day =
-    String(
-      date.getDate()
-    ).padStart(
-      2,
-      '0'
-    );
-
-  const random =
-    Math.floor(
-      1000 +
-        Math.random() *
-          9000
-    );
-
-  return `ORD-${year}${month}${day}-${random}`;
-}
-
-// =====================================================
-// SERVICE
-// =====================================================
-
 export const orderService = {
   // ===================================================
   // GET ALL
@@ -74,6 +29,9 @@ export const orderService = {
         ORDER_URL,
         {
           params: {
+            status:
+              'draft',
+
             populate:
               '*',
 
@@ -86,7 +44,8 @@ export const orderService = {
               25,
 
             sort:
-              params.sort,
+              params.sort ??
+              'orderedAt:desc',
 
             'filters[orderCode][$containsi]':
               params.orderCode,
@@ -100,11 +59,43 @@ export const orderService = {
             'filters[paymentStatus][$eq]':
               params.paymentStatus,
 
-            'filters[restaurant][id][$eq]':
-              params.restaurantId,
+            // =========================================
+            // RESTAURANT
+            //
+            // API comprobada:
+            //
+            // filters[restaurant][documentId][$eq]
+            // =========================================
+
+            'filters[restaurant][documentId][$eq]':
+              params.restaurantDocumentId,
+
+            // =========================================
+            // USERS
+            // =========================================
 
             'filters[users][id][$eq]':
               params.userId,
+
+            // =========================================
+            // ORDERED DATE RANGE
+            // =========================================
+
+            'filters[orderedAt][$gte]':
+              params.orderedFrom,
+
+            'filters[orderedAt][$lte]':
+              params.orderedTo,
+
+            // =========================================
+            // COMPLETE DATE RANGE
+            // =========================================
+
+            'filters[completeAt][$gte]':
+              params.completedFrom,
+
+            'filters[completeAt][$lte]':
+              params.completedTo,
           },
         }
       );
@@ -117,7 +108,8 @@ export const orderService = {
   // ===================================================
 
   async findOne(
-    documentId: string
+    documentId:
+      string
   ): Promise<OrderResponse> {
     const response =
       await api.get<OrderResponse>(
@@ -126,6 +118,9 @@ export const orderService = {
         )}`,
         {
           params: {
+            status:
+              'draft',
+
             populate:
               '*',
           },
@@ -137,6 +132,14 @@ export const orderService = {
 
   // ===================================================
   // CREATE
+  //
+  // POST /api/orders
+  //
+  // IMPORTANTE:
+  // No mandamos status=draft aquí.
+  //
+  // Dejamos el comportamiento nativo que ya
+  // comprobaste en Insomnia.
   // ===================================================
 
   async create(
@@ -147,26 +150,7 @@ export const orderService = {
       await api.post<OrderResponse>(
         ORDER_URL,
         {
-          data: {
-            ...data,
-
-            orderCode:
-              generateOrderCode(),
-
-            statusOrder:
-              'PENDING',
-
-            paymentStatus:
-              'PENDING',
-
-            discount:
-              data.discount ??
-              0,
-
-            orderedAt:
-              new Date()
-                .toISOString(),
-          },
+          data,
         },
         {
           params: {
@@ -180,14 +164,16 @@ export const orderService = {
   },
 
   // ===================================================
-  // UPDATE PARCIAL
   // PATCH PERSONALIZADO
   //
   // PATCH /api/orders/:documentId
+  //
+  // Esta es tu ruta custom.
   // ===================================================
 
-  async update(
-    documentId: string,
+  async patch(
+    documentId:
+      string,
 
     data:
       UpdateOrderData
@@ -199,6 +185,15 @@ export const orderService = {
         )}`,
         {
           data,
+        },
+        {
+          params: {
+            status:
+              'draft',
+
+            populate:
+              '*',
+          },
         }
       );
 
@@ -210,7 +205,8 @@ export const orderService = {
   // ===================================================
 
   async remove(
-    documentId: string
+    documentId:
+      string
   ): Promise<void> {
     await api.delete(
       `${ORDER_URL}/${encodeURIComponent(
@@ -218,6 +214,4 @@ export const orderService = {
       )}`
     );
   },
-
-  
 };

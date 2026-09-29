@@ -29,8 +29,11 @@ export const orderItemService = {
         ORDER_ITEM_URL,
         {
           params: {
+            status:
+              'draft',
+
             populate:
-              'order,product',
+              '*',
 
             'pagination[page]':
               params.page ??
@@ -38,16 +41,25 @@ export const orderItemService = {
 
             'pagination[pageSize]':
               params.pageSize ??
-              25,
+              100,
 
             sort:
-              params.sort,
+              params.sort ??
+              'createdAt:asc',
 
-            'filters[order][id][$eq]':
-              params.orderId,
+            // =========================================
+            // ORDER
+            // =========================================
 
-            'filters[product][id][$eq]':
-              params.productId,
+            'filters[order][documentId][$eq]':
+              params.orderDocumentId,
+
+            // =========================================
+            // PRODUCT
+            // =========================================
+
+            'filters[product][documentId][$eq]':
+              params.productDocumentId,
           },
         }
       );
@@ -60,7 +72,8 @@ export const orderItemService = {
   // ===================================================
 
   async findOne(
-    documentId: string
+    documentId:
+      string
   ): Promise<OrderItemResponse> {
     const response =
       await api.get<OrderItemResponse>(
@@ -69,8 +82,11 @@ export const orderItemService = {
         )}`,
         {
           params: {
+            status:
+              'draft',
+
             populate:
-              'order,product',
+              '*',
           },
         }
       );
@@ -80,6 +96,8 @@ export const orderItemService = {
 
   // ===================================================
   // CREATE
+  //
+  // POST /api/order-items
   // ===================================================
 
   async create(
@@ -95,7 +113,7 @@ export const orderItemService = {
         {
           params: {
             populate:
-              'order,product',
+              '*',
           },
         }
       );
@@ -104,23 +122,36 @@ export const orderItemService = {
   },
 
   // ===================================================
-  // UPDATE PARCIAL
-  // PATCH PERSONALIZADO
+  // UPDATE
+  //
+  // OrderItem no tiene PATCH custom.
+  //
+  // Usamos PUT nativo de Strapi.
   // ===================================================
 
   async update(
-    documentId: string,
+    documentId:
+      string,
 
     data:
       UpdateOrderItemData
   ): Promise<OrderItemResponse> {
     const response =
-      await api.patch<OrderItemResponse>(
+      await api.put<OrderItemResponse>(
         `${ORDER_ITEM_URL}/${encodeURIComponent(
           documentId
         )}`,
         {
           data,
+        },
+        {
+          params: {
+            status:
+              'draft',
+
+            populate:
+              '*',
+          },
         }
       );
 
@@ -132,7 +163,8 @@ export const orderItemService = {
   // ===================================================
 
   async remove(
-    documentId: string
+    documentId:
+      string
   ): Promise<void> {
     await api.delete(
       `${ORDER_ITEM_URL}/${encodeURIComponent(

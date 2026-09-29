@@ -1,7 +1,40 @@
 // types/publication.types.ts
 
+// =====================================================
+// MEDIA FORMAT
+// =====================================================
+
+export interface PublicationImageFormat {
+  name?: string;
+
+  hash?: string;
+
+  ext?: string;
+
+  mime?: string;
+
+  path?:
+    | string
+    | null;
+
+  width?: number;
+
+  height?: number;
+
+  size?: number;
+
+  sizeInBytes?: number;
+
+  url?: string;
+}
+
+// =====================================================
+// IMAGE
+// =====================================================
+
 export interface PublicationImage {
   id: number;
+
   documentId?: string;
 
   name?: string;
@@ -16,16 +49,71 @@ export interface PublicationImage {
     | string
     | null;
 
-  width?: number | null;
-  height?: number | null;
+  width?:
+    | number
+    | null;
 
-  mime?: string | null;
+  height?:
+    | number
+    | null;
 
-  size?: number | null;
+  mime?:
+    | string
+    | null;
+
+  size?:
+    | number
+    | null;
+
+  formats?: {
+    thumbnail?:
+      PublicationImageFormat;
+
+    small?:
+      PublicationImageFormat;
+
+    medium?:
+      PublicationImageFormat;
+
+    large?:
+      PublicationImageFormat;
+  } | null;
 
   createdAt?: string;
+
   updatedAt?: string;
+
+  publishedAt?:
+    | string
+    | null;
 }
+
+// =====================================================
+// IMAGE UPLOAD
+// =====================================================
+
+export interface PublicationImageUpload {
+  uri: string;
+
+  fileName?: string;
+
+  mimeType?: string;
+
+  /**
+   * Expo Web puede entregar
+   * directamente el File.
+   *
+   * Android/iOS normalmente
+   * no lo necesitan.
+   */
+  file?:
+    File
+    | null;
+}
+
+// =====================================================
+// RESTAURANT
+// =====================================================
 
 export interface PublicationRestaurant {
   id: number;
@@ -33,6 +121,32 @@ export interface PublicationRestaurant {
   documentId?: string;
 
   name?: string;
+
+  slug?:
+    | string
+    | null;
+
+  description?:
+    | string
+    | null;
+
+  email?: string;
+
+  address?:
+    | string
+    | null;
+
+  phone?:
+    | string
+    | null;
+
+  nit?:
+    | string
+    | null;
+
+  statusRes?:
+    | string
+    | null;
 }
 
 // =====================================================
@@ -82,18 +196,24 @@ export interface CreatePublicationData {
     | boolean
     | null;
 
+  /**
+   * Para nuestro flujo usamos
+   * documentId del Restaurant.
+   */
   restaurant?:
     | number
     | string
     | null;
 
-  /*
-   * Se mantiene por compatibilidad con
-   * el endpoint nativo de Strapi.
+  /**
+   * Se conserva por compatibilidad
+   * con Strapi.
    *
-   * Las imágenes normalmente las
-   * manejaremos con los endpoints
-   * personalizados.
+   * Normalmente las imágenes se
+   * manejan con los endpoints:
+   *
+   * POST  /image
+   * PATCH /image
    */
   image?:
     | number
@@ -108,7 +228,7 @@ export type UpdatePublicationData =
   Partial<CreatePublicationData>;
 
 // =====================================================
-// PAGINACIÓN
+// PAGINATION
 // =====================================================
 
 export interface PublicationPagination {
@@ -122,7 +242,8 @@ export interface PublicationPagination {
 }
 
 export interface PublicationListResponse {
-  data: Publication[];
+  data:
+    Publication[];
 
   meta: {
     pagination:
@@ -131,7 +252,8 @@ export interface PublicationListResponse {
 }
 
 export interface PublicationResponse {
-  data: Publication;
+  data:
+    Publication;
 
   meta?: Record<
     string,
@@ -140,11 +262,12 @@ export interface PublicationResponse {
 }
 
 // =====================================================
-// RESPUESTA DE IMAGEN
+// IMAGE RESPONSE
 // =====================================================
 
 export interface PublicationImageResponse {
-  data: Publication;
+  data:
+    Publication;
 
   message?: string;
 }
@@ -162,9 +285,12 @@ export interface PublicationQueryParams {
     | string
     | string[];
 
-  restaurantId?:
-    | number
-    | string;
+  /**
+   * IMPORTANTE:
+   * usamos documentId y NO id numérico.
+   */
+  restaurantDocumentId?:
+    string;
 
   featured?: boolean;
 

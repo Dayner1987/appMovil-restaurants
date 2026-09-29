@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   Switch,
   Text,
@@ -24,34 +25,28 @@ import {
 
 import Toast from 'react-native-toast-message';
 
+import {
+  api,
+} from '@/services/api';
+
 import type {
   Category,
 } from '@/types/category.types';
 
 import type {
   ProductImageUpload,
+  ProductMedia,
 } from '@/types/product.types';
 
 import CreateCategoryModal from './CreateCategoryModal';
 
 export interface ProductFormValues {
-  name:
-    string;
-
-  description:
-    string;
-
-  price:
-    string;
-
-  stock:
-    string;
-
-  categoryDocumentId:
-    string;
-
-  isAvailable:
-    boolean;
+  name: string;
+  description: string;
+  price: string;
+  stock: string;
+  categoryDocumentId: string;
+  isAvailable: boolean;
 }
 
 interface ProductFormProps {
@@ -67,6 +62,12 @@ interface ProductFormProps {
   currentImageUrl?:
     | string
     | null;
+
+  galleryImages?:
+    ProductImageUpload[];
+
+  currentGallery?:
+    ProductMedia[];
 
   saving?:
     boolean;
@@ -90,6 +91,12 @@ interface ProductFormProps {
         | null
     ) => void;
 
+  onGalleryImagesChange?:
+    (
+      images:
+        ProductImageUpload[]
+    ) => void;
+
   onCreateCategory:
     (
       name: string
@@ -98,22 +105,84 @@ interface ProductFormProps {
   onDeleteCurrentImage?:
     () => Promise<void>;
 
+  onDeleteCurrentGalleryImage?:
+    (
+      image:
+        ProductMedia
+    ) => Promise<void>;
+
   onSubmit:
     () => Promise<void>;
+}
+
+// =====================================================
+// URL ABSOLUTA
+// =====================================================
+
+function getAbsoluteUrl(
+  url?:
+    | string
+    | null
+): string | null {
+  if (!url) {
+    return null;
+  }
+
+  if (
+    url.startsWith(
+      'http://'
+    ) ||
+    url.startsWith(
+      'https://'
+    )
+  ) {
+    return url;
+  }
+
+  const baseUrl =
+    String(
+      api.defaults.baseURL ??
+      ''
+    ).replace(
+      /\/$/,
+      ''
+    );
+
+  if (!baseUrl) {
+    return null;
+  }
+
+  return `${baseUrl}${
+    url.startsWith('/')
+      ? url
+      : `/${url}`
+  }`;
 }
 
 export default function ProductForm({
   values,
   categories,
+
   image,
   currentImageUrl,
+
+  galleryImages = [],
+  currentGallery = [],
+
   saving = false,
   categorySaving = false,
+
   submitLabel,
+
   onChange,
   onImageChange,
+  onGalleryImagesChange,
+
   onCreateCategory,
+
   onDeleteCurrentImage,
+  onDeleteCurrentGalleryImage,
+
   onSubmit,
 }: ProductFormProps) {
   const [
@@ -128,10 +197,22 @@ export default function ProductForm({
   ] =
     useState(false);
 
+  const [
+    deletingGalleryId,
+    setDeletingGalleryId,
+  ] =
+    useState<
+      number | null
+    >(null);
+
   const previewUri =
     image?.uri ??
     currentImageUrl ??
     null;
+
+  // =====================================================
+  // FORM
+  // =====================================================
 
   const updateField =
     <
@@ -148,8 +229,19 @@ export default function ProductForm({
       });
     };
 
-  const selectImage =
+  // =====================================================
+  // PERMISOS
+  // =====================================================
+
+  const requestImagePermission =
     async () => {
+      if (
+        Platform.OS ===
+        'web'
+      ) {
+        return true;
+      }
+
       const permission =
         await ImagePicker
           .requestMediaLibraryPermissionsAsync();
@@ -166,34 +258,54 @@ export default function ProductForm({
 
           text2:
             'Debes permitir el acceso a tus imágenes.',
+
+          position:
+            'bottom',
         });
 
+        return false;
+      }
+
+      return true;
+    };
+
+  // =====================================================
+  // IMAGEN PRINCIPAL
+  // =====================================================
+
+  const selectImage =
+    async () => {
+      const hasPermission =
+        await requestImagePermission();
+
+      if (
+        !hasPermission
+      ) {
         return;
       }
 
       const result =
         await ImagePicker
           .launchImageLibraryAsync({
-            mediaTypes:
-              [
-                'images',
-              ],
+            mediaTypes: [
+              'images',
+            ],
 
             allowsEditing:
               true,
 
-            aspect:
-              [
-                1,
-                1,
-              ],
+            aspect: [
+              1,
+              1,
+            ],
 
             quality:
               0.85,
           });
 
       if (
-        result.canceled
+        result.canceled ||
+        !result.assets?.length
       ) {
         return;
       }
@@ -212,11 +324,20 @@ export default function ProductForm({
         mimeType:
           asset.mimeType ??
           'image/jpeg',
+
+        file:
+          asset.file ??
+          undefined,
       });
     };
 
   const handleDeleteImage =
     async () => {
+      /*
+       * Si acabamos de seleccionar una imagen
+       * pero todavía no fue guardada,
+       * solamente quitamos la selección.
+       */
       if (image) {
         onImageChange(
           null
@@ -243,6 +364,134 @@ export default function ProductForm({
         );
       }
     };
+
+  // =====================================================
+  // GALERÍA
+  // =====================================================
+
+  const selectGalleryImages =
+    async () => {
+      if (
+        !onGalleryImagesChange
+      ) {
+        return;
+      }
+
+      const hasPermission =
+        await requestImagePermission();
+
+      if (
+        !hasPermission
+      ) {
+        return;
+      }
+
+      const result =
+        await ImagePicker
+          .launchImageLibraryAsync({
+            mediaTypes: [
+              'images',
+            ],
+
+            allowsMultipleSelection:
+              true,
+
+            allowsEditing:
+              false,
+
+            quality:
+              0.85,
+          });
+
+      if (
+        result.canceled ||
+        !result.assets?.length
+      ) {
+        return;
+      }
+
+      const selectedImages:
+        ProductImageUpload[] =
+        result.assets.map(
+          (
+            asset,
+            index
+          ) => ({
+            uri:
+              asset.uri,
+
+            fileName:
+              asset.fileName ??
+              `product-gallery-${index + 1}.jpg`,
+
+            mimeType:
+              asset.mimeType ??
+              'image/jpeg',
+
+            file:
+              asset.file ??
+              undefined,
+          })
+        );
+
+      onGalleryImagesChange([
+        ...galleryImages,
+        ...selectedImages,
+      ]);
+    };
+
+  const removeSelectedGalleryImage =
+    (
+      index:
+        number
+    ) => {
+      if (
+        !onGalleryImagesChange
+      ) {
+        return;
+      }
+
+      onGalleryImagesChange(
+        galleryImages.filter(
+          (
+            _,
+            currentIndex
+          ) =>
+            currentIndex !==
+            index
+        )
+      );
+    };
+
+  const handleDeleteCurrentGalleryImage =
+    async (
+      media:
+        ProductMedia
+    ) => {
+      if (
+        !onDeleteCurrentGalleryImage
+      ) {
+        return;
+      }
+
+      setDeletingGalleryId(
+        media.id
+      );
+
+      try {
+        await onDeleteCurrentGalleryImage(
+          media
+        );
+      } finally {
+        setDeletingGalleryId(
+          null
+        );
+      }
+    };
+
+  // =====================================================
+  // CATEGORY
+  // =====================================================
 
   const handleCreateCategory =
     async (
@@ -271,6 +520,9 @@ export default function ProductForm({
 
         text2:
           newCategory.name,
+
+        position:
+          'bottom',
       });
     };
 
@@ -281,6 +533,10 @@ export default function ProductForm({
           gap-5
         "
       >
+        {/* =================================================
+            IMAGEN PRINCIPAL
+        ================================================= */}
+
         <View>
           <Text
             className="
@@ -290,12 +546,15 @@ export default function ProductForm({
               text-[#343A30]
             "
           >
-            Imagen del producto
+            Imagen principal
           </Text>
 
           <Pressable
-            onPress={
-              selectImage
+            onPress={() =>
+              void selectImage()
+            }
+            disabled={
+              saving
             }
             className="
               h-52
@@ -340,7 +599,7 @@ export default function ProductForm({
                     text-[#607B35]
                   "
                 >
-                  Seleccionar imagen
+                  Seleccionar imagen principal
                 </Text>
 
                 <Text
@@ -365,8 +624,11 @@ export default function ProductForm({
               "
             >
               <Pressable
-                onPress={
-                  selectImage
+                onPress={() =>
+                  void selectImage()
+                }
+                disabled={
+                  saving
                 }
                 className="
                   flex-1
@@ -400,7 +662,8 @@ export default function ProductForm({
                   void handleDeleteImage()
                 }
                 disabled={
-                  deletingImage
+                  deletingImage ||
+                  saving
                 }
                 className="
                   h-12
@@ -427,6 +690,335 @@ export default function ProductForm({
             </View>
           ) : null}
         </View>
+
+        {/* =================================================
+            GALERÍA
+        ================================================= */}
+
+        <View>
+          <View
+            className="
+              mb-2
+              flex-row
+              items-center
+              justify-between
+            "
+          >
+            <View
+              className="
+                flex-1
+                pr-3
+              "
+            >
+              <Text
+                className="
+                  text-sm
+                  font-bold
+                  text-[#343A30]
+                "
+              >
+                Galería
+              </Text>
+
+              <Text
+                className="
+                  mt-1
+                  text-xs
+                  text-[#858B80]
+                "
+              >
+                Puedes agregar varias imágenes adicionales.
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() =>
+                void selectGalleryImages()
+              }
+              disabled={
+                saving ||
+                !onGalleryImagesChange
+              }
+              className="
+                flex-row
+                items-center
+                rounded-xl
+                bg-[#EEF3E3]
+                px-3
+                py-2
+              "
+            >
+              <Ionicons
+                name="images-outline"
+                size={17}
+                color="#607B35"
+              />
+
+              <Text
+                className="
+                  ml-1.5
+                  text-xs
+                  font-bold
+                  text-[#607B35]
+                "
+              >
+                Agregar
+              </Text>
+            </Pressable>
+          </View>
+
+          {currentGallery.length ===
+            0 &&
+          galleryImages.length ===
+            0 ? (
+            <Pressable
+              onPress={() =>
+                void selectGalleryImages()
+              }
+              disabled={
+                saving ||
+                !onGalleryImagesChange
+              }
+              className="
+                items-center
+                justify-center
+                rounded-3xl
+                border
+                border-dashed
+                border-[#D5DACD]
+                bg-white
+                px-5
+                py-7
+              "
+            >
+              <Ionicons
+                name="images-outline"
+                size={30}
+                color="#8A9680"
+              />
+
+              <Text
+                className="
+                  mt-2
+                  text-sm
+                  font-bold
+                  text-[#65715C]
+                "
+              >
+                Agregar imágenes a la galería
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {/* IMÁGENES YA GUARDADAS */}
+
+          {currentGallery.length >
+          0 ? (
+            <View
+              className="
+                mt-3
+              "
+            >
+              <Text
+                className="
+                  mb-2
+                  text-xs
+                  font-bold
+                  text-[#777D71]
+                "
+              >
+                Imágenes guardadas
+              </Text>
+
+              <View
+                className="
+                  flex-row
+                  flex-wrap
+                  gap-2
+                "
+              >
+                {currentGallery.map(
+                  (
+                    media
+                  ) => {
+                    const url =
+                      getAbsoluteUrl(
+                        media.url
+                      );
+
+                    if (!url) {
+                      return null;
+                    }
+
+                    return (
+                      <View
+                        key={
+                          media.documentId ??
+                          String(
+                            media.id
+                          )
+                        }
+                        className="
+                          relative
+                          h-28
+                          w-[31%]
+                          overflow-hidden
+                          rounded-2xl
+                          bg-[#EEF3E3]
+                        "
+                      >
+                        <Image
+                          source={{
+                            uri:
+                              url,
+                          }}
+                          resizeMode="cover"
+                          className="
+                            h-full
+                            w-full
+                          "
+                        />
+
+                        {onDeleteCurrentGalleryImage ? (
+                          <Pressable
+                            onPress={() =>
+                              void handleDeleteCurrentGalleryImage(
+                                media
+                              )
+                            }
+                            disabled={
+                              deletingGalleryId ===
+                                media.id ||
+                              saving
+                            }
+                            className="
+                              absolute
+                              right-1.5
+                              top-1.5
+                              h-8
+                              w-8
+                              items-center
+                              justify-center
+                              rounded-full
+                              bg-white
+                            "
+                          >
+                            {deletingGalleryId ===
+                            media.id ? (
+                              <ActivityIndicator
+                                size="small"
+                                color="#B65D51"
+                              />
+                            ) : (
+                              <Ionicons
+                                name="trash-outline"
+                                size={16}
+                                color="#B65D51"
+                              />
+                            )}
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    );
+                  }
+                )}
+              </View>
+            </View>
+          ) : null}
+
+          {/* IMÁGENES NUEVAS */}
+
+          {galleryImages.length >
+          0 ? (
+            <View
+              className="
+                mt-3
+              "
+            >
+              <Text
+                className="
+                  mb-2
+                  text-xs
+                  font-bold
+                  text-[#777D71]
+                "
+              >
+                Nuevas imágenes
+              </Text>
+
+              <View
+                className="
+                  flex-row
+                  flex-wrap
+                  gap-2
+                "
+              >
+                {galleryImages.map(
+                  (
+                    galleryImage,
+                    index
+                  ) => (
+                    <View
+                      key={`${galleryImage.uri}-${index}`}
+                      className="
+                        relative
+                        h-28
+                        w-[31%]
+                        overflow-hidden
+                        rounded-2xl
+                        bg-[#EEF3E3]
+                      "
+                    >
+                      <Image
+                        source={{
+                          uri:
+                            galleryImage.uri,
+                        }}
+                        resizeMode="cover"
+                        className="
+                          h-full
+                          w-full
+                        "
+                      />
+
+                      <Pressable
+                        onPress={() =>
+                          removeSelectedGalleryImage(
+                            index
+                          )
+                        }
+                        disabled={
+                          saving
+                        }
+                        className="
+                          absolute
+                          right-1.5
+                          top-1.5
+                          h-8
+                          w-8
+                          items-center
+                          justify-center
+                          rounded-full
+                          bg-white
+                        "
+                      >
+                        <Ionicons
+                          name="close-outline"
+                          size={20}
+                          color="#B65D51"
+                        />
+                      </Pressable>
+                    </View>
+                  )
+                )}
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        {/* =================================================
+            NOMBRE
+        ================================================= */}
 
         <View>
           <Text
@@ -466,6 +1058,10 @@ export default function ProductForm({
             "
           />
         </View>
+
+        {/* =================================================
+            DESCRIPCIÓN
+        ================================================= */}
 
         <View>
           <Text
@@ -508,6 +1104,10 @@ export default function ProductForm({
             "
           />
         </View>
+
+        {/* =================================================
+            PRECIO / STOCK
+        ================================================= */}
 
         <View
           className="
@@ -604,6 +1204,10 @@ export default function ProductForm({
           </View>
         </View>
 
+        {/* =================================================
+            CATEGORÍA
+        ================================================= */}
+
         <View>
           <View
             className="
@@ -628,6 +1232,9 @@ export default function ProductForm({
                 setShowCategoryModal(
                   true
                 )
+              }
+              disabled={
+                saving
               }
               className="
                 flex-row
@@ -673,7 +1280,7 @@ export default function ProductForm({
                   'categoryDocumentId',
                   String(
                     value ??
-                      ''
+                    ''
                   )
                 )
               }
@@ -747,6 +1354,10 @@ export default function ProductForm({
           ) : null}
         </View>
 
+        {/* =================================================
+            DISPONIBLE
+        ================================================= */}
+
         <View
           className="
             flex-row
@@ -812,6 +1423,10 @@ export default function ProductForm({
           />
         </View>
 
+        {/* =================================================
+            SUBMIT
+        ================================================= */}
+
         <Pressable
           onPress={() =>
             void onSubmit()
@@ -819,15 +1434,19 @@ export default function ProductForm({
           disabled={
             saving
           }
-          className="
+          className={`
             mt-2
             flex-row
             items-center
             justify-center
             rounded-2xl
-            bg-[#6F8C3E]
             py-4
-          "
+            ${
+              saving
+                ? 'bg-[#9EAE82]'
+                : 'bg-[#6F8C3E]'
+            }
+          `}
         >
           {saving ? (
             <ActivityIndicator

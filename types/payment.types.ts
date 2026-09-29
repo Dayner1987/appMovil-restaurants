@@ -1,19 +1,20 @@
 // types/payment.types.ts
 
+// =====================================================
+// ENUMS
+// =====================================================
+
 export type PaymentMethod =
-  | 'QR'
   | 'CASH'
+  | 'QR'
   | 'CARD'
-  | 'TRANSFER'
-  | string;
+  | 'TRANSFER';
 
 export type PaymentStatus =
   | 'PENDING'
-  | 'PAID'
-  | 'FAILED'
-  | 'CANCELLED'
-  | 'REFUNDED'
-  | string;
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'REFUNDED';
 
 // =====================================================
 // RESTAURANT
@@ -28,15 +29,8 @@ export interface PaymentRestaurant {
 
   email?: string;
 
-  phone?: string | null;
-
-  logo?:
-    | {
-        id: number;
-        documentId?: string;
-        name?: string;
-        url?: string;
-      }
+  phone?:
+    | string
     | null;
 }
 
@@ -81,23 +75,38 @@ export interface PaymentOrder {
 
   orderCode?: string;
 
-  orderType?: string;
+  orderType?:
+    | string
+    | null;
 
-  statusOrder?: string;
+  statusOrder?:
+    | string
+    | null;
 
-  paymentStatus?: string;
+  paymentStatus?:
+    | string
+    | null;
 
   subtotal?: number;
 
-  discount?: number;
+  discount?:
+    | number
+    | null;
 
   total?: number;
+
+  orderedAt?: string;
+
+  completeAt?:
+    | string
+    | null;
 
   restaurant?:
     | PaymentRestaurant
     | null;
 
-  users?: PaymentUser[];
+  users?:
+    PaymentUser[];
 }
 
 // =====================================================
@@ -111,11 +120,26 @@ export interface Payment {
 
   amount: number;
 
+  /*
+   * En Strapi puede venir null.
+   */
   method:
-    PaymentMethod;
+    | PaymentMethod
+    | null;
 
+  /*
+   * Valores reales del backend:
+   *
+   * PENDING
+   * APPROVED
+   * REJECTED
+   * REFUNDED
+   *
+   * También puede venir null.
+   */
   statusPayment:
-    PaymentStatus;
+    | PaymentStatus
+    | null;
 
   transactionReference:
     | string
@@ -143,11 +167,13 @@ export interface Payment {
 export interface CreatePaymentData {
   amount: number;
 
-  method:
-    PaymentMethod;
+  method?:
+    | PaymentMethod
+    | null;
 
   statusPayment?:
-    PaymentStatus;
+    | PaymentStatus
+    | null;
 
   transactionReference?:
     | string
@@ -155,6 +181,10 @@ export interface CreatePaymentData {
 
   paidAt: string;
 
+  /*
+   * Normalmente enviaremos:
+   * Order.documentId
+   */
   order?:
     | number
     | string
@@ -169,7 +199,7 @@ export type UpdatePaymentData =
   Partial<CreatePaymentData>;
 
 // =====================================================
-// PAGINACIÓN
+// PAGINATION
 // =====================================================
 
 export interface PaymentPagination {
@@ -183,7 +213,8 @@ export interface PaymentPagination {
 }
 
 export interface PaymentListResponse {
-  data: Payment[];
+  data:
+    Payment[];
 
   meta: {
     pagination:
@@ -192,7 +223,8 @@ export interface PaymentListResponse {
 }
 
 export interface PaymentResponse {
-  data: Payment;
+  data:
+    Payment;
 
   meta?: Record<
     string,
@@ -213,13 +245,27 @@ export interface PaymentQueryParams {
     | string
     | string[];
 
-  orderId?:
-    | number
-    | string;
+  /*
+   * Payment -> Order
+   */
+  orderDocumentId?:
+    string;
+
+  /*
+   * Payment -> Order -> Restaurant
+   */
+  restaurantDocumentId?:
+    string;
 
   statusPayment?:
     PaymentStatus;
 
   method?:
     PaymentMethod;
+
+  paidFrom?:
+    string;
+
+  paidTo?:
+    string;
 }

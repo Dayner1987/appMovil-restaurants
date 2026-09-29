@@ -14,11 +14,14 @@ import {
 
 import {
   Pressable,
-  SafeAreaView,
   ScrollView,
   Text,
   View,
 } from 'react-native';
+
+import {
+  SafeAreaView,
+} from 'react-native-safe-area-context';
 
 import Toast from 'react-native-toast-message';
 
@@ -78,6 +81,14 @@ export default function CreateProductScreen() {
       null
     );
 
+  const [
+    galleryImages,
+    setGalleryImages,
+  ] =
+    useState<ProductImageUpload[]>(
+      []
+    );
+
   const {
     categories,
     saving,
@@ -85,35 +96,58 @@ export default function CreateProductScreen() {
 
     loadCategories,
     createCategory,
+
     createProduct,
+
     createMainImage,
+    addGalleryImages,
   } =
     useProduct({
       autoLoad: false,
     });
 
   // =====================================================
-  // CATEGORÍAS GLOBALES
+  // CATEGORÍAS
   // =====================================================
 
   useEffect(() => {
-    void loadCategories();
+    void loadCategories().catch(
+      () => {
+        Toast.show({
+          type:
+            'error',
+
+          text1:
+            'No se pudieron cargar las categorías',
+
+          text2:
+            'Intenta nuevamente.',
+
+          position:
+            'bottom',
+        });
+      }
+    );
   }, [
     loadCategories,
   ]);
 
-  // Seleccionamos la primera categoría automáticamente.
   useEffect(() => {
     if (
       !values.categoryDocumentId &&
       categories.length > 0
     ) {
-      setValues((current) => ({
-        ...current,
+      setValues(
+        (
+          current
+        ) => ({
+          ...current,
 
-        categoryDocumentId:
-          categories[0].documentId,
-      }));
+          categoryDocumentId:
+            categories[0]
+              .documentId,
+        })
+      );
     }
   }, [
     categories,
@@ -121,7 +155,7 @@ export default function CreateProductScreen() {
   ]);
 
   // =====================================================
-  // CREAR CATEGORÍA GLOBAL
+  // CREAR CATEGORÍA
   // =====================================================
 
   const handleCreateCategory =
@@ -130,7 +164,9 @@ export default function CreateProductScreen() {
     ) => {
       return createCategory({
         name,
-        isActive: true,
+
+        isActive:
+          true,
       });
     };
 
@@ -153,16 +189,25 @@ export default function CreateProductScreen() {
           values.stock
         );
 
+      // ===================================================
+      // VALIDACIONES
+      // ===================================================
+
       if (
         !restaurantDocumentId
       ) {
         Toast.show({
-          type: 'error',
+          type:
+            'error',
+
           text1:
             'Restaurante no disponible',
+
           text2:
             'No se pudo identificar el restaurante actual.',
-          position: 'bottom',
+
+          position:
+            'bottom',
         });
 
         return;
@@ -170,12 +215,17 @@ export default function CreateProductScreen() {
 
       if (!name) {
         Toast.show({
-          type: 'error',
+          type:
+            'error',
+
           text1:
             'Nombre requerido',
+
           text2:
             'Escribe el nombre del producto.',
-          position: 'bottom',
+
+          position:
+            'bottom',
         });
 
         return;
@@ -188,31 +238,46 @@ export default function CreateProductScreen() {
         price <= 0
       ) {
         Toast.show({
-          type: 'error',
+          type:
+            'error',
+
           text1:
             'Precio inválido',
+
           text2:
             'Ingresa un precio mayor a 0.',
-          position: 'bottom',
+
+          position:
+            'bottom',
         });
 
         return;
       }
 
       if (
-        !values.categoryDocumentId
+        !values
+          .categoryDocumentId
       ) {
         Toast.show({
-          type: 'error',
+          type:
+            'error',
+
           text1:
             'Selecciona una categoría',
+
           text2:
             'El producto debe pertenecer a una categoría.',
-          position: 'bottom',
+
+          position:
+            'bottom',
         });
 
         return;
       }
+
+      // ===================================================
+      // CREAR
+      // ===================================================
 
       try {
         const newProduct =
@@ -241,50 +306,152 @@ export default function CreateProductScreen() {
             isAvailable:
               values.isAvailable,
 
-            // AQUÍ SÍ va el documentId
-            // del restaurante.
             restaurant:
               restaurantDocumentId,
 
-            // La categoría es global,
-            // pero el producto se relaciona con ella.
             category:
-              values.categoryDocumentId,
+              values
+                .categoryDocumentId,
           });
 
+        const mediaErrors:
+          string[] = [];
+
+        // ===============================================
+        // IMAGEN PRINCIPAL
+        // ===============================================
+
         if (image) {
-          await createMainImage(
-            newProduct.documentId,
-            image
-          );
+          try {
+            await createMainImage(
+              newProduct
+                .documentId,
+              image
+            );
+          } catch {
+            mediaErrors.push(
+              'imagen principal'
+            );
+          }
         }
 
+        // ===============================================
+        // GALERÍA
+        // ===============================================
+
+        if (
+          galleryImages.length >
+          0
+        ) {
+          try {
+            await addGalleryImages(
+              newProduct
+                .documentId,
+              galleryImages
+            );
+          } catch {
+            mediaErrors.push(
+              'galería'
+            );
+          }
+        }
+
+        // ===============================================
+        // PARCIAL
+        // ===============================================
+
+        if (
+          mediaErrors.length >
+          0
+        ) {
+          Toast.show({
+            type:
+              'error',
+
+            text1:
+              'Producto creado parcialmente',
+
+            text2:
+              `El producto fue creado, pero no se pudo guardar: ${mediaErrors.join(
+                ' y '
+              )}.`,
+
+            position:
+              'bottom',
+
+            visibilityTime:
+              3500,
+          });
+
+          setTimeout(
+            () => {
+              router.back();
+            },
+            1500
+          );
+
+          return;
+        }
+
+        // ===============================================
+        // TODO CORRECTO
+        // ===============================================
+
         Toast.show({
-          type: 'success',
+          type:
+            'success',
+
           text1:
             'Producto creado',
+
           text2:
-            'El producto se agregó al catálogo.',
-          position: 'bottom',
+            image ||
+            galleryImages.length >
+              0
+              ? 'El producto y sus imágenes fueron guardados correctamente.'
+              : 'El producto se agregó correctamente al catálogo.',
+
+          position:
+            'bottom',
+
+          visibilityTime:
+            2500,
         });
 
-        router.back();
+        setTimeout(
+          () => {
+            router.back();
+          },
+          800
+        );
       } catch (
         requestError
       ) {
         Toast.show({
-          type: 'error',
+          type:
+            'error',
+
           text1:
             'No se pudo crear el producto',
+
           text2:
             requestError instanceof
               Error
               ? requestError.message
               : 'Intenta nuevamente.',
-          position: 'bottom',
+
+          position:
+            'bottom',
+
+          visibilityTime:
+            3500,
         });
       }
     };
+
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
     <SafeAreaView
@@ -292,7 +459,14 @@ export default function CreateProductScreen() {
         flex-1
         bg-[#F7F8F2]
       "
+      edges={[
+        'top',
+      ]}
     >
+      {/* =================================================
+          HEADER
+      ================================================= */}
+
       <View
         className="
           flex-row
@@ -307,6 +481,9 @@ export default function CreateProductScreen() {
         <Pressable
           onPress={() =>
             router.back()
+          }
+          disabled={
+            saving
           }
           className="
             h-11
@@ -341,6 +518,7 @@ export default function CreateProductScreen() {
           </Text>
 
           <Text
+            numberOfLines={1}
             className="
               mt-0.5
               text-xs
@@ -353,50 +531,77 @@ export default function CreateProductScreen() {
         </View>
       </View>
 
+      {/* =================================================
+          SCROLL
+      ================================================= */}
+
       <ScrollView
         className="flex-1"
-        contentContainerClassName="
-          grow
-          px-5
-          pb-20
-          pt-6
-        "
-        keyboardShouldPersistTaps="always"
+        showsVerticalScrollIndicator={
+          false
+        }
+        keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        nestedScrollEnabled
-        showsVerticalScrollIndicator
+        contentContainerStyle={{
+          paddingBottom:
+            160,
+        }}
       >
-        <ProductForm
-          values={
-            values
-          }
-          categories={
-            categories
-          }
-          image={
-            image
-          }
-          saving={
-            saving
-          }
-          categorySaving={
-            loadingCategories ||
-            saving
-          }
-          submitLabel="Crear producto"
-          onChange={
-            setValues
-          }
-          onImageChange={
-            setImage
-          }
-          onCreateCategory={
-            handleCreateCategory
-          }
-          onSubmit={
-            handleSubmit
-          }
-        />
+        <View
+          className="
+            px-5
+            pt-6
+          "
+        >
+          <ProductForm
+            values={
+              values
+            }
+
+            categories={
+              categories
+            }
+
+            image={
+              image
+            }
+
+            galleryImages={
+              galleryImages
+            }
+
+            saving={
+              saving
+            }
+
+            categorySaving={
+              loadingCategories ||
+              saving
+            }
+
+            submitLabel="Crear producto"
+
+            onChange={
+              setValues
+            }
+
+            onImageChange={
+              setImage
+            }
+
+            onGalleryImagesChange={
+              setGalleryImages
+            }
+
+            onCreateCategory={
+              handleCreateCategory
+            }
+
+            onSubmit={
+              handleSubmit
+            }
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

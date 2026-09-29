@@ -1,5 +1,15 @@
 // types/order-item.types.ts
 
+import type {
+  OrderPaymentStatus,
+  OrderStatus,
+  OrderType,
+} from './orders.types';
+
+// =====================================================
+// ORDER
+// =====================================================
+
 export interface OrderItemOrder {
   id: number;
 
@@ -7,18 +17,50 @@ export interface OrderItemOrder {
 
   orderCode?: string;
 
-  orderType?: string;
+  orderType?:
+    | OrderType
+    | null;
 
-  statusOrder?: string;
+  statusOrder?:
+    | OrderStatus
+    | null;
 
-  paymentStatus?: string;
+  paymentStatus?:
+    | OrderPaymentStatus
+    | null;
 
   subtotal?: number;
 
-  discount?: number;
+  discount?:
+    | number
+    | null;
 
   total?: number;
+
+  orderedAt?: string;
+
+  completeAt?:
+    | string
+    | null;
 }
+
+// =====================================================
+// PRODUCT IMAGE
+// =====================================================
+
+export interface OrderItemProductImage {
+  id: number;
+
+  documentId?: string;
+
+  name?: string;
+
+  url?: string;
+}
+
+// =====================================================
+// PRODUCT
+// =====================================================
 
 export interface OrderItemProduct {
   id: number;
@@ -27,7 +69,9 @@ export interface OrderItemProduct {
 
   name?: string;
 
-  slug?: string | null;
+  slug?:
+    | string
+    | null;
 
   description?:
     | string
@@ -42,12 +86,7 @@ export interface OrderItemProduct {
   isAvailable?: boolean;
 
   mainImage?:
-    | {
-        id: number;
-        documentId?: string;
-        url?: string;
-        name?: string;
-      }
+    | OrderItemProductImage
     | null;
 }
 
@@ -60,16 +99,36 @@ export interface OrderItem {
 
   documentId: string;
 
+  /**
+   * Required en Strapi.
+   */
   quantity: number;
 
+  /**
+   * Required en Strapi.
+   *
+   * Este precio debe conservar el precio
+   * utilizado al momento de realizar la orden.
+   */
   unitPrice: number;
 
-  discount: number;
+  /**
+   * No es required en Strapi.
+   */
+  discount:
+    | number
+    | null;
 
+  /**
+   * Required en Strapi.
+   */
   subtotal: number;
 
-  /*
-   * Nombre histórico del producto vendido.
+  /**
+   * Nombre histórico del producto.
+   *
+   * Nos permite conservar el nombre aunque
+   * Product cambie posteriormente.
    */
   productName:
     | string
@@ -101,7 +160,9 @@ export interface CreateOrderItemData {
 
   unitPrice: number;
 
-  discount?: number;
+  discount?:
+    | number
+    | null;
 
   subtotal: number;
 
@@ -109,11 +170,19 @@ export interface CreateOrderItemData {
     | string
     | null;
 
+  /**
+   * Normalmente enviaremos:
+   * Order.documentId
+   */
   order?:
     | number
     | string
     | null;
 
+  /**
+   * Normalmente enviaremos:
+   * Product.documentId
+   */
   product?:
     | number
     | string
@@ -128,7 +197,7 @@ export type UpdateOrderItemData =
   Partial<CreateOrderItemData>;
 
 // =====================================================
-// PAGINACIÓN
+// PAGINATION
 // =====================================================
 
 export interface OrderItemPagination {
@@ -142,7 +211,8 @@ export interface OrderItemPagination {
 }
 
 export interface OrderItemListResponse {
-  data: OrderItem[];
+  data:
+    OrderItem[];
 
   meta: {
     pagination:
@@ -151,7 +221,8 @@ export interface OrderItemListResponse {
 }
 
 export interface OrderItemResponse {
-  data: OrderItem;
+  data:
+    OrderItem;
 
   meta?: Record<
     string,
@@ -172,11 +243,15 @@ export interface OrderItemQueryParams {
     | string
     | string[];
 
-  orderId?:
-    | number
-    | string;
+  /**
+   * documentId de Order.
+   */
+  orderDocumentId?:
+    string;
 
-  productId?:
-    | number
-    | string;
+  /**
+   * documentId de Product.
+   */
+  productDocumentId?:
+    string;
 }

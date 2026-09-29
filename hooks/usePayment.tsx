@@ -7,13 +7,19 @@ import {
   useState,
 } from 'react';
 
-import {
-  api,
-} from '@/services/api';
+import axios from 'axios';
 
 import {
   paymentService,
 } from '@/services/payment.service';
+
+import {
+  orderService,
+} from '@/services/order.service';
+
+import {
+  emitOrderChange,
+} from '@/hooks/useOrder';
 
 import type {
   CreatePaymentData,
@@ -24,6 +30,10 @@ import type {
   PaymentStatus,
   UpdatePaymentData,
 } from '@/types/payment.types';
+
+import type {
+  OrderPaymentStatus,
+} from '@/types/orders.types';
 
 // =====================================================
 // OPTIONS
@@ -38,15 +48,33 @@ interface UsePaymentOptions {
 }
 
 // =====================================================
-// CREAR PAGO DESDE UNA ORDEN
+// CREATE PAYMENT FROM ORDER
 // =====================================================
 
 export interface CreatePaymentFromOrderData {
-  order: PaymentOrder;
+  order:
+    PaymentOrder;
 
-  method: PaymentMethod;
+  method:
+    PaymentMethod;
 
-  statusPayment?: PaymentStatus;
+  /*
+   * Si no se manda,
+   * automáticamente se usa
+   * el saldo pendiente.
+   */
+  amount?: number;
+
+  /*
+   * Estados reales:
+   *
+   * PENDING
+   * APPROVED
+   * REJECTED
+   * REFUNDED
+   */
+  statusPayment?:
+    PaymentStatus;
 
   transactionReference?:
     | string
@@ -54,45 +82,96 @@ export interface CreatePaymentFromOrderData {
 }
 
 // =====================================================
-// RECIBO VIRTUAL
+// RECEIPT
 // =====================================================
 
 export interface VirtualReceipt {
-  paymentId: number;
+  paymentId:
+    number;
 
-  paymentDocumentId: string;
+  paymentDocumentId:
+    string;
 
-  orderCode: string;
+  orderCode:
+    string;
 
-  customerName: string;
+  customerName:
+    string;
 
-  customerEmail: string;
+  customerEmail:
+    string;
 
-  restaurantName: string;
+  restaurantName:
+    string;
 
-  restaurantLogo:
-    | string
+  amount:
+    number;
+
+  method:
+    | PaymentMethod
     | null;
 
-  amount: number;
-
-  method: string;
-
-  status: PaymentStatus;
+  status:
+    | PaymentStatus
+    | null;
 
   transactionReference:
     | string
     | null;
 
-  paidAt: string;
+  paidAt:
+    string;
 }
 
 // =====================================================
-// HELPERS
+// ERROR
+// =====================================================
+
+function getErrorMessage(
+  error:
+    unknown,
+
+  fallback:
+    string
+): string {
+  if (
+    axios.isAxiosError(
+      error
+    )
+  ) {
+    const data =
+      error.response
+        ?.data as
+        | {
+            error?: {
+              message?: string;
+            };
+
+            message?: string;
+          }
+        | undefined;
+
+    return (
+      data?.error
+        ?.message ??
+      data?.message ??
+      fallback
+    );
+  }
+
+  return error instanceof
+    Error
+    ? error.message
+    : fallback;
+}
+
+// =====================================================
+// MONEY
 // =====================================================
 
 function roundMoney(
-  value: number
+  value:
+    number
 ): number {
   if (
     !Number.isFinite(
@@ -106,9 +185,15 @@ function roundMoney(
     Math.max(
       value,
       0
-    ).toFixed(2)
+    ).toFixed(
+      2
+    )
   );
 }
+
+// =====================================================
+// TEXT
+// =====================================================
 
 function normalizeText(
   value?:
@@ -129,95 +214,13 @@ function normalizeText(
     null;
 }
 
-function getPrimaryUser(
-  payment: Payment
-) {
-  return (
-    payment.order
-      ?.users?.[0] ??
-    null
-  );
-}
-
-function getCustomerName(
-  payment: Payment
-): string {
-  const user =
-    getPrimaryUser(
-      payment
-    );
-
-  if (!user) {
-    return 'Cliente';
-  }
-
-  const fullName = [
-    user.firstName,
-    user.middleName,
-    user.lastName,
-    user.secondLastName,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-
-  return (
-    fullName ||
-    user.username ||
-    'Cliente'
-  );
-}
-
 // =====================================================
-// URL DE MEDIA
-// =====================================================
-
-function getImageUrl(
-  url?:
-    | string
-    | null
-): string | null {
-  if (!url) {
-    return null;
-  }
-
-  if (
-    url.startsWith(
-      'http://'
-    ) ||
-    url.startsWith(
-      'https://'
-    )
-  ) {
-    return url;
-  }
-
-  const baseUrl =
-    String(
-      api.defaults
-        .baseURL ?? ''
-    ).replace(
-      /\/$/,
-      ''
-    );
-
-  if (!baseUrl) {
-    return url;
-  }
-
-  return `${baseUrl}${
-    url.startsWith('/')
-      ? url
-      : `/${url}`
-  }`;
-}
-
-// =====================================================
-// NORMALIZAR CREATE
+// NORMALIZE CREATE
 // =====================================================
 
 function normalizeCreatePayment(
-  data: CreatePaymentData
+  data:
+    CreatePaymentData
 ): CreatePaymentData {
   const amount =
     roundMoney(
@@ -227,7 +230,8 @@ function normalizeCreatePayment(
     );
 
   if (
-    amount <= 0
+    amount <=
+    0
   ) {
     throw new Error(
       'El monto del pago debe ser mayor a 0.'
@@ -239,6 +243,10 @@ function normalizeCreatePayment(
 
     amount,
 
+    method:
+      data.method ??
+      null,
+
     statusPayment:
       data.statusPayment ??
       'PENDING',
@@ -249,8 +257,8 @@ function normalizeCreatePayment(
       ),
 
     /*
-     * paidAt es obligatorio en tu
-     * Content Type de Strapi.
+     * paidAt es obligatorio
+     * en Strapi.
      */
     paidAt:
       data.paidAt ||
@@ -260,16 +268,17 @@ function normalizeCreatePayment(
 }
 
 // =====================================================
-// NORMALIZAR PATCH
+// NORMALIZE UPDATE
 // =====================================================
 
 function normalizeUpdatePayment(
-  data: UpdatePaymentData
+  data:
+    UpdatePaymentData
 ): UpdatePaymentData {
   const normalized:
     UpdatePaymentData = {
       ...data,
-  };
+    };
 
   if (
     data.amount !==
@@ -283,7 +292,8 @@ function normalizeUpdatePayment(
       );
 
     if (
-      amount <= 0
+      amount <=
+      0
     ) {
       throw new Error(
         'El monto del pago debe ser mayor a 0.'
@@ -308,11 +318,301 @@ function normalizeUpdatePayment(
 }
 
 // =====================================================
-// RECIBO
+// APPROVED PAYMENTS TOTAL
+// =====================================================
+
+export function calculateApprovedPayments(
+  payments:
+    Payment[]
+): number {
+  const total =
+    payments
+      .filter(
+        (
+          payment
+        ) =>
+          payment.statusPayment ===
+          'APPROVED'
+      )
+      .reduce(
+        (
+          accumulator,
+          payment
+        ) =>
+          accumulator +
+          Number(
+            payment.amount
+          ),
+        0
+      );
+
+  return roundMoney(
+    total
+  );
+}
+
+// =====================================================
+// ORDER PAYMENT STATUS
+//
+// Payment.statusPayment:
+//
+// PENDING
+// APPROVED
+// REJECTED
+// REFUNDED
+//
+// Order.paymentStatus:
+//
+// PENDING
+// PARTIAL
+// PAID
+// FAILED
+// REFUNDED
+// =====================================================
+
+async function syncOrderPaymentStatus(
+  orderDocumentId:
+    string
+) {
+  const [
+    orderResponse,
+    paymentsResponse,
+  ] =
+    await Promise.all([
+      orderService.findOne(
+        orderDocumentId
+      ),
+
+      paymentService.findAll({
+        orderDocumentId,
+
+        page:
+          1,
+
+        pageSize:
+          100,
+      }),
+    ]);
+
+  const order =
+    orderResponse.data;
+
+  const payments =
+    paymentsResponse.data;
+
+  const orderTotal =
+    roundMoney(
+      Number(
+        order.total
+      ) ||
+      0
+    );
+
+  const approvedAmount =
+    calculateApprovedPayments(
+      payments
+    );
+
+  const hasPending =
+    payments.some(
+      (
+        item
+      ) =>
+        item.statusPayment ===
+        'PENDING'
+    );
+
+  const hasRejected =
+    payments.some(
+      (
+        item
+      ) =>
+        item.statusPayment ===
+        'REJECTED'
+    );
+
+  const hasRefunded =
+    payments.some(
+      (
+        item
+      ) =>
+        item.statusPayment ===
+        'REFUNDED'
+    );
+
+  const hasApproved =
+    payments.some(
+      (
+        item
+      ) =>
+        item.statusPayment ===
+        'APPROVED'
+    );
+
+  let nextStatus:
+    OrderPaymentStatus =
+    'PENDING';
+
+  // ===================================================
+  // PAID
+  // ===================================================
+
+  if (
+    orderTotal >
+      0 &&
+    approvedAmount >=
+      orderTotal
+  ) {
+    nextStatus =
+      'PAID';
+  }
+
+  // ===================================================
+  // PARTIAL
+  // ===================================================
+
+  else if (
+    approvedAmount >
+    0
+  ) {
+    nextStatus =
+      'PARTIAL';
+  }
+
+  // ===================================================
+  // PENDING
+  // ===================================================
+
+  else if (
+    hasPending
+  ) {
+    nextStatus =
+      'PENDING';
+  }
+
+  // ===================================================
+  // REFUNDED
+  //
+  // Ya no queda ningún pago aprobado,
+  // pero existe un reembolso.
+  // ===================================================
+
+  else if (
+    hasRefunded &&
+    !hasApproved
+  ) {
+    nextStatus =
+      'REFUNDED';
+  }
+
+  // ===================================================
+  // FAILED
+  //
+  // No hay aprobados ni pendientes
+  // y existe un pago rechazado.
+  // ===================================================
+
+  else if (
+    hasRejected
+  ) {
+    nextStatus =
+      'FAILED';
+  }
+
+  // ===================================================
+  // UPDATE ORDER
+  // ===================================================
+
+  if (
+    order.paymentStatus !==
+    nextStatus
+  ) {
+    const response =
+      await orderService.patch(
+        orderDocumentId,
+        {
+          paymentStatus:
+            nextStatus,
+        }
+      );
+
+    emitOrderChange({
+      type:
+        'saved',
+
+      order:
+        response.data,
+    });
+
+    return response.data;
+  }
+
+  emitOrderChange({
+    type:
+      'saved',
+
+    order,
+  });
+
+  return order;
+}
+
+// =====================================================
+// CUSTOMER
+// =====================================================
+
+function getPrimaryUser(
+  payment:
+    Payment
+) {
+  return (
+    payment.order
+      ?.users?.[0] ??
+    null
+  );
+}
+
+function getCustomerName(
+  payment:
+    Payment
+): string {
+  const user =
+    getPrimaryUser(
+      payment
+    );
+
+  if (!user) {
+    return 'Cliente';
+  }
+
+  const fullName = [
+    user.firstName,
+    user.middleName,
+    user.lastName,
+    user.secondLastName,
+  ]
+    .filter(
+      Boolean
+    )
+    .join(
+      ' '
+    )
+    .trim();
+
+  return (
+    fullName ||
+    user.username ||
+    'Cliente'
+  );
+}
+
+// =====================================================
+// RECEIPT
 // =====================================================
 
 function buildVirtualReceipt(
-  payment: Payment
+  payment:
+    Payment
 ): VirtualReceipt {
   const user =
     getPrimaryUser(
@@ -346,14 +646,6 @@ function buildVirtualReceipt(
         ?.name ??
       'Restaurante',
 
-    restaurantLogo:
-      getImageUrl(
-        payment.order
-          ?.restaurant
-          ?.logo
-          ?.url
-      ),
-
     amount:
       payment.amount,
 
@@ -381,7 +673,9 @@ export function usePayment(
 ) {
   const {
     documentId,
+
     autoLoad = true,
+
     query,
   } = options;
 
@@ -424,11 +718,57 @@ export function usePayment(
   const mountedRef =
     useRef(true);
 
+  const mutationRef =
+    useRef(false);
+
+  // ===================================================
+  // QUERY KEY
+  // ===================================================
+
+  const queryKey =
+    JSON.stringify({
+      page:
+        query?.page ??
+        1,
+
+      pageSize:
+        query?.pageSize ??
+        100,
+
+      sort:
+        query?.sort ??
+        'paidAt:desc',
+
+      orderDocumentId:
+        query
+          ?.orderDocumentId,
+
+      restaurantDocumentId:
+        query
+          ?.restaurantDocumentId,
+
+      statusPayment:
+        query
+          ?.statusPayment,
+
+      method:
+        query?.method,
+
+      paidFrom:
+        query?.paidFrom,
+
+      paidTo:
+        query?.paidTo,
+    });
+
   // ===================================================
   // MOUNT
   // ===================================================
 
   useEffect(() => {
+    mountedRef.current =
+      true;
+
     return () => {
       mountedRef.current =
         false;
@@ -436,27 +776,33 @@ export function usePayment(
   }, []);
 
   // ===================================================
-  // CARGAR UNO
+  // LOAD ONE
   // ===================================================
 
   const loadPayment =
     useCallback(
       async (
-        id: string
+        id:
+          string
       ) => {
-        setLoading(
-          true
-        );
+        if (
+          mountedRef.current
+        ) {
+          setLoading(
+            true
+          );
 
-        setError(
-          null
-        );
+          setError(
+            null
+          );
+        }
 
         try {
           const response =
-            await paymentService.findOne(
-              id
-            );
+            await paymentService
+              .findOne(
+                id
+              );
 
           if (
             mountedRef.current
@@ -474,7 +820,10 @@ export function usePayment(
             mountedRef.current
           ) {
             setError(
-              'No se pudo cargar el pago'
+              getErrorMessage(
+                requestError,
+                'No se pudo cargar el pago.'
+              )
             );
           }
 
@@ -493,7 +842,7 @@ export function usePayment(
     );
 
   // ===================================================
-  // CARGAR TODOS
+  // LOAD ALL
   // ===================================================
 
   const loadPayments =
@@ -502,19 +851,24 @@ export function usePayment(
         params:
           PaymentQueryParams = {}
       ) => {
-        setLoading(
-          true
-        );
+        if (
+          mountedRef.current
+        ) {
+          setLoading(
+            true
+          );
 
-        setError(
-          null
-        );
+          setError(
+            null
+          );
+        }
 
         try {
           const response =
-            await paymentService.findAll(
-              params
-            );
+            await paymentService
+              .findAll(
+                params
+              );
 
           if (
             mountedRef.current
@@ -532,7 +886,10 @@ export function usePayment(
             mountedRef.current
           ) {
             setError(
-              'No se pudieron cargar los pagos'
+              getErrorMessage(
+                requestError,
+                'No se pudieron cargar los pagos.'
+              )
             );
           }
 
@@ -551,251 +908,432 @@ export function usePayment(
     );
 
   // ===================================================
-  // CREATE
+  // MUTATION
+  // ===================================================
+
+  const runMutation =
+    useCallback(
+      async <T,>(
+        operation:
+          () => Promise<T>
+      ): Promise<T> => {
+        if (
+          mutationRef.current
+        ) {
+          throw new Error(
+            'Espera a que termine la operación actual.'
+          );
+        }
+
+        mutationRef.current =
+          true;
+
+        if (
+          mountedRef.current
+        ) {
+          setSaving(
+            true
+          );
+
+          setError(
+            null
+          );
+        }
+
+        try {
+          return await operation();
+        } catch (
+          requestError
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              getErrorMessage(
+                requestError,
+                'No se pudo completar la operación de pago.'
+              )
+            );
+          }
+
+          throw requestError;
+        } finally {
+          mutationRef.current =
+            false;
+
+          if (
+            mountedRef.current
+          ) {
+            setSaving(
+              false
+            );
+          }
+        }
+      },
+      []
+    );
+
+  // ===================================================
+  // CREATE PAYMENT
   // ===================================================
 
   const createPayment =
     useCallback(
-      async (
+      (
         data:
           CreatePaymentData
-      ) => {
-        setSaving(
-          true
-        );
+      ): Promise<Payment> =>
+        runMutation(
+          async () => {
+            const payload =
+              normalizeCreatePayment(
+                data
+              );
 
-        setError(
-          null
-        );
+            const response =
+              await paymentService
+                .create(
+                  payload
+                );
 
-        try {
-          const paymentData =
-            normalizeCreatePayment(
-              data
-            );
+            const created =
+              response.data;
 
-          const response =
-            await paymentService.create(
-              paymentData
-            );
+            if (
+              mountedRef.current
+            ) {
+              setPayment(
+                created
+              );
 
-          const newPayment =
-            response.data;
+              setPayments(
+                (
+                  current
+                ) => [
+                  created,
+                  ...current,
+                ]
+              );
+            }
 
-          if (
-            mountedRef.current
-          ) {
-            setPayment(
-              newPayment
-            );
+            const orderDocumentId =
+              typeof payload.order ===
+              'string'
+                ? payload.order
+                : created.order
+                    ?.documentId;
 
-            setPayments(
-              (
-                currentPayments
-              ) => [
-                newPayment,
-                ...currentPayments,
-              ]
-            );
+            /*
+             * AUTOMÁTICO:
+             * actualizamos el estado financiero
+             * general de la Order.
+             */
+            if (
+              orderDocumentId
+            ) {
+              await syncOrderPaymentStatus(
+                orderDocumentId
+              );
+            }
+
+            return created;
           }
-
-          return newPayment;
-        } catch (
-          requestError
-        ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              requestError instanceof
-                Error
-                ? requestError.message
-                : 'No se pudo registrar el pago'
-            );
-          }
-
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setSaving(
-              false
-            );
-          }
-        }
-      },
-      []
-    );
-
-  // ===================================================
-  // CREATE DESDE ORDEN
-  //
-  // amount = order.total
-  // ===================================================
-
-  const createPaymentFromOrder =
-    useCallback(
-      async ({
-        order,
-        method,
-        statusPayment =
-          'PENDING',
-        transactionReference =
-          null,
-      }: CreatePaymentFromOrderData) => {
-        if (
-          !order.documentId
-        ) {
-          throw new Error(
-            'La orden no tiene documentId.'
-          );
-        }
-
-        const amount =
-          roundMoney(
-            Number(
-              order.total ??
-                0
-            )
-          );
-
-        if (
-          amount <= 0
-        ) {
-          throw new Error(
-            'La orden no tiene un total válido para registrar el pago.'
-          );
-        }
-
-        return createPayment({
-          amount,
-
-          method,
-
-          statusPayment,
-
-          transactionReference,
-
-          paidAt:
-            new Date()
-              .toISOString(),
-
-          order:
-            order.documentId,
-        });
-      },
+        ),
       [
-        createPayment,
+        runMutation,
       ]
     );
 
   // ===================================================
-  // UPDATE / PATCH
+  // CREATE PAYMENT FROM ORDER
+  //
+  // Calcula automáticamente:
+  //
+  // total orden
+  // - pagos APPROVED
+  // = saldo pendiente
+  // ===================================================
+
+  const createPaymentFromOrder =
+    useCallback(
+      (
+        data:
+          CreatePaymentFromOrderData
+      ): Promise<Payment> =>
+        runMutation(
+          async () => {
+            const {
+              order,
+              method,
+
+              statusPayment =
+                'PENDING',
+
+              transactionReference =
+                null,
+            } = data;
+
+            if (
+              !order.documentId
+            ) {
+              throw new Error(
+                'La orden no tiene documentId.'
+              );
+            }
+
+            const paymentsResponse =
+              await paymentService
+                .findAll({
+                  orderDocumentId:
+                    order.documentId,
+
+                  page:
+                    1,
+
+                  pageSize:
+                    100,
+                });
+
+            const approvedAmount =
+              calculateApprovedPayments(
+                paymentsResponse
+                  .data
+              );
+
+            const orderTotal =
+              roundMoney(
+                Number(
+                  order.total
+                ) ||
+                0
+              );
+
+            const remaining =
+              roundMoney(
+                orderTotal -
+                approvedAmount
+              );
+
+            if (
+              remaining <=
+              0
+            ) {
+              throw new Error(
+                'La orden ya está completamente pagada.'
+              );
+            }
+
+            const amount =
+              roundMoney(
+                data.amount ??
+                remaining
+              );
+
+            if (
+              amount <=
+              0
+            ) {
+              throw new Error(
+                'Ingresa un monto válido.'
+              );
+            }
+
+            if (
+              amount >
+              remaining
+            ) {
+              throw new Error(
+                `El pago no puede superar el saldo pendiente de Bs ${remaining.toFixed(
+                  2
+                )}.`
+              );
+            }
+
+            const response =
+              await paymentService
+                .create({
+                  amount,
+
+                  method,
+
+                  statusPayment,
+
+                  transactionReference,
+
+                  paidAt:
+                    new Date()
+                      .toISOString(),
+
+                  order:
+                    order.documentId,
+                });
+
+            const created =
+              response.data;
+
+            if (
+              mountedRef.current
+            ) {
+              setPayment(
+                created
+              );
+
+              setPayments(
+                (
+                  current
+                ) => [
+                  created,
+                  ...current,
+                ]
+              );
+            }
+
+            await syncOrderPaymentStatus(
+              order.documentId
+            );
+
+            return created;
+          }
+        ),
+      [
+        runMutation,
+      ]
+    );
+
+  // ===================================================
+  // UPDATE PAYMENT
   // ===================================================
 
   const updatePayment =
     useCallback(
-      async (
-        id: string,
+      (
+        id:
+          string,
 
         data:
           UpdatePaymentData
-      ) => {
-        setSaving(
-          true
-        );
+      ): Promise<Payment> =>
+        runMutation(
+          async () => {
+            let currentPayment:
+              | Payment
+              | undefined =
+              payment
+                ?.documentId ===
+              id
+                ? payment
+                : payments.find(
+                    (
+                      item
+                    ) =>
+                      item.documentId ===
+                      id
+                  );
 
-        setError(
-          null
-        );
+            /*
+             * Si el pago no está actualmente
+             * cargado, lo buscamos para recuperar
+             * su Order.
+             */
+            if (
+              !currentPayment
+            ) {
+              try {
+                const currentResponse =
+                  await paymentService
+                    .findOne(
+                      id
+                    );
 
-        try {
-          const normalizedData =
-            normalizeUpdatePayment(
-              data
-            );
+                currentPayment =
+                  currentResponse.data;
+              } catch {
+                currentPayment =
+                  undefined;
+              }
+            }
 
-          const response =
-            await paymentService.update(
-              id,
-              normalizedData
-            );
+            const response =
+              await paymentService
+                .update(
+                  id,
+                  normalizeUpdatePayment(
+                    data
+                  )
+                );
 
-          const updatedPayment =
-            response.data;
+            const updated =
+              response.data;
 
-          if (
-            mountedRef.current
-          ) {
-            setPayment(
-              (
-                currentPayment
-              ) =>
-                currentPayment
-                  ?.documentId ===
-                updatedPayment.documentId
-                  ? updatedPayment
-                  : currentPayment
-            );
+            if (
+              mountedRef.current
+            ) {
+              setPayment(
+                (
+                  current
+                ) =>
+                  current
+                    ?.documentId ===
+                  updated.documentId
+                    ? updated
+                    : current
+              );
 
-            setPayments(
-              (
-                currentPayments
-              ) =>
-                currentPayments.map(
-                  (
-                    item
-                  ) =>
-                    item.documentId ===
-                    updatedPayment.documentId
-                      ? updatedPayment
-                      : item
-                )
-            );
+              setPayments(
+                (
+                  current
+                ) =>
+                  current.map(
+                    (
+                      item
+                    ) =>
+                      item.documentId ===
+                      updated.documentId
+                        ? updated
+                        : item
+                  )
+              );
+            }
+
+            const orderDocumentId =
+              updated.order
+                ?.documentId ??
+              currentPayment
+                ?.order
+                ?.documentId;
+
+            if (
+              orderDocumentId
+            ) {
+              await syncOrderPaymentStatus(
+                orderDocumentId
+              );
+            }
+
+            return updated;
           }
-
-          return updatedPayment;
-        } catch (
-          requestError
-        ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              requestError instanceof
-                Error
-                ? requestError.message
-                : 'No se pudo actualizar el pago'
-            );
-          }
-
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setSaving(
-              false
-            );
-          }
-        }
-      },
-      []
+        ),
+      [
+        runMutation,
+        payment,
+        payments,
+      ]
     );
 
   // ===================================================
-  // CONFIRMAR
+  // APPROVE PAYMENT
   //
-  // Automatiza:
-  // status = PAID
-  // paidAt = ahora
+  // Payment.statusPayment = APPROVED
+  //
+  // Después:
+  // Order.paymentStatus se recalcula.
   // ===================================================
 
-  const confirmPayment =
+  const approvePayment =
     useCallback(
-      async (
-        id: string,
+      (
+        id:
+          string,
 
         transactionReference?:
           | string
@@ -804,7 +1342,7 @@ export function usePayment(
         const data:
           UpdatePaymentData = {
           statusPayment:
-            'PAID',
+            'APPROVED',
 
           paidAt:
             new Date()
@@ -830,147 +1368,176 @@ export function usePayment(
     );
 
   // ===================================================
-  // CANCELAR
+  // REJECT PAYMENT
   // ===================================================
 
-  const cancelPayment =
+  const rejectPayment =
     useCallback(
-      async (
-        id: string
-      ) => {
-        return updatePayment(
+      (
+        id:
+          string
+      ) =>
+        updatePayment(
           id,
           {
             statusPayment:
-              'CANCELLED',
+              'REJECTED',
           }
-        );
-      },
+        ),
       [
         updatePayment,
       ]
     );
 
   // ===================================================
-  // MARCAR FALLIDO
-  // ===================================================
-
-  const failPayment =
-    useCallback(
-      async (
-        id: string
-      ) => {
-        return updatePayment(
-          id,
-          {
-            statusPayment:
-              'FAILED',
-          }
-        );
-      },
-      [
-        updatePayment,
-      ]
-    );
-
-  // ===================================================
-  // REEMBOLSO
+  // REFUND PAYMENT
   // ===================================================
 
   const refundPayment =
     useCallback(
-      async (
-        id: string
-      ) => {
-        return updatePayment(
+      (
+        id:
+          string
+      ) =>
+        updatePayment(
           id,
           {
             statusPayment:
               'REFUNDED',
           }
-        );
-      },
+        ),
       [
         updatePayment,
       ]
     );
 
   // ===================================================
-  // DELETE
+  // SET BACK TO PENDING
+  // ===================================================
+
+  const pendingPayment =
+    useCallback(
+      (
+        id:
+          string
+      ) =>
+        updatePayment(
+          id,
+          {
+            statusPayment:
+              'PENDING',
+          }
+        ),
+      [
+        updatePayment,
+      ]
+    );
+
+  // ===================================================
+  // DELETE PAYMENT
   // ===================================================
 
   const deletePayment =
     useCallback(
-      async (
-        id: string
-      ) => {
-        setSaving(
-          true
-        );
+      (
+        id:
+          string
+      ): Promise<void> =>
+        runMutation(
+          async () => {
+            let currentPayment:
+              | Payment
+              | undefined =
+              payment
+                ?.documentId ===
+              id
+                ? payment
+                : payments.find(
+                    (
+                      item
+                    ) =>
+                      item.documentId ===
+                      id
+                  );
 
-        setError(
-          null
-        );
+            if (
+              !currentPayment
+            ) {
+              try {
+                const currentResponse =
+                  await paymentService
+                    .findOne(
+                      id
+                    );
 
-        try {
-          await paymentService.remove(
-            id
-          );
+                currentPayment =
+                  currentResponse.data;
+              } catch {
+                currentPayment =
+                  undefined;
+              }
+            }
 
-          if (
-            mountedRef.current
-          ) {
-            setPayments(
-              (
-                currentPayments
-              ) =>
-                currentPayments.filter(
-                  (
-                    item
-                  ) =>
-                    item.documentId !==
-                    id
-                )
-            );
+            const orderDocumentId =
+              currentPayment
+                ?.order
+                ?.documentId;
 
-            setPayment(
-              (
-                currentPayment
-              ) =>
-                currentPayment
-                  ?.documentId ===
+            await paymentService
+              .remove(
                 id
-                  ? null
-                  : currentPayment
-            );
-          }
-        } catch (
-          requestError
-        ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              'No se pudo eliminar el pago'
-            );
-          }
+              );
 
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setSaving(
-              false
-            );
+            if (
+              mountedRef.current
+            ) {
+              setPayments(
+                (
+                  current
+                ) =>
+                  current.filter(
+                    (
+                      item
+                    ) =>
+                      item.documentId !==
+                      id
+                  )
+              );
+
+              setPayment(
+                (
+                  current
+                ) =>
+                  current
+                    ?.documentId ===
+                  id
+                    ? null
+                    : current
+              );
+            }
+
+            /*
+             * Al eliminar un pago también
+             * debemos recalcular la Order.
+             */
+            if (
+              orderDocumentId
+            ) {
+              await syncOrderPaymentStatus(
+                orderDocumentId
+              );
+            }
           }
-        }
-      },
-      []
+        ),
+      [
+        runMutation,
+        payment,
+        payments,
+      ]
     );
 
   // ===================================================
-  // RECIBO VIRTUAL
+  // RECEIPT
   // ===================================================
 
   const getReceipt =
@@ -980,18 +1547,16 @@ export function usePayment(
           | Payment
           | null
       ) => {
-        const currentPayment =
+        const current =
           selectedPayment ??
           payment;
 
-        if (
-          !currentPayment
-        ) {
+        if (!current) {
           return null;
         }
 
         return buildVirtualReceipt(
-          currentPayment
+          current
         );
       },
       [
@@ -1004,7 +1569,9 @@ export function usePayment(
   // ===================================================
 
   useEffect(() => {
-    if (!autoLoad) {
+    if (
+      !autoLoad
+    ) {
       return;
     }
 
@@ -1013,25 +1580,26 @@ export function usePayment(
     ) {
       void loadPayment(
         documentId
+      ).catch(
+        () =>
+          undefined
       );
 
       return;
     }
 
     void loadPayments(
-      query
+      JSON.parse(
+        queryKey
+      ) as PaymentQueryParams
+    ).catch(
+      () =>
+        undefined
     );
   }, [
     autoLoad,
     documentId,
-
-    query?.page,
-    query?.pageSize,
-    query?.sort,
-    query?.orderId,
-    query?.statusPayment,
-    query?.method,
-
+    queryKey,
     loadPayment,
     loadPayments,
   ]);
@@ -1052,21 +1620,18 @@ export function usePayment(
     loadPayments,
 
     createPayment,
-
-    /*
-     * Úsalo preferentemente cuando
-     * el pago provenga de una orden.
-     */
     createPaymentFromOrder,
 
     updatePayment,
 
-    confirmPayment,
-    cancelPayment,
-    failPayment,
+    approvePayment,
+    rejectPayment,
     refundPayment,
+    pendingPayment,
 
     deletePayment,
+
+    calculateApprovedPayments,
 
     getReceipt,
 
@@ -1078,7 +1643,9 @@ export function usePayment(
             )
         : () =>
             loadPayments(
-              query
+              JSON.parse(
+                queryKey
+              ) as PaymentQueryParams
             ),
   };
 }
