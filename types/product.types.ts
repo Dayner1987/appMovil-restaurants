@@ -1,6 +1,6 @@
 // types/product.types.ts
 
-export interface ProductImage {
+export interface ProductMedia {
   id: number;
 
   documentId?: string;
@@ -34,49 +34,60 @@ export interface ProductImage {
     | null;
 
   createdAt?: string;
-
   updatedAt?: string;
 }
-
-// =====================================================
-// RESTAURANT
-// =====================================================
 
 export interface ProductRestaurant {
   id: number;
 
-  documentId?: string;
+  documentId: string;
 
-  name?: string;
+  name: string;
+
+  slug?:
+    | string
+    | null;
+
+  description?:
+    | string
+    | null;
+
+  email?: string;
+
+  statusRes?: string;
 }
-
-// =====================================================
-// CATEGORY
-// =====================================================
 
 export interface ProductCategory {
   id: number;
 
-  documentId?: string;
+  documentId: string;
 
-  name?: string;
+  name: string;
+
+  description?:
+    | string
+    | null;
+
+  isActive?: boolean;
 }
-
-// =====================================================
-// PROMOTION
-// =====================================================
 
 export interface ProductPromotion {
   id: number;
 
-  documentId?: string;
+  documentId: string;
 
-  name?: string;
+  name: string;
+
+  type?: string;
+
+  percentage?:
+    | number
+    | null;
+
+  discountAmount?:
+    | number
+    | null;
 }
-
-// =====================================================
-// ORDER ITEM
-// =====================================================
 
 export interface ProductOrderItem {
   id: number;
@@ -87,16 +98,8 @@ export interface ProductOrderItem {
 
   unitPrice?: number;
 
-  discount?: number;
-
   subtotal?: number;
-
-  productName?: string;
 }
-
-// =====================================================
-// PRODUCT
-// =====================================================
 
 export interface Product {
   id: number;
@@ -119,21 +122,20 @@ export interface Product {
     | number
     | null;
 
-  isAvailable:
-    boolean;
+  isAvailable: boolean;
 
   mainImage:
-    | ProductImage
+    | ProductMedia
     | null;
 
   gallery:
-    ProductImage[];
+    ProductMedia[];
 
-  restaurant?:
+  restaurant:
     | ProductRestaurant
     | null;
 
-  category?:
+  category:
     | ProductCategory
     | null;
 
@@ -152,10 +154,6 @@ export interface Product {
     | null;
 }
 
-// =====================================================
-// CREATE
-// =====================================================
-
 export interface CreateProductData {
   name: string;
 
@@ -169,79 +167,29 @@ export interface CreateProductData {
 
   price: number;
 
-  stock?:
-    | number
-    | null;
+  stock?: number;
 
   isAvailable?: boolean;
 
-  /*
-   * Se mantienen por compatibilidad
-   * con las rutas nativas de Strapi.
-   *
-   * En la app usaremos preferentemente
-   * nuestros endpoints personalizados
-   * para las imágenes.
-   */
-  mainImage?:
-    | number
-    | null;
+  // documentId del Restaurant
+  restaurant:
+    string;
 
-  gallery?: number[];
-
-  restaurant?:
-    | number
-    | string
-    | null;
-
+  // documentId de Category
   category?:
-    | number
     | string
     | null;
-
-  promotions?:
-    number[];
-
-  order_items?:
-    number[];
 }
-
-// =====================================================
-// UPDATE
-// =====================================================
 
 export type UpdateProductData =
   Partial<CreateProductData>;
 
-// =====================================================
-// ARCHIVO A SUBIR
-// =====================================================
-
-export interface ProductImageUpload {
-  uri: string;
-
-  fileName?: string;
-
-  mimeType?: string;
-}
-
-// =====================================================
-// PAGINACIÓN
-// =====================================================
-
 export interface ProductPagination {
   page: number;
-
   pageSize: number;
-
   pageCount: number;
-
   total: number;
 }
-
-// =====================================================
-// RESPUESTAS
-// =====================================================
 
 export interface ProductListResponse {
   data: Product[];
@@ -261,16 +209,6 @@ export interface ProductResponse {
   >;
 }
 
-export interface ProductMediaResponse {
-  data: Product;
-
-  message?: string;
-}
-
-// =====================================================
-// QUERY PARAMS
-// =====================================================
-
 export interface ProductQueryParams {
   page?: number;
 
@@ -280,15 +218,36 @@ export interface ProductQueryParams {
     | string
     | string[];
 
-  restaurantId?:
-    | number
-    | string;
-
-  categoryId?:
-    | number
-    | string;
+  name?: string;
 
   available?: boolean;
 
-  name?: string;
+  /**
+   * documentId de Restaurant.
+   *
+   * Ej:
+   * j5i99kvw5279j3636agc8oyn
+   */
+  restaurantDocumentId?:
+    string;
+
+  /**
+   * documentId de Category.
+   */
+  categoryDocumentId?:
+    string;
+}
+
+export interface ProductImageUpload {
+  uri: string;
+
+  fileName?: string;
+
+  mimeType?: string;
+}
+
+export interface ProductMediaResponse {
+  data: Product;
+
+  message?: string;
 }

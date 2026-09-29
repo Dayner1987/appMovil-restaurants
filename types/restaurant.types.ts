@@ -64,20 +64,6 @@ export interface RestaurantUser {
 }
 
 // =====================================================
-// CATEGORY
-// =====================================================
-
-export interface RestaurantCategory {
-  id: number;
-
-  documentId?: string;
-
-  name?: string;
-
-  slug?: string;
-}
-
-// =====================================================
 // PRODUCT
 // =====================================================
 
@@ -123,7 +109,7 @@ export interface RestaurantPublication {
     | null;
 }
 
-// =====================================================
+// ===============R======================================
 // ORDER
 // =====================================================
 
@@ -192,9 +178,7 @@ export interface Restaurant {
   users?:
     RestaurantUser[];
 
-  categories?:
-    RestaurantCategory[];
-
+ 
   products?:
     RestaurantProduct[];
 
@@ -326,6 +310,7 @@ export interface RestaurantMediaResponse {
 // =====================================================
 // QUERY
 // =====================================================
+// types/restaurant.types.ts
 
 export interface RestaurantQueryParams {
   page?: number;
@@ -336,10 +321,30 @@ export interface RestaurantQueryParams {
     | string
     | string[];
 
-  statusRes?:
-    RestaurantStatus;
+  statusRes?: string;
 
   name?: string;
 
   email?: string;
+
+  /**
+   * ID numérico del User de Strapi.
+   *
+   * Ej:
+   * 17
+   *
+   * NO pasar aquí:
+   * qqcmlg65ibkn23v75mdr8i62
+   */
+  userId?:
+    | number
+    | string;
+
+  /**
+   * documentId del User.
+   *
+   * Ej:
+   * qqcmlg65ibkn23v75mdr8i62
+   */
+  userDocumentId?: string;
 }

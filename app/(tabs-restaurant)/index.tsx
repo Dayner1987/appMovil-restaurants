@@ -1,137 +1,213 @@
+// app/(tabs-restaurant)/index.tsx
+
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
+  router,
+} from 'expo-router';
+
+import {
+  Pressable,
   SafeAreaView,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
 
 import DashboardNavbar from '@/components/DashboardNavbar';
 
+interface DashboardOptionProps {
+  icon:
+    keyof typeof Ionicons.glyphMap;
+
+  title:
+    string;
+
+  description:
+    string;
+
+  onPress:
+    () => void;
+}
+
+function DashboardOption({
+  icon,
+  title,
+  description,
+  onPress,
+}: DashboardOptionProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="
+        flex-row
+        items-center
+        rounded-2xl
+        bg-white
+        px-4
+        py-4
+      "
+    >
+      <View
+        className="
+          h-12
+          w-12
+          items-center
+          justify-center
+          rounded-2xl
+          bg-[#EEF3E3]
+        "
+      >
+        <Ionicons
+          name={icon}
+          size={24}
+          color="#6F8C3E"
+        />
+      </View>
+
+      <View
+        className="
+          ml-4
+          flex-1
+        "
+      >
+        <Text
+          className="
+            text-base
+            font-bold
+            text-[#171A15]
+          "
+        >
+          {title}
+        </Text>
+
+        <Text
+          className="
+            mt-1
+            text-sm
+            leading-5
+            text-[#7B8175]
+          "
+        >
+          {description}
+        </Text>
+      </View>
+
+      <Ionicons
+        name="chevron-forward-outline"
+        size={20}
+        color="#A1A69B"
+      />
+    </Pressable>
+  );
+}
+
 export default function RestaurantHomeScreen() {
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <DashboardNavbar title="Administración" />
+    <SafeAreaView
+      className="
+        flex-1
+        bg-[#F7F8F2]
+      "
+    >
+      <DashboardNavbar
+        title="Restaurante"
+      />
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.welcome}>
+      <ScrollView
+        showsVerticalScrollIndicator={
+          false
+        }
+        contentContainerClassName="
+          px-5
+          pb-10
+          pt-5
+        "
+      >
+        <Text
+          className="
+            text-3xl
+            font-extrabold
+            text-[#171A15]
+          "
+        >
           Panel del restaurante
         </Text>
 
-        <Text style={styles.description}>
-          Administra los usuarios, restaurantes y actividades de la
-          plataforma.
+        <Text
+          className="
+            mt-2
+            text-sm
+            leading-6
+            text-[#747A6E]
+          "
+        >
+          Administra la información,
+          productos, ventas y contenido
+          de tu restaurante.
         </Text>
 
-        <View style={styles.cards}>
-          <DashboardCard
-            icon="people-outline"
-            title="Usuarios"
-            value="Administrar"
-          />
-
-          <DashboardCard
+        <View
+          className="
+            mt-7
+            gap-3
+          "
+        >
+          <DashboardOption
             icon="restaurant-outline"
-            title="Restaurantes"
-            value="Supervisar"
+            title="Información del restaurante"
+            description="Consulta y edita la información principal del negocio."
+            onPress={() =>
+              router.push(
+                '/(tabs-restaurant)/restaurant'
+              )
+            }
           />
 
-          <DashboardCard
-            icon="stats-chart-outline"
-            title="Actividad"
-            value="Ver resumen"
+          <DashboardOption
+            icon="fast-food-outline"
+            title="Productos"
+            description="Administra los productos y categorías disponibles."
+            onPress={() =>
+              router.push(
+                '/(tabs-restaurant)/products'
+              )
+            }
+          />
+
+          <DashboardOption
+            icon="newspaper-outline"
+            title="Publicaciones"
+            description="Crea y administra publicaciones del restaurante."
+            onPress={() =>
+              router.push(
+                '/(tabs-restaurant)/publications'
+              )
+            }
+          />
+
+          <DashboardOption
+            icon="pricetag-outline"
+            title="Promociones"
+            description="Administra descuentos y promociones para tus productos."
+            onPress={() =>
+              router.push(
+                '/(tabs-restaurant)/promotions'
+              )
+            }
+          />
+
+          <DashboardOption
+            icon="receipt-outline"
+            title="Órdenes y pagos"
+            description="Consulta pedidos realizados, estados y pagos registrados."
+            onPress={() =>
+              router.push(
+                '/(tabs-restaurant)/orders'
+              )
+            }
           />
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-interface DashboardCardProps {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  value: string;
-}
-
-function DashboardCard({
-  icon,
-  title,
-  value,
-}: DashboardCardProps) {
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardIcon}>
-        <Ionicons name={icon} size={25} color="#7657D5" />
-      </View>
-
-      <View style={styles.cardText}>
-        <Text style={styles.cardTitle}>{title}</Text>
-        <Text style={styles.cardValue}>{value}</Text>
-      </View>
-
-      <Ionicons
-        name="chevron-forward-outline"
-        size={20}
-        color="#AAA6B7"
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F7F7FC',
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 35,
-  },
-  welcome: {
-    marginTop: 10,
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#292638',
-  },
-  description: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#7D788A',
-  },
-  cards: {
-    marginTop: 25,
-    gap: 12,
-  },
-  card: {
-    minHeight: 88,
-    padding: 15,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cardIcon: {
-    width: 50,
-    height: 50,
-    marginRight: 13,
-    borderRadius: 15,
-    backgroundColor: '#F0ECFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardText: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#343143',
-  },
-  cardValue: {
-    marginTop: 4,
-    fontSize: 13,
-    color: '#858191',
-  },
-});

@@ -56,45 +56,51 @@ export const restaurantService = {
   // ===================================================
   // GET ALL
   // ===================================================
+// services/restaurant.service.ts
 
-  async findAll(
-    params:
-      RestaurantQueryParams = {}
-  ): Promise<RestaurantListResponse> {
-    const response =
-      await api.get<RestaurantListResponse>(
-        RESTAURANT_URL,
-        {
-          params: {
-            populate:
-              '*',
+async findAll(
+  params:
+    RestaurantQueryParams = {}
+): Promise<RestaurantListResponse> {
+  const response =
+    await api.get<RestaurantListResponse>(
+      RESTAURANT_URL,
+      {
+        params: {
+          populate:
+            '*',
 
-            'pagination[page]':
-              params.page ??
-              1,
+          'pagination[page]':
+            params.page ??
+            1,
 
-            'pagination[pageSize]':
-              params.pageSize ??
-              25,
+          'pagination[pageSize]':
+            params.pageSize ??
+            25,
 
-            sort:
-              params.sort,
+          sort:
+            params.sort,
 
-            'filters[statusRes][$eq]':
-              params.statusRes,
+          'filters[statusRes][$eq]':
+            params.statusRes,
 
-            'filters[name][$containsi]':
-              params.name,
+          'filters[name][$containsi]':
+            params.name,
 
-            'filters[email][$eq]':
-              params.email,
-          },
-        }
-      );
+          'filters[email][$eq]':
+            params.email,
 
-    return response.data;
-  },
+          'filters[users][id][$eq]':
+            params.userId,
 
+          'filters[users][documentId][$eq]':
+            params.userDocumentId,
+        },
+      }
+    );
+
+  return response.data;
+},
   // ===================================================
   // GET ONE
   // ===================================================

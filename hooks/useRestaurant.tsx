@@ -44,15 +44,13 @@ export interface RestaurantMediaUpload {
 
 type RestaurantChange =
   | {
-      type:
-        'saved';
+      type: 'saved';
 
       restaurant:
         Restaurant;
     }
   | {
-      type:
-        'deleted';
+      type: 'deleted';
 
       documentId:
         string;
@@ -71,8 +69,12 @@ function notifyChange(
     RestaurantChange
 ) {
   listeners.forEach(
-    (listener) =>
-      listener(change)
+    (
+      listener
+    ) =>
+      listener(
+        change
+      )
   );
 }
 
@@ -84,24 +86,27 @@ function getErrorMessage(
       error
     )
   ) {
-    const message =
-      error.response?.data
-        ?.error?.message;
+    const data =
+      error.response?.data as
+        | {
+            error?: {
+              message?: string;
+            };
+          }
+        | undefined;
 
-    return typeof message ===
-      'string'
-      ? message
-      : 'No se pudo completar la operación del restaurante.';
+    return (
+      data?.error
+        ?.message ??
+      'No se pudo completar la operación del restaurante.'
+    );
   }
 
-  return error instanceof Error
+  return error instanceof
+    Error
     ? error.message
     : 'Ocurrió un error inesperado.';
 }
-
-// =====================================================
-// SLUG
-// =====================================================
 
 export function createRestaurantSlug(
   name: string
@@ -121,17 +126,14 @@ export function createRestaurantSlug(
       '-'
     )
     .replace(
-      /^-|-$/g,
+      /^-+|-+$/g,
       ''
     );
 }
 
-// =====================================================
-// PREPARE UPDATE
-// =====================================================
-
 function prepareData<
-  T extends UpdateRestaurantData,
+  T extends
+    UpdateRestaurantData,
 >(
   data: T
 ): T {
@@ -146,7 +148,9 @@ function prepareData<
     result.name =
       result.name.trim();
 
-    if (!result.name) {
+    if (
+      !result.name
+    ) {
       throw new Error(
         'Escribe el nombre del restaurante.'
       );
@@ -274,9 +278,9 @@ export function useRestaurant(
     error,
     setError,
   ] =
-    useState<string | null>(
-      null
-    );
+    useState<
+      string | null
+    >(null);
 
   const mountedRef =
     useRef(false);
@@ -290,9 +294,9 @@ export function useRestaurant(
   const hasLoadedRef =
     useRef(false);
 
-  // ===================================================
+  // =====================================================
   // QUERY
-  // ===================================================
+  // =====================================================
 
   const queryKey =
     JSON.stringify({
@@ -319,7 +323,19 @@ export function useRestaurant(
         query?.email
           ?.trim() ||
         undefined,
+
+      userId:
+        query?.userId,
+
+      userDocumentId:
+        query?.userDocumentId
+          ?.trim() ||
+        undefined,
     });
+
+  // =====================================================
+  // MOUNT
+  // =====================================================
 
   useEffect(() => {
     mountedRef.current =
@@ -334,9 +350,9 @@ export function useRestaurant(
     };
   }, []);
 
-  // ===================================================
+  // =====================================================
   // REFRESH
-  // ===================================================
+  // =====================================================
 
   const refresh =
     useCallback(
@@ -353,8 +369,13 @@ export function useRestaurant(
         hasLoadedRef.current =
           true;
 
-        setLoading(true);
-        setError(null);
+        setLoading(
+          true
+        );
+
+        setError(
+          null
+        );
 
         try {
           if (
@@ -402,7 +423,23 @@ export function useRestaurant(
               response.meta
                 .pagination
             );
+
+            // Si estamos buscando el restaurante
+            // de un usuario, usamos el primero
+            // encontrado como restaurante actual.
+            if (
+              params.userId !==
+                undefined ||
+              params.userDocumentId
+            ) {
+              setRestaurant(
+                response.data[0] ??
+                null
+              );
+            }
           }
+
+          return response;
         } catch (
           requestError
         ) {
@@ -417,6 +454,8 @@ export function useRestaurant(
               )
             );
           }
+
+          throw requestError;
         } finally {
           if (
             mountedRef.current &&
@@ -435,16 +474,33 @@ export function useRestaurant(
       ]
     );
 
+  // =====================================================
+  // AUTO LOAD
+  // =====================================================
+
   useEffect(() => {
     hasLoadedRef.current =
       false;
 
-    setRestaurant(null);
-    setRestaurants([]);
-    setPagination(null);
-    setError(null);
+    setRestaurant(
+      null
+    );
 
-    if (autoLoad) {
+    setRestaurants(
+      []
+    );
+
+    setPagination(
+      null
+    );
+
+    setError(
+      null
+    );
+
+    if (
+      autoLoad
+    ) {
       void refresh();
     }
 
@@ -457,9 +513,9 @@ export function useRestaurant(
     refresh,
   ]);
 
-  // ===================================================
-  // SINCRONIZAR CAMBIOS
-  // ===================================================
+  // =====================================================
+  // SYNC
+  // =====================================================
 
   useEffect(() => {
     const onChange = (
@@ -492,7 +548,9 @@ export function useRestaurant(
         requestRef.current +=
           1;
 
-        setLoading(false);
+        setLoading(
+          false
+        );
 
         setRestaurant(
           change.type ===
@@ -505,11 +563,79 @@ export function useRestaurant(
       }
 
       if (
-        autoLoad ||
-        hasLoadedRef.current
+        change.type ===
+        'saved'
       ) {
-        void refresh();
+        setRestaurants(
+          (
+            current
+          ) => {
+            const exists =
+              current.some(
+                (
+                  item
+                ) =>
+                  item.documentId ===
+                  change.restaurant
+                    .documentId
+              );
+
+            return exists
+              ? current.map(
+                  (
+                    item
+                  ) =>
+                    item.documentId ===
+                    change.restaurant
+                      .documentId
+                      ? change.restaurant
+                      : item
+                )
+              : [
+                  change.restaurant,
+                  ...current,
+                ];
+          }
+        );
+
+        setRestaurant(
+          (
+            current
+          ) =>
+            current
+              ?.documentId ===
+            change.restaurant
+              .documentId
+              ? change.restaurant
+              : current
+        );
+
+        return;
       }
+
+      setRestaurants(
+        (
+          current
+        ) =>
+          current.filter(
+            (
+              item
+            ) =>
+              item.documentId !==
+              change.documentId
+          )
+      );
+
+      setRestaurant(
+        (
+          current
+        ) =>
+          current
+            ?.documentId ===
+          change.documentId
+            ? null
+            : current
+      );
     };
 
     listeners.add(
@@ -523,13 +649,11 @@ export function useRestaurant(
     };
   }, [
     documentId,
-    autoLoad,
-    refresh,
   ]);
 
-  // ===================================================
+  // =====================================================
   // MUTATION
-  // ===================================================
+  // =====================================================
 
   const runMutation =
     useCallback(
@@ -551,8 +675,13 @@ export function useRestaurant(
         if (
           mountedRef.current
         ) {
-          setSaving(true);
-          setError(null);
+          setSaving(
+            true
+          );
+
+          setError(
+            null
+          );
         }
 
         try {
@@ -578,24 +707,26 @@ export function useRestaurant(
           if (
             mountedRef.current
           ) {
-            setSaving(false);
+            setSaving(
+              false
+            );
           }
         }
       },
       []
     );
 
-  // ===================================================
-  // RESTAURANTES DE UN USUARIO
-  // ===================================================
+  // =====================================================
+  // RESTAURANTS OF USER
+  // =====================================================
 
   const getMyRestaurants =
     useCallback(
       (
         user:
           AppUser
-      ) => {
-        return restaurants.filter(
+      ) =>
+        restaurants.filter(
           (
             item
           ) =>
@@ -604,10 +735,17 @@ export function useRestaurant(
                 restaurantUser
               ) =>
                 restaurantUser.id ===
-                user.id
+                  user.id ||
+                (
+                  Boolean(
+                    user.documentId
+                  ) &&
+                  restaurantUser
+                    .documentId ===
+                    user.documentId
+                )
             )
-        );
-      },
+        ),
       [
         restaurants,
       ]
@@ -621,16 +759,15 @@ export function useRestaurant(
       ) =>
         getMyRestaurants(
           user
-        ).length <
-        3,
+        ).length < 3,
       [
         getMyRestaurants,
       ]
     );
 
-  // ===================================================
+  // =====================================================
   // CREATE
-  // ===================================================
+  // =====================================================
 
   const createRestaurant =
     useCallback(
@@ -702,9 +839,9 @@ export function useRestaurant(
       ]
     );
 
-  // ===================================================
-  // UPDATE - PATCH
-  // ===================================================
+  // =====================================================
+  // UPDATE
+  // =====================================================
 
   const updateRestaurant =
     useCallback(
@@ -740,9 +877,9 @@ export function useRestaurant(
       ]
     );
 
-  // ===================================================
-  // LOGO CREATE
-  // ===================================================
+  // =====================================================
+  // LOGO
+  // =====================================================
 
   const createLogo =
     useCallback(
@@ -780,10 +917,6 @@ export function useRestaurant(
       ]
     );
 
-  // ===================================================
-  // LOGO UPDATE
-  // ===================================================
-
   const updateLogo =
     useCallback(
       (
@@ -820,10 +953,6 @@ export function useRestaurant(
       ]
     );
 
-  // ===================================================
-  // LOGO DELETE
-  // ===================================================
-
   const deleteLogo =
     useCallback(
       (
@@ -852,9 +981,9 @@ export function useRestaurant(
       ]
     );
 
-  // ===================================================
-  // QR CREATE
-  // ===================================================
+  // =====================================================
+  // QR
+  // =====================================================
 
   const createQRImage =
     useCallback(
@@ -892,10 +1021,6 @@ export function useRestaurant(
       ]
     );
 
-  // ===================================================
-  // QR UPDATE
-  // ===================================================
-
   const updateQRImage =
     useCallback(
       (
@@ -932,10 +1057,6 @@ export function useRestaurant(
       ]
     );
 
-  // ===================================================
-  // QR DELETE
-  // ===================================================
-
   const deleteQRImage =
     useCallback(
       (
@@ -964,9 +1085,9 @@ export function useRestaurant(
       ]
     );
 
-  // ===================================================
-  // DELETE RESTAURANT
-  // ===================================================
+  // =====================================================
+  // DELETE
+  // =====================================================
 
   const deleteRestaurant =
     useCallback(
@@ -993,15 +1114,14 @@ export function useRestaurant(
       ]
     );
 
-  // ===================================================
+  // =====================================================
   // HELPERS
-  // ===================================================
+  // =====================================================
 
   const getRestaurantProducts =
     useCallback(
       () =>
-        restaurant
-          ?.products ??
+        restaurant?.products ??
         [],
       [
         restaurant,
@@ -1011,19 +1131,7 @@ export function useRestaurant(
   const getRestaurantOrders =
     useCallback(
       () =>
-        restaurant
-          ?.orders ??
-        [],
-      [
-        restaurant,
-      ]
-    );
-
-  const getRestaurantCategories =
-    useCallback(
-      () =>
-        restaurant
-          ?.categories ??
+        restaurant?.orders ??
         [],
       [
         restaurant,
@@ -1031,13 +1139,11 @@ export function useRestaurant(
     );
 
   const clearError =
-    useCallback(
-      () =>
-        setError(
-          null
-        ),
-      []
-    );
+    useCallback(() => {
+      setError(
+        null
+      );
+    }, []);
 
   return {
     restaurant,
@@ -1066,7 +1172,6 @@ export function useRestaurant(
     canCreateRestaurant,
 
     getRestaurantProducts,
-    getRestaurantCategories,
     getRestaurantOrders,
 
     clearError,

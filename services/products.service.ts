@@ -95,48 +95,49 @@ export const productService = {
   // ===================================================
   // GET ALL
   // ===================================================
+// services/products.service.ts
 
-  async findAll(
-    params:
-      ProductQueryParams = {}
-  ): Promise<ProductListResponse> {
-    const response =
-      await api.get<ProductListResponse>(
-        PRODUCT_URL,
-        {
-          params: {
-            populate:
-              '*',
+async findAll(
+  params:
+    ProductQueryParams = {}
+): Promise<ProductListResponse> {
+  const response =
+    await api.get<ProductListResponse>(
+      PRODUCT_URL,
+      {
+        params: {
+          populate:
+            '*',
 
-            'pagination[page]':
-              params.page ??
-              1,
+          'pagination[page]':
+            params.page ??
+            1,
 
-            'pagination[pageSize]':
-              params.pageSize ??
-              25,
+          'pagination[pageSize]':
+            params.pageSize ??
+            25,
 
-            sort:
-              params.sort,
+          sort:
+            params.sort ??
+            'name:asc',
 
-            'filters[restaurant][id][$eq]':
-              params.restaurantId,
+          'filters[name][$containsi]':
+            params.name,
 
-            'filters[category][id][$eq]':
-              params.categoryId,
+          'filters[isAvailable][$eq]':
+            params.available,
 
-            'filters[isAvailable][$eq]':
-              params.available,
+          'filters[restaurant][documentId][$eq]':
+            params.restaurantDocumentId,
 
-            'filters[name][$containsi]':
-              params.name,
-          },
-        }
-      );
+          'filters[category][documentId][$eq]':
+            params.categoryDocumentId,
+        },
+      }
+    );
 
-    return response.data;
-  },
-
+  return response.data;
+},
   // ===================================================
   // GET ONE
   // ===================================================

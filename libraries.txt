@@ -3,6 +3,7 @@ npx expo install expo-image-picker
 npm i react-native-toast-message
 
 npx expo install expo-print expo-sharing
+npx expo install @react-native-picker/picker expo-image-picker
 
 npm install nativewind@4.2.7
 npm install --save-dev babel-preset-expo@54.0.12

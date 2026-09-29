@@ -7,6 +7,8 @@ import {
   useState,
 } from 'react';
 
+import axios from 'axios';
+
 import {
   productService,
 } from '@/services/products.service';
@@ -28,33 +30,21 @@ import type {
   CreateCategoryData,
 } from '@/types/category.types';
 
-// =====================================================
-// OPTIONS
-// =====================================================
-
 interface UseProductOptions {
   documentId?: string;
 
-  categoryId?:
-    | number
-    | string;
+  categoryDocumentId?: string;
 
   autoLoad?: boolean;
 
   query?: ProductQueryParams;
 }
 
-// =====================================================
-// SLUG
-// =====================================================
-
 export function createSlug(
   name: string
 ): string {
   return name
-    .normalize(
-      'NFD'
-    )
+    .normalize('NFD')
     .replace(
       /[\u0300-\u036f]/g,
       ''
@@ -72,12 +62,39 @@ export function createSlug(
     .replace(
       /-+/g,
       '-'
+    )
+    .replace(
+      /^-+|-+$/g,
+      ''
     );
 }
 
-// =====================================================
-// HOOK
-// =====================================================
+function getErrorMessage(
+  error: unknown,
+  fallback: string
+): string {
+  if (
+    axios.isAxiosError(error)
+  ) {
+    const data =
+      error.response?.data as
+        | {
+            error?: {
+              message?: string;
+            };
+          }
+        | undefined;
+
+    return (
+      data?.error?.message ??
+      fallback
+    );
+  }
+
+  return error instanceof Error
+    ? error.message
+    : fallback;
+}
 
 export function useProduct(
   options:
@@ -85,7 +102,7 @@ export function useProduct(
 ) {
   const {
     documentId,
-    categoryId,
+    categoryDocumentId,
     autoLoad = true,
     query,
   } = options;
@@ -141,18 +158,21 @@ export function useProduct(
     >(null);
 
   const mountedRef =
-    useRef(true);
+    useRef(false);
 
   useEffect(() => {
+    mountedRef.current =
+      true;
+
     return () => {
       mountedRef.current =
         false;
     };
   }, []);
 
-  // ===================================================
+  // =====================================================
   // SYNC PRODUCT
-  // ===================================================
+  // =====================================================
 
   const syncProduct =
     useCallback(
@@ -195,9 +215,9 @@ export function useProduct(
       []
     );
 
-  // ===================================================
-  // LOAD PRODUCT
-  // ===================================================
+  // =====================================================
+  // LOAD ONE PRODUCT
+  // =====================================================
 
   const loadProduct =
     useCallback(
@@ -234,7 +254,10 @@ export function useProduct(
             mountedRef.current
           ) {
             setError(
-              'No se pudo cargar el producto'
+              getErrorMessage(
+                requestError,
+                'No se pudo cargar el producto.'
+              )
             );
           }
 
@@ -252,9 +275,12 @@ export function useProduct(
       []
     );
 
-  // ===================================================
+  // =====================================================
   // LOAD PRODUCTS
-  // ===================================================
+  //
+  // restaurantDocumentId = documentId de Restaurant
+  // categoryDocumentId = documentId de Category
+  // =====================================================
 
   const loadProducts =
     useCallback(
@@ -275,9 +301,9 @@ export function useProduct(
             await productService.findAll({
               ...params,
 
-              categoryId:
-                categoryId ??
-                params.categoryId,
+              categoryDocumentId:
+                categoryDocumentId ??
+                params.categoryDocumentId,
             });
 
           if (
@@ -296,7 +322,10 @@ export function useProduct(
             mountedRef.current
           ) {
             setError(
-              'No se pudieron cargar los productos'
+              getErrorMessage(
+                requestError,
+                'No se pudieron cargar los productos.'
+              )
             );
           }
 
@@ -312,13 +341,15 @@ export function useProduct(
         }
       },
       [
-        categoryId,
+        categoryDocumentId,
       ]
     );
 
-  // ===================================================
-  // LOAD CATEGORIES
-  // ===================================================
+  // =====================================================
+  // LOAD GLOBAL CATEGORIES
+  //
+  // NO se pasa Restaurant.
+  // =====================================================
 
   const loadCategories =
     useCallback(
@@ -327,10 +358,15 @@ export function useProduct(
           true
         );
 
+        setError(
+          null
+        );
+
         try {
           const response =
             await categoryService.findAll({
-              page: 1,
+              page:
+                1,
 
               pageSize:
                 100,
@@ -340,9 +376,6 @@ export function useProduct(
 
               isActive:
                 true,
-
-              restaurantId:
-                query?.restaurantId,
             });
 
           if (
@@ -354,6 +387,21 @@ export function useProduct(
           }
 
           return response.data;
+        } catch (
+          requestError
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              getErrorMessage(
+                requestError,
+                'No se pudieron cargar las categorías.'
+              )
+            );
+          }
+
+          throw requestError;
         } finally {
           if (
             mountedRef.current
@@ -364,14 +412,12 @@ export function useProduct(
           }
         }
       },
-      [
-        query?.restaurantId,
-      ]
+      []
     );
 
-  // ===================================================
-  // CREATE CATEGORY
-  // ===================================================
+  // =====================================================
+  // CREATE GLOBAL CATEGORY
+  // =====================================================
 
   const createCategory =
     useCallback(
@@ -388,12 +434,28 @@ export function useProduct(
         );
 
         try {
+          const name =
+            data.name.trim();
+
+          if (!name) {
+            throw new Error(
+              'El nombre de la categoría es obligatorio.'
+            );
+          }
+
           const response =
             await categoryService.create({
               ...data,
 
-              name:
-                data.name.trim(),
+              name,
+
+              description:
+                typeof data.description ===
+                'string'
+                  ? data.description
+                      .trim() ||
+                    null
+                  : data.description,
 
               isActive:
                 data.isActive ??
@@ -409,10 +471,27 @@ export function useProduct(
             setCategories(
               (
                 current
-              ) => [
-                ...current,
-                newCategory,
-              ]
+              ) => {
+                const next = [
+                  ...current,
+                  newCategory,
+                ];
+
+                return next.sort(
+                  (
+                    a,
+                    b
+                  ) =>
+                    a.name.localeCompare(
+                      b.name,
+                      'es',
+                      {
+                        sensitivity:
+                          'base',
+                      }
+                    )
+                );
+              }
             );
           }
 
@@ -424,7 +503,10 @@ export function useProduct(
             mountedRef.current
           ) {
             setError(
-              'No se pudo crear la categoría'
+              getErrorMessage(
+                requestError,
+                'No se pudo crear la categoría.'
+              )
             );
           }
 
@@ -442,9 +524,9 @@ export function useProduct(
       []
     );
 
-  // ===================================================
+  // =====================================================
   // CREATE PRODUCT
-  // ===================================================
+  // =====================================================
 
   const createProduct =
     useCallback(
@@ -480,6 +562,17 @@ export function useProduct(
               )
             );
 
+          const restaurant =
+            data.restaurant
+              ?.trim();
+
+          const category =
+            typeof data.category ===
+            'string'
+              ? data.category
+                  .trim()
+              : data.category;
+
           if (!name) {
             throw new Error(
               'El nombre del producto es obligatorio.'
@@ -494,6 +587,14 @@ export function useProduct(
           ) {
             throw new Error(
               'El precio del producto no es válido.'
+            );
+          }
+
+          if (
+            !restaurant
+          ) {
+            throw new Error(
+              'El producto debe estar relacionado con un restaurante.'
             );
           }
 
@@ -526,8 +627,13 @@ export function useProduct(
 
               isAvailable:
                 data.isAvailable ??
-                stock >
-                  0,
+                stock > 0,
+
+              restaurant,
+
+              category:
+                category ||
+                null,
             };
 
           const response =
@@ -563,10 +669,10 @@ export function useProduct(
             mountedRef.current
           ) {
             setError(
-              requestError instanceof
-                Error
-                ? requestError.message
-                : 'No se pudo crear el producto'
+              getErrorMessage(
+                requestError,
+                'No se pudo crear el producto.'
+              )
             );
           }
 
@@ -584,9 +690,9 @@ export function useProduct(
       []
     );
 
-  // ===================================================
+  // =====================================================
   // UPDATE PRODUCT
-  // ===================================================
+  // =====================================================
 
   const updateProduct =
     useCallback(
@@ -608,7 +714,7 @@ export function useProduct(
           const productData:
             UpdateProductData = {
               ...data,
-          };
+            };
 
           if (
             data.name !==
@@ -616,6 +722,12 @@ export function useProduct(
           ) {
             const name =
               data.name.trim();
+
+            if (!name) {
+              throw new Error(
+                'El nombre del producto es obligatorio.'
+              );
+            }
 
             productData.name =
               name;
@@ -642,11 +754,25 @@ export function useProduct(
             data.price !==
             undefined
           ) {
+            const price =
+              Number(
+                data.price
+              );
+
+            if (
+              !Number.isFinite(
+                price
+              ) ||
+              price < 0
+            ) {
+              throw new Error(
+                'El precio del producto no es válido.'
+              );
+            }
+
             productData.price =
               Number(
-                Number(
-                  data.price
-                ).toFixed(
+                price.toFixed(
                   2
                 )
               );
@@ -679,6 +805,23 @@ export function useProduct(
             }
           }
 
+          if (
+            typeof data.restaurant ===
+            'string'
+          ) {
+            productData.restaurant =
+              data.restaurant.trim();
+          }
+
+          if (
+            typeof data.category ===
+            'string'
+          ) {
+            productData.category =
+              data.category.trim() ||
+              null;
+          }
+
           const response =
             await productService.patch(
               id,
@@ -700,7 +843,10 @@ export function useProduct(
             mountedRef.current
           ) {
             setError(
-              'No se pudo actualizar el producto'
+              getErrorMessage(
+                requestError,
+                'No se pudo actualizar el producto.'
+              )
             );
           }
 
@@ -720,9 +866,9 @@ export function useProduct(
       ]
     );
 
-  // ===================================================
+  // =====================================================
   // MAIN IMAGE
-  // ===================================================
+  // =====================================================
 
   const createMainImage =
     useCallback(
@@ -734,6 +880,10 @@ export function useProduct(
       ) => {
         setSaving(
           true
+        );
+
+        setError(
+          null
         );
 
         try {
@@ -752,6 +902,21 @@ export function useProduct(
           );
 
           return response.data;
+        } catch (
+          requestError
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              getErrorMessage(
+                requestError,
+                'No se pudo guardar la imagen del producto.'
+              )
+            );
+          }
+
+          throw requestError;
         } finally {
           if (
             mountedRef.current
@@ -779,6 +944,10 @@ export function useProduct(
           true
         );
 
+        setError(
+          null
+        );
+
         try {
           const response =
             await productService.updateMainImage(
@@ -795,6 +964,21 @@ export function useProduct(
           );
 
           return response.data;
+        } catch (
+          requestError
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              getErrorMessage(
+                requestError,
+                'No se pudo actualizar la imagen del producto.'
+              )
+            );
+          }
+
+          throw requestError;
         } finally {
           if (
             mountedRef.current
@@ -819,6 +1003,10 @@ export function useProduct(
           true
         );
 
+        setError(
+          null
+        );
+
         try {
           const response =
             await productService.deleteMainImage(
@@ -830,6 +1018,21 @@ export function useProduct(
           );
 
           return response.data;
+        } catch (
+          requestError
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              getErrorMessage(
+                requestError,
+                'No se pudo eliminar la imagen del producto.'
+              )
+            );
+          }
+
+          throw requestError;
         } finally {
           if (
             mountedRef.current
@@ -845,9 +1048,9 @@ export function useProduct(
       ]
     );
 
-  // ===================================================
+  // =====================================================
   // GALLERY
-  // ===================================================
+  // =====================================================
 
   const addGalleryImages =
     useCallback(
@@ -859,6 +1062,10 @@ export function useProduct(
       ) => {
         setSaving(
           true
+        );
+
+        setError(
+          null
         );
 
         try {
@@ -873,6 +1080,21 @@ export function useProduct(
           );
 
           return response.data;
+        } catch (
+          requestError
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              getErrorMessage(
+                requestError,
+                'No se pudieron agregar las imágenes.'
+              )
+            );
+          }
+
+          throw requestError;
         } finally {
           if (
             mountedRef.current
@@ -904,6 +1126,10 @@ export function useProduct(
           true
         );
 
+        setError(
+          null
+        );
+
         try {
           const response =
             await productService.updateGalleryImage(
@@ -921,6 +1147,21 @@ export function useProduct(
           );
 
           return response.data;
+        } catch (
+          requestError
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              getErrorMessage(
+                requestError,
+                'No se pudo actualizar la imagen.'
+              )
+            );
+          }
+
+          throw requestError;
         } finally {
           if (
             mountedRef.current
@@ -949,6 +1190,10 @@ export function useProduct(
           true
         );
 
+        setError(
+          null
+        );
+
         try {
           const response =
             await productService.deleteGalleryImage(
@@ -961,6 +1206,21 @@ export function useProduct(
           );
 
           return response.data;
+        } catch (
+          requestError
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              getErrorMessage(
+                requestError,
+                'No se pudo eliminar la imagen.'
+              )
+            );
+          }
+
+          throw requestError;
         } finally {
           if (
             mountedRef.current
@@ -976,33 +1236,31 @@ export function useProduct(
       ]
     );
 
-  // ===================================================
-  // AVAILABLE
-  // ===================================================
+  // =====================================================
+  // AVAILABILITY
+  // =====================================================
 
   const toggleAvailability =
     useCallback(
       async (
         id: string,
-        value:
-          boolean
-      ) => {
-        return updateProduct(
+        value: boolean
+      ) =>
+        updateProduct(
           id,
           {
             isAvailable:
               value,
           }
-        );
-      },
+        ),
       [
         updateProduct,
       ]
     );
 
-  // ===================================================
+  // =====================================================
   // DELETE PRODUCT
-  // ===================================================
+  // =====================================================
 
   const deleteProduct =
     useCallback(
@@ -1049,6 +1307,21 @@ export function useProduct(
                   : current
             );
           }
+        } catch (
+          requestError
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              getErrorMessage(
+                requestError,
+                'No se pudo eliminar el producto.'
+              )
+            );
+          }
+
+          throw requestError;
         } finally {
           if (
             mountedRef.current
@@ -1062,18 +1335,16 @@ export function useProduct(
       []
     );
 
-  // ===================================================
+  // =====================================================
   // AUTO LOAD
-  // ===================================================
+  // =====================================================
 
   useEffect(() => {
     if (!autoLoad) {
       return;
     }
 
-    if (
-      documentId
-    ) {
+    if (documentId) {
       void loadProduct(
         documentId
       );
@@ -1087,19 +1358,24 @@ export function useProduct(
   }, [
     autoLoad,
     documentId,
-    categoryId,
+    categoryDocumentId,
 
     query?.page,
     query?.pageSize,
     query?.sort,
-    query?.restaurantId,
-    query?.categoryId,
+    query?.restaurantDocumentId,
+    query?.categoryDocumentId,
     query?.available,
     query?.name,
 
     loadProduct,
     loadProducts,
   ]);
+
+  const clearError =
+    useCallback(() => {
+      setError(null);
+    }, []);
 
   return {
     product,
@@ -1132,6 +1408,8 @@ export function useProduct(
     createCategory,
 
     createSlug,
+
+    clearError,
 
     refresh:
       documentId

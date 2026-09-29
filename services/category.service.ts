@@ -16,10 +16,6 @@ const CATEGORY_URL =
   '/api/categories';
 
 export const categoryService = {
-  // ===================================================
-  // GET ALL
-  // ===================================================
-
   async findAll(
     params:
       CategoryQueryParams = {}
@@ -49,19 +45,12 @@ export const categoryService = {
 
             'filters[isActive][$eq]':
               params.isActive,
-
-            'filters[restaurant][id][$eq]':
-              params.restaurantId,
           },
         }
       );
 
     return response.data;
   },
-
-  // ===================================================
-  // GET ONE
-  // ===================================================
 
   async findOne(
     documentId: string
@@ -81,11 +70,6 @@ export const categoryService = {
 
     return response.data;
   },
-
-  // ===================================================
-  // CREATE
-  // POST NATIVO STRAPI
-  // ===================================================
 
   async create(
     data:
@@ -108,13 +92,6 @@ export const categoryService = {
     return response.data;
   },
 
-  // ===================================================
-  // UPDATE PARCIAL
-  // PATCH PERSONALIZADO
-  //
-  // PATCH /api/categories/:documentId
-  // ===================================================
-
   async update(
     documentId: string,
     data:
@@ -132,10 +109,6 @@ export const categoryService = {
 
     return response.data;
   },
-
-  // ===================================================
-  // DELETE
-  // ===================================================
 
   async remove(
     documentId: string

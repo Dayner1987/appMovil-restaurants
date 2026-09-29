@@ -310,14 +310,22 @@ async resetUserPassword(
   // GET /api/users/me
   // ===================================================
 
-  async getMe(): Promise<AppUser> {
-    const response =
-      await api.get<AppUser>(
-        USERS_ME_URL
-      );
+  // services/user.service.ts
 
-    return response.data;
-  },
+async getMe(): Promise<AppUser> {
+  const response =
+    await api.get<AppUser>(
+      USERS_ME_URL,
+      {
+        params: {
+          populate:
+            'role,avatar,restaurant',
+        },
+      }
+    );
+
+  return response.data;
+},
 
   // ===================================================
   // PATCH
