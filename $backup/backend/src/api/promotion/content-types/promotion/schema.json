@@ -1,0 +1,62 @@
+{
+  "kind": "collectionType",
+  "collectionName": "promotions",
+  "info": {
+    "singularName": "promotion",
+    "pluralName": "promotions",
+    "displayName": "Promotion"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "PERCENTAGE",
+        "FIXED_AMOUNT",
+        "TWO_FOR_ONE"
+      ]
+    },
+    "percentage": {
+      "type": "decimal",
+      "required": true,
+      "default": 0
+    },
+    "discountAmount": {
+      "type": "decimal"
+    },
+    "buyQuantity": {
+      "type": "integer"
+    },
+    "payQuantity": {
+      "type": "integer"
+    },
+    "startAt": {
+      "type": "datetime"
+    },
+    "endAt": {
+      "type": "datetime"
+    },
+    "restaurant": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::restaurant.restaurant",
+      "inversedBy": "promotions"
+    },
+    "products": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::product.product",
+      "inversedBy": "promotions"
+    }
+  }
+}

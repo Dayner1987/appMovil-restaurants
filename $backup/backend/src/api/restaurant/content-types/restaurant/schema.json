@@ -69,6 +69,12 @@
       "target": "plugin::users-permissions.user",
       "mappedBy": "restaurant"
     },
+    "categories": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::category.category",
+      "mappedBy": "restaurant"
+    },
     "products": {
       "type": "relation",
       "relation": "oneToMany",

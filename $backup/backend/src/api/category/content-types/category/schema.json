@@ -18,9 +18,25 @@
     "description": {
       "type": "text"
     },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
     "isActive": {
       "type": "boolean",
       "default": true
+    },
+    "restaurant": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::restaurant.restaurant",
+      "inversedBy": "categories"
     },
     "products": {
       "type": "relation",
