@@ -45,6 +45,18 @@
       "relation": "manyToOne",
       "target": "api::order.order",
       "inversedBy": "payments"
+    },
+    "processedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "processedBy2"
+    },
+    "shift": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::employee-shift.employee-shift",
+      "inversedBy": "employeeShift2"
     }
   }
 }

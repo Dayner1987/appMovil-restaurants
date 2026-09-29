@@ -88,6 +88,30 @@
       "relation": "manyToMany",
       "target": "plugin::users-permissions.user",
       "mappedBy": "orders"
+    },
+    "customer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "client"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "employee"
+    },
+    "completeBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "completeBy2"
+    },
+    "shift": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::employee-shift.employee-shift",
+      "inversedBy": "employeeShift"
     }
   }
 }

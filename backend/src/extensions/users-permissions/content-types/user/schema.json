@@ -112,6 +112,42 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::restaurant-application.restaurant-application"
+    },
+    "client": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::order.order",
+      "mappedBy": "customer"
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::order.order",
+      "mappedBy": "createdByUser"
+    },
+    "completeBy2": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::order.order",
+      "mappedBy": "completeBy"
+    },
+    "processedBy2": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment.payment",
+      "mappedBy": "processedBy"
+    },
+    "issuedBy2": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::receipt.receipt",
+      "mappedBy": "issuedBy"
+    },
+    "employee_shifts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::employee-shift.employee-shift",
+      "mappedBy": "employee"
     }
   }
 }

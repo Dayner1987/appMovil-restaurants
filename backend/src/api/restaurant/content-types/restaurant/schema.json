@@ -92,6 +92,12 @@
       "relation": "oneToMany",
       "target": "api::order.order",
       "mappedBy": "restaurant"
+    },
+    "employee_shifts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::employee-shift.employee-shift",
+      "mappedBy": "restaurant"
     }
   }
 }

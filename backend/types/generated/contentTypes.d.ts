@@ -506,6 +506,50 @@ export interface ApiCompanyCompany extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiEmployeeShiftEmployeeShift
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'employee_shifts';
+  info: {
+    displayName: 'EmployeeShift';
+    pluralName: 'employee-shifts';
+    singularName: 'employee-shift';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    employee: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    employeeShift: Schema.Attribute.Relation<'oneToMany', 'api::order.order'>;
+    employeeShift2: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::payment.payment'
+    >;
+    endedAt: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::employee-shift.employee-shift'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    restaurant: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::restaurant.restaurant'
+    >;
+    startedAt: Schema.Attribute.DateTime;
+    statusEm: Schema.Attribute.Enumeration<['OPEN', 'CLOSED']>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiOrderItemOrderItem extends Struct.CollectionTypeSchema {
   collectionName: 'order_items';
   info: {
@@ -554,9 +598,21 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
   };
   attributes: {
     completeAt: Schema.Attribute.DateTime;
+    completeBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    createdByUser: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    customer: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     discount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::order.order'> &
@@ -578,6 +634,10 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     restaurant: Schema.Attribute.Relation<
       'manyToOne',
       'api::restaurant.restaurant'
+    >;
+    shift: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::employee-shift.employee-shift'
     >;
     statusOrder: Schema.Attribute.Enumeration<
       ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED']
@@ -620,7 +680,15 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
     method: Schema.Attribute.Enumeration<['CASH', 'QR', 'CARD', 'TRANSFER']>;
     order: Schema.Attribute.Relation<'manyToOne', 'api::order.order'>;
     paidAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    processedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     publishedAt: Schema.Attribute.DateTime;
+    shift: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::employee-shift.employee-shift'
+    >;
     statusPayment: Schema.Attribute.Enumeration<
       ['PENDING', 'APPROVED', 'REJECTED', 'REFUNDED']
     >;
@@ -782,6 +850,10 @@ export interface ApiReceiptReceipt extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     discount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     issuedAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    issuedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -856,6 +928,10 @@ export interface ApiRestaurantRestaurant extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     description: Schema.Attribute.Text;
     email: Schema.Attribute.Email & Schema.Attribute.Required;
+    employee_shifts: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::employee-shift.employee-shift'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1353,6 +1429,8 @@ export interface PluginUsersPermissionsUser
     avatar: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     ci: Schema.Attribute.String;
+    client: Schema.Attribute.Relation<'oneToMany', 'api::order.order'>;
+    completeBy2: Schema.Attribute.Relation<'oneToMany', 'api::order.order'>;
     confirmationToken: Schema.Attribute.String & Schema.Attribute.Private;
     confirmed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     createdAt: Schema.Attribute.DateTime;
@@ -1363,7 +1441,13 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    employee: Schema.Attribute.Relation<'oneToMany', 'api::order.order'>;
+    employee_shifts: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::employee-shift.employee-shift'
+    >;
     firstName: Schema.Attribute.String & Schema.Attribute.Required;
+    issuedBy2: Schema.Attribute.Relation<'oneToMany', 'api::receipt.receipt'>;
     lastName: Schema.Attribute.String & Schema.Attribute.Required;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -1379,6 +1463,10 @@ export interface PluginUsersPermissionsUser
         minLength: 6;
       }>;
     phone: Schema.Attribute.String;
+    processedBy2: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::payment.payment'
+    >;
     provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private;
@@ -1420,6 +1508,7 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::category.category': ApiCategoryCategory;
       'api::company.company': ApiCompanyCompany;
+      'api::employee-shift.employee-shift': ApiEmployeeShiftEmployeeShift;
       'api::order-item.order-item': ApiOrderItemOrderItem;
       'api::order.order': ApiOrderOrder;
       'api::payment.payment': ApiPaymentPayment;

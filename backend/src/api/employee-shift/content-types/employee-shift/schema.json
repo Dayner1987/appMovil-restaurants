@@ -1,0 +1,52 @@
+{
+  "kind": "collectionType",
+  "collectionName": "employee_shifts",
+  "info": {
+    "singularName": "employee-shift",
+    "pluralName": "employee-shifts",
+    "displayName": "EmployeeShift"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "startedAt": {
+      "type": "datetime"
+    },
+    "endedAt": {
+      "type": "datetime"
+    },
+    "statusEm": {
+      "type": "enumeration",
+      "enum": [
+        "OPEN",
+        "CLOSED"
+      ]
+    },
+    "employee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "employee_shifts"
+    },
+    "restaurant": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::restaurant.restaurant",
+      "inversedBy": "employee_shifts"
+    },
+    "employeeShift": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::order.order",
+      "mappedBy": "shift"
+    },
+    "employeeShift2": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment.payment",
+      "mappedBy": "shift"
+    }
+  }
+}

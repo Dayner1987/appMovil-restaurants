@@ -1,8 +1,14 @@
 // src/extensions/users-permissions/strapi-server.ts
-import {
 
+import {
   adminResetPassword,
+  adminFind,
+  adminFindOne,
+  adminPatch,
+  adminUpdateAvatar,
+  adminRemoveAvatar,
 } from './server/controllers/admin-users';
+
 import {
   updateProfile,
 } from './server/controllers/profile';
@@ -17,18 +23,22 @@ import {
   meRoutes,
 } from './server/routes/me-routes';
 
-
-import {
-  adminFind,
-  adminFindOne,
-  adminPatch,
-  adminUpdateAvatar,
-  adminRemoveAvatar,
-} from './server/controllers/admin-users';
-
 import {
   adminUserRoutes,
 } from './server/routes/admin-user-routes';
+
+import {
+  restaurantEmployeeRoutes,
+} from './server/routes/restaurant-employee-routes';
+
+import {
+  restaurantCreateEmployee,
+  restaurantFindEmployee,
+  restaurantFindEmployees,
+  restaurantResetEmployeePassword,
+  restaurantUpdateEmployee,
+  restaurantUpdateEmployeeStatus,
+} from './server/controllers/restaurant-employee';
 
 export default (
   plugin: any
@@ -49,10 +59,13 @@ export default (
         )
         .findOne({
           where: {
-            id: userId,
+            id:
+              userId,
           },
 
-          select: ['id'],
+          select: [
+            'id',
+          ],
 
           populate: {
             role: {
@@ -142,23 +155,29 @@ export default (
                 ...args
               )
             )
-        : extend(original);
+        : extend(
+            original
+          );
   }
 
   // =====================================================
   // AUTH ORIGINAL
+  //
   // SOLO AGREGAMOS ROLE A LA RESPUESTA
   // =====================================================
 
   extendController(
     'auth',
+
     (
       controller
     ) => {
-      for (const action of [
-        'callback',
-        'register',
-      ]) {
+      for (
+        const action of [
+          'callback',
+          'register',
+        ]
+      ) {
         const originalAction =
           controller[
             action
@@ -209,6 +228,7 @@ export default (
 
                 user: {
                   ...body.user,
+
                   role,
                 },
               };
@@ -230,6 +250,7 @@ export default (
 
   extendController(
     'user',
+
     (
       controller
     ) => {
@@ -265,7 +286,9 @@ export default (
             result ??
             ctx.body;
 
-          if (!body?.id) {
+          if (
+            !body?.id
+          ) {
             return result;
           }
 
@@ -276,7 +299,8 @@ export default (
               )
               .findOne({
                 where: {
-                  id: body.id,
+                  id:
+                    body.id,
                 },
 
                 populate: {
@@ -297,7 +321,9 @@ export default (
                 },
               });
 
-          if (!user) {
+          if (
+            !user
+          ) {
             return ctx.notFound(
               'Usuario no encontrado'
             );
@@ -315,7 +341,7 @@ export default (
         };
 
       // =================================================
-      // NUESTRAS ACCIONES
+      // PERFIL
       // =================================================
 
       controller.updateProfile =
@@ -329,13 +355,51 @@ export default (
 
       controller.removeMyAvatar =
         removeMyAvatar;
-controller.adminResetPassword =
-  adminResetPassword;
-        controller.adminFind = adminFind;
-controller.adminFindOne = adminFindOne;
-controller.adminPatch = adminPatch;
-controller.adminUpdateAvatar = adminUpdateAvatar;
-controller.adminRemoveAvatar = adminRemoveAvatar;
+
+      // =================================================
+      // ADMIN
+      // =================================================
+
+      controller.adminResetPassword =
+        adminResetPassword;
+
+      controller.adminFind =
+        adminFind;
+
+      controller.adminFindOne =
+        adminFindOne;
+
+      controller.adminPatch =
+        adminPatch;
+
+      controller.adminUpdateAvatar =
+        adminUpdateAvatar;
+
+      controller.adminRemoveAvatar =
+        adminRemoveAvatar;
+
+      // =================================================
+      // RESTAURANT -> EMPLOYEES
+      // =================================================
+
+      controller.restaurantCreateEmployee =
+        restaurantCreateEmployee;
+
+      controller.restaurantFindEmployees =
+        restaurantFindEmployees;
+
+      controller.restaurantFindEmployee =
+        restaurantFindEmployee;
+
+      controller.restaurantUpdateEmployee =
+        restaurantUpdateEmployee;
+
+      controller.restaurantUpdateEmployeeStatus =
+        restaurantUpdateEmployeeStatus;
+
+      controller.restaurantResetEmployeePassword =
+        restaurantResetEmployeePassword;
+
       return controller;
     }
   );
@@ -349,26 +413,44 @@ controller.adminRemoveAvatar = adminRemoveAvatar;
       'content-api'
     ]?.routes;
 
-  if (!contentApiRoutes) {
+  if (
+    !contentApiRoutes
+  ) {
     throw new Error(
       'No se encontraron las rutas content-api de users-permissions'
     );
   }
 
-  for (const route of [
-  ...meRoutes,
-  ...adminUserRoutes,
-]) {
-  const alreadyExists = contentApiRoutes.some(
-    (existing: any) =>
-      existing.method === route.method &&
-      existing.path === route.path
-  );
+  for (
+    const route of [
+      ...meRoutes,
 
-  if (!alreadyExists) {
-    contentApiRoutes.push(route);
+      ...adminUserRoutes,
+
+      // IMPORTANTE:
+      // ESTO FALTABA
+      ...restaurantEmployeeRoutes,
+    ]
+  ) {
+    const alreadyExists =
+      contentApiRoutes.some(
+        (
+          existing: any
+        ) =>
+          existing.method ===
+            route.method &&
+          existing.path ===
+            route.path
+      );
+
+    if (
+      !alreadyExists
+    ) {
+      contentApiRoutes.push(
+        route
+      );
+    }
   }
-}
 
   return plugin;
 };
