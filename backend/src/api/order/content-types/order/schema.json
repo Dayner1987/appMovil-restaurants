@@ -21,7 +21,6 @@
       "enum": [
         "ONLINE",
         "COUNTER",
-        "DELIVERY",
         "PICKUP"
       ]
     },

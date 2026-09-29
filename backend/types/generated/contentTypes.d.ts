@@ -569,9 +569,7 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
     orderedAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
-    orderType: Schema.Attribute.Enumeration<
-      ['ONLINE', 'COUNTER', 'DELIVERY', 'PICKUP']
-    >;
+    orderType: Schema.Attribute.Enumeration<['ONLINE', 'COUNTER', 'PICKUP']>;
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     paymentStatus: Schema.Attribute.Enumeration<
       ['PENDING', 'PARTIAL', 'PAID', 'REFUNDED']

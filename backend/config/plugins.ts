@@ -1,3 +1,5 @@
+// backend/config/plugins.ts
+
 import type { Core } from '@strapi/strapi';
 
 const allowedMediaTypes = [
@@ -22,13 +24,19 @@ const deniedExecutableTypes = [
   'application/x-mach-binary',
 ];
 
-const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin => ({
+const config = ({
+  env,
+}: Core.Config.Shared.ConfigParams): Core.Config.Plugin => ({
   'users-permissions': {
     config: {
-      jwtManagement: 'refresh',
+      // JWT tradicional.
+      // Es el que actualmente utiliza nuestro frontend
+      // guardando auth_token en AsyncStorage.
+      jwtManagement: 'legacy-support',
 
-      sessions: {
-        httpOnly: true,
+      jwt: {
+        // 30 días
+        expiresIn: '30d',
       },
 
       register: {
