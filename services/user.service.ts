@@ -12,6 +12,7 @@ import type {
   RoleListResponse,
   RoleResponse,
   UpdateRoleData,
+   CreateUserData,
 } from '@/types/user.types';
 
 import {
@@ -62,7 +63,31 @@ export const userService = {
   // ===================================================
   // ADMIN - LISTAR USUARIOS
   // ===================================================
+// services/user.service.ts
 
+  // ===================================================
+  // ADMIN - CREAR USUARIO
+  // POST /api/users
+  // ===================================================
+
+  async create(
+    data:
+      CreateUserData
+  ): Promise<AppUser> {
+    const response =
+      await api.post<AppUser>(
+        USERS_URL,
+        data,
+        {
+          params: {
+            populate:
+              'role,avatar,restaurant',
+          },
+        }
+      );
+
+    return response.data;
+  },
   async findAll(
   params: UserQueryParams = {}
 ): Promise<UserListResponse> {

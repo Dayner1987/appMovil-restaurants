@@ -19,6 +19,7 @@ import type {
   UpdateUserData,
   UserImage,
   UserQueryParams,
+   CreateUserData,
 } from '@/types/user.types';
 
 interface UseUserOptions {
@@ -491,7 +492,70 @@ const loadUsers =
         }
       }
     }, []);
+// hooks/useUsers.ts
 
+  // ===================================================
+  // ADMIN - CREAR USUARIO
+  // ===================================================
+
+  const createUser =
+    useCallback(
+      async (
+        data:
+          CreateUserData
+      ) => {
+        setSaving(
+          true
+        );
+
+        setError(
+          null
+        );
+
+        try {
+          const createdUser =
+            await userService.create(
+              data
+            );
+
+          if (
+            mountedRef.current
+          ) {
+            setUsers(
+              (
+                currentUsers
+              ) => [
+                createdUser,
+                ...currentUsers,
+              ]
+            );
+          }
+
+          return createdUser;
+        } catch (
+          requestError
+        ) {
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              'No se pudo crear el usuario'
+            );
+          }
+
+          throw requestError;
+        } finally {
+          if (
+            mountedRef.current
+          ) {
+            setSaving(
+              false
+            );
+          }
+        }
+      },
+      []
+    );
   // ===================================================
   // ADMIN - ACTUALIZAR USUARIO
   // ===================================================
@@ -785,6 +849,8 @@ const loadUsers =
     uploadMyAvatar,
     removeMyAvatar,
 
+    createUser,
+    
     updateUser,
     deleteUser,
 

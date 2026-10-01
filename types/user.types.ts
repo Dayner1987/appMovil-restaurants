@@ -263,3 +263,50 @@ export interface AdminResetPasswordResponse {
 export interface AdminAvatarResponse {
   data: AppUser;
 }
+
+// types/user.types.ts
+
+// =====================================================
+// CREAR USUARIO POR ADMINISTRADOR
+// =====================================================
+
+export interface CreateUserData {
+  username: string;
+
+  email: string;
+
+  password: string;
+
+  firstName: string;
+
+  middleName?:
+    | string
+    | null;
+
+  lastName: string;
+
+  secondLastName?:
+    | string
+    | null;
+
+  ci?:
+    | string
+    | null;
+
+  phone?:
+    | string
+    | null;
+
+  confirmed?: boolean;
+
+  blocked?: boolean;
+
+  role:
+    | number
+    | string;
+
+  restaurant?:
+    | number
+    | string
+    | null;
+}

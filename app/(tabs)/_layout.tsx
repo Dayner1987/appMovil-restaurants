@@ -1,3 +1,5 @@
+// app/(tabs)/_layout.tsx
+
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 
@@ -6,16 +8,38 @@ export default function ClientTabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#7657D5',
-        tabBarInactiveTintColor: '#9693A3',
+
+        tabBarActiveTintColor:
+          '#6F8C3E',
+
+        tabBarInactiveTintColor:
+          '#969B91',
+
         tabBarStyle: {
-          height: 66,
-          paddingTop: 7,
-          paddingBottom: 8,
+          height: 72,
+          paddingTop: 8,
+          paddingBottom: 10,
           borderTopWidth: 0,
-          backgroundColor: '#FFFFFF',
-          elevation: 10,
+          backgroundColor:
+            '#FFFFFF',
+
+          elevation: 12,
+
+          shadowColor:
+            '#000000',
+
+          shadowOffset: {
+            width: 0,
+            height: -2,
+          },
+
+          shadowOpacity:
+            0.06,
+
+          shadowRadius:
+            8,
         },
+
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
@@ -26,8 +50,21 @@ export default function ClientTabsLayout() {
         name="index"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+
+          tabBarIcon: ({
+            color,
+            size,
+            focused,
+          }) => (
+            <Ionicons
+              name={
+                focused
+                  ? 'home'
+                  : 'home-outline'
+              }
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
@@ -36,9 +73,18 @@ export default function ClientTabsLayout() {
         name="restaurants"
         options={{
           title: 'Restaurantes',
-          tabBarIcon: ({ color, size }) => (
+
+          tabBarIcon: ({
+            color,
+            size,
+            focused,
+          }) => (
             <Ionicons
-              name="restaurant-outline"
+              name={
+                focused
+                  ? 'restaurant'
+                  : 'restaurant-outline'
+              }
               size={size}
               color={color}
             />
@@ -50,9 +96,18 @@ export default function ClientTabsLayout() {
         name="products"
         options={{
           title: 'Productos',
-          tabBarIcon: ({ color, size }) => (
+
+          tabBarIcon: ({
+            color,
+            size,
+            focused,
+          }) => (
             <Ionicons
-              name="fast-food-outline"
+              name={
+                focused
+                  ? 'fast-food'
+                  : 'fast-food-outline'
+              }
               size={size}
               color={color}
             />
@@ -64,9 +119,18 @@ export default function ClientTabsLayout() {
         name="profile"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
+
+          tabBarIcon: ({
+            color,
+            size,
+            focused,
+          }) => (
             <Ionicons
-              name="person-outline"
+              name={
+                focused
+                  ? 'person'
+                  : 'person-outline'
+              }
               size={size}
               color={color}
             />

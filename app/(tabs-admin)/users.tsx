@@ -39,7 +39,7 @@ import DeleteUserModal from '@/components/admin/users/DeleteUserModal';
 import {
   useUser,
 } from '@/hooks/useUsers';
-
+import CreateUserButton from '@/components/admin/users/CreateUserButton';
 import type {
   AppUser,
 } from '@/types/user.types';
@@ -345,17 +345,25 @@ export default function AdminUsersScreen() {
         )}
         ListHeaderComponent={
           <View className="mb-5 gap-5">
-            <View>
-              <Text className="text-[24px] font-extrabold text-[#252A20]">
-                Administrar usuarios
-              </Text>
+           <View className="gap-4">
+  <View>
+    <Text className="text-[24px] font-extrabold text-[#252A20]">
+      Administrar usuarios
+    </Text>
 
-              <Text className="mt-1 text-[13px] text-[#858A7A]">
-                Busca, filtra y
-                administra las cuentas
-                registradas
-              </Text>
-            </View>
+    <Text className="mt-1 text-[13px] text-[#858A7A]">
+      Busca, crea y administra las cuentas registradas
+    </Text>
+  </View>
+
+  <CreateUserButton
+    onPress={() => {
+      router.push(
+        '/others/CreateUserAdmin'
+      );
+    }}
+  />
+</View>
 
             <View className="flex-row items-center justify-between rounded-[22px] bg-[#EEF3E3] px-4 py-4">
               <View>
