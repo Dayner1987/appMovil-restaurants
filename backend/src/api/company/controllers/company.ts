@@ -182,6 +182,7 @@ export default factories.createCoreController(
     'name',
     'email',
     'number',
+    'nit',
     'aditionalLink',
   ];
 
@@ -195,7 +196,7 @@ export default factories.createCoreController(
 
   if (Object.keys(data).length === 0) {
     return ctx.badRequest(
-      'Solo puede actualizar: name, email, number o aditionalLink'
+      'Solo puede actualizar: name, nit, email, number o aditionalLink'
     );
   }
 
