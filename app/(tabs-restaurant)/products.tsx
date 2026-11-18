@@ -442,7 +442,7 @@ export default function RestaurantProductsScreen() {
     productsLoading;
 
   return (
-    <SafeAreaView
+    <View
       className="
         flex-1
         bg-[#F7F8F2]
@@ -860,6 +860,6 @@ export default function RestaurantProductsScreen() {
           handleDelete
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }

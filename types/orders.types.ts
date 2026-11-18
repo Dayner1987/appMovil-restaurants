@@ -241,6 +241,16 @@ export interface Order {
   users?:
     OrderUser[];
 
+  /** Usuario que registró la orden desde el panel del restaurante. */
+  createdByUser?:
+    | OrderUser
+    | null;
+
+  /** Cliente que realizó la compra. */
+  customer?:
+    | OrderUser
+    | null;
+
   createdAt: string;
 
   updatedAt: string;

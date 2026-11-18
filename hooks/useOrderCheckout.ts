@@ -21,6 +21,9 @@ import {
   paymentService,
 } from '@/services/payment.service';
 
+import { promotionService } from '@/services/promotion.service';
+import { calculatePromotionPrice, findPromotionForProduct } from '@/utils/promotion-pricing';
+
 import type {
   CreateOrderLineInput,
 } from '@/hooks/useOrder';
@@ -151,29 +154,48 @@ export function useOrderCheckout() {
 
         try {
           // =============================================
-          // 1. ORDER + ORDER ITEMS
+          // 1. OBTENER PROMOCIONES VIGENTES DEL RESTAURANTE
           // =============================================
+          const restaurantId = lines[0]?.product.restaurant?.id;
+          const promotionResponse = await promotionService.findAll({
+            restaurantDocumentId,
+            page: 1,
+            pageSize: 100,
+            status: 'published',
+          });
+          const restaurantPromotions = promotionResponse.data.filter((promotion) =>
+            promotion.restaurant?.documentId === restaurantDocumentId ||
+            (restaurantId != null && promotion.restaurant?.id === restaurantId)
+          );
 
-          createdOrder =
-            await createOrder(
-              {
-                restaurant:
-                  restaurantDocumentId,
-
-                orderType,
-
-                users:
-                  userId
-                    ? [
-                        userId,
-                      ]
-                    : [],
-              },
-
-              lines,
-
-              generalDiscount
+          const pricedLines = lines.map((line) => {
+            const promotion = findPromotionForProduct(
+              restaurantPromotions,
+              line.product
             );
+            const calculation = calculatePromotionPrice(
+              promotion,
+              line.quantity,
+              Number(line.product.price ?? 0)
+            );
+            return {
+              ...line,
+              discount: calculation.discount,
+            };
+          });
+
+          // =============================================
+          // 2. ORDER + ORDER ITEMS CON DESCUENTOS
+          // =============================================
+          createdOrder = await createOrder(
+            {
+              restaurant: restaurantDocumentId,
+              orderType,
+              users: userId ? [userId] : [],
+            },
+            pricedLines,
+            generalDiscount
+          );
 
           // =============================================
           // 2. PAYMENT PENDING

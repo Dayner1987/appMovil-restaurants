@@ -1,6 +1,8 @@
+// components/company/CompanyLogoEditor.tsx
+import { mediaUrl } from '@/utils/media';
+import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   Text,
@@ -28,36 +30,20 @@ interface CompanyLogoEditorProps {
   ) => Promise<Company>;
 }
 
-function getImageUrl(url?: string | null) {
-  if (!url) return null;
-
-  if (url.startsWith('http')) {
-    return url;
-  }
-
-  const baseUrl = api.defaults.baseURL
-    ?.replace(/\/api\/?$/, '');
-
-  return `${baseUrl}${url}`;
-}
-
 export default function CompanyLogoEditor({
   company,
   saving,
   onUpload,
   onDelete,
 }: CompanyLogoEditorProps) {
-  const logoUrl = getImageUrl(company.logoImg?.url);
+  const logoUrl = mediaUrl(company.logoImg);
 
   async function selectImage() {
     const permission =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert(
-        'Permiso requerido',
-        'Debes permitir el acceso a tus imágenes.'
-      );
+      Toast.show({ type: 'error', text1: 'Debes permitir el acceso a tus imágenes.' });
 
       return;
     }
@@ -98,38 +84,16 @@ export default function CompanyLogoEditor({
     }
   }
 
-  function confirmDelete() {
-    Alert.alert(
-      'Eliminar logo',
-      '¿Deseas eliminar el logo actual?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await onDelete(company.documentId);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
-              Toast.show({
-                type: 'success',
-                text1: 'Logo eliminado',
-                text2: 'El logo se eliminó correctamente.',
-              });
-            } catch {
-              Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'No se pudo eliminar el logo.',
-              });
-            }
-          },
-        },
-      ]
-    );
+  async function confirmDelete() {
+    try {
+      await onDelete(company.documentId);
+      setConfirmVisible(false);
+      Toast.show({ type: 'success', text1: 'Logo eliminado' });
+    } catch {
+      Toast.show({ type: 'error', text1: 'No se pudo eliminar el logo.' });
+    }
   }
 
   return (
@@ -194,10 +158,19 @@ export default function CompanyLogoEditor({
         )}
       </Pressable>
 
+      {confirmVisible ? (
+        <View className="mt-4 rounded-2xl bg-[#FFF0F0] p-4">
+          <Text className="font-bold text-[#B65D51]">¿Deseas eliminar el logo actual?</Text>
+          <View className="mt-3 flex-row gap-2">
+            <Pressable onPress={() => setConfirmVisible(false)} className="flex-1 items-center rounded-xl bg-white p-3"><Text>Cancelar</Text></Pressable>
+            <Pressable disabled={saving} onPress={() => void confirmDelete()} className="flex-1 items-center rounded-xl bg-[#B65D51] p-3"><Text className="font-bold text-white">Eliminar</Text></Pressable>
+          </View>
+        </View>
+      ) : null}
       {company.logoImg && (
         <Pressable
           disabled={saving}
-          onPress={confirmDelete}
+          onPress={() => setConfirmVisible(true)}
           className="mt-3 flex-row items-center justify-center rounded-[16px] border border-[#E7C3BE] px-4 py-3"
         >
           <Ionicons

@@ -55,7 +55,7 @@ const filters: {
   },
   {
     key: 'admin',
-    label: 'Admin',
+    label: 'Administradores',
   },
   {
     key: 'restaurant',

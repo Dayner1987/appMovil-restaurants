@@ -3,6 +3,7 @@
 import {
   api,
 } from './api';
+import { addImageToForm } from './upload';
 
 import type {
   CreateRestaurantData,
@@ -20,31 +21,9 @@ const RESTAURANT_URL =
 // FORM DATA
 // =====================================================
 
-function createMediaFormData(
-  fieldName:
-    | 'logo'
-    | 'QRImage',
-  imageUri: string,
-  fileName: string,
-  mimeType: string
-) {
-  const formData =
-    new FormData();
-
-  formData.append(
-    fieldName,
-    {
-      uri:
-        imageUri,
-
-      name:
-        fileName,
-
-      type:
-        mimeType,
-    } as any
-  );
-
+async function createMediaFormData(fieldName: 'logo' | 'QRImage', imageUri: string, fileName: string, mimeType: string) {
+  const formData = new FormData();
+  await addImageToForm(formData, fieldName, imageUri, fileName, mimeType);
   return formData;
 }
 
@@ -215,7 +194,7 @@ async findAll(
       'image/jpeg'
   ): Promise<RestaurantMediaResponse> {
     const formData =
-      createMediaFormData(
+      await createMediaFormData(
         'logo',
         imageUri,
         fileName,
@@ -229,10 +208,6 @@ async findAll(
         )}/logo`,
         formData,
         {
-          headers: {
-            'Content-Type':
-              'multipart/form-data',
-          },
         }
       );
 
@@ -255,7 +230,7 @@ async findAll(
       'image/jpeg'
   ): Promise<RestaurantMediaResponse> {
     const formData =
-      createMediaFormData(
+      await createMediaFormData(
         'logo',
         imageUri,
         fileName,
@@ -269,10 +244,6 @@ async findAll(
         )}/logo`,
         formData,
         {
-          headers: {
-            'Content-Type':
-              'multipart/form-data',
-          },
         }
       );
 
@@ -313,7 +284,7 @@ async findAll(
       'image/png'
   ): Promise<RestaurantMediaResponse> {
     const formData =
-      createMediaFormData(
+      await createMediaFormData(
         'QRImage',
         imageUri,
         fileName,
@@ -327,10 +298,6 @@ async findAll(
         )}/qr-image`,
         formData,
         {
-          headers: {
-            'Content-Type':
-              'multipart/form-data',
-          },
         }
       );
 
@@ -350,7 +317,7 @@ async findAll(
       'image/png'
   ): Promise<RestaurantMediaResponse> {
     const formData =
-      createMediaFormData(
+      await createMediaFormData(
         'QRImage',
         imageUri,
         fileName,
@@ -364,10 +331,6 @@ async findAll(
         )}/qr-image`,
         formData,
         {
-          headers: {
-            'Content-Type':
-              'multipart/form-data',
-          },
         }
       );
 

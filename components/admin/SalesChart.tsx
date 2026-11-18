@@ -1,164 +1,32 @@
-// components/admin/AdminSalesChart.tsx
+// components/admin/SalesChart.tsx
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { paymentService } from '@/services/payment.service';
+import type { Payment } from '@/types/payment.types';
+import { errorText } from '@/hooks/useCatalog';
+import { money } from '@/components/client/CatalogUI';
 
-import { useEffect, useMemo, useRef } from 'react';
-import {
-  Animated,
-  Easing,
-  Text,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-
-const salesData = [
-  { day: 'L', value: 30 },
-  { day: 'M', value: 44 },
-  { day: 'X', value: 38 },
-  { day: 'J', value: 58 },
-  { day: 'V', value: 80 },
-  { day: 'S', value: 67 },
-  { day: 'D', value: 48 },
-];
-
+/** Only approved payments count as revenue. No invented sales figures. */
 export default function AdminSalesChart() {
-  const animatedValues = useRef(
-    salesData.map(() => new Animated.Value(0))
-  ).current;
-
-  const maxValue = useMemo(
-    () => Math.max(...salesData.map((item) => item.value)),
-    []
-  );
-
-  const totalSales = useMemo(
-    () => salesData.reduce((acc, item) => acc + item.value, 0),
-    []
-  );
-
-  useEffect(() => {
-    const animations = animatedValues.map((value, index) =>
-      Animated.timing(value, {
-        toValue: salesData[index].value,
-        duration: 900,
-        delay: index * 90,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      })
-    );
-
-    Animated.stagger(70, animations).start();
-  }, [animatedValues]);
-
-  return (
-    <View className="rounded-[28px] bg-white p-5">
-      <View className="flex-row items-start justify-between">
-        <View className="flex-row items-center">
-          <View className="mr-3 h-12 w-12 items-center justify-center rounded-[18px] bg-[#F1F8DE]">
-            <Ionicons
-              name="stats-chart"
-              size={22}
-              color="#7B9646"
-            />
-          </View>
-
-          <View>
-            <Text className="text-[18px] font-extrabold text-[#262B1F]">
-              Ventas de la semana
-            </Text>
-
-            <Text className="mt-1 text-[12px] text-[#8A8F7B]">
-              Rendimiento semanal
-            </Text>
-          </View>
-        </View>
-
-        <View className="items-end">
-          <Text className="text-[11px] text-[#9AA08F]">
-            Total
-          </Text>
-
-          <Text className="mt-1 text-[20px] font-extrabold text-[#4E6B28]">
-            Bs {totalSales.toFixed(2)}
-          </Text>
-        </View>
-      </View>
-
-      <View className="mt-6 h-[190px] flex-row items-end justify-between rounded-[24px] bg-[#FAFBF7] px-3 py-4">
-        {salesData.map((item, index) => {
-          const barHeight = animatedValues[index].interpolate({
-            inputRange: [0, maxValue],
-            outputRange: [0, 120],
-            extrapolate: 'clamp',
-          });
-
-          return (
-            <View
-              key={item.day}
-              className="flex-1 items-center justify-end"
-            >
-              <Animated.Text
-                style={{
-                  marginBottom: 6,
-                  fontSize: 10,
-                  color: '#868C79',
-                  opacity: animatedValues[index].interpolate({
-                    inputRange: [0, item.value],
-                    outputRange: [0.2, 1],
-                  }),
-                }}
-              >
-                {item.value}
-              </Animated.Text>
-
-              <View
-                style={{
-                  width: 22,
-                  height: 125,
-                  justifyContent: 'flex-end',
-                  overflow: 'hidden',
-                  borderRadius: 99,
-                  backgroundColor: '#EEF1E7',
-                }}
-              >
-                <Animated.View
-                  style={{
-                    width: '100%',
-                    height: barHeight,
-                    borderRadius: 99,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <LinearGradient
-                    colors={['#B8D36F', '#8FB04E', '#E49A5E']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={{
-                      flex: 1,
-                      borderRadius: 99,
-                    }}
-                  />
-                </Animated.View>
-              </View>
-
-              <Text className="mt-2 text-[11px] font-bold text-[#777D6E]">
-                {item.day}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-
-      <View className="mt-4 flex-row items-center rounded-[18px] bg-[#F5F8ED] px-4 py-3">
-        <Ionicons
-          name="trending-up-outline"
-          size={18}
-          color="#739042"
-        />
-
-        <Text className="ml-2 flex-1 text-[12px] text-[#6C715F]">
-          El viernes presenta el mayor rendimiento de ventas.
-        </Text>
-      </View>
-    </View>
-  );
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    try { const response = await paymentService.findAll({ pageSize: 100 }); setPayments(response.data); setError(null); }
+    catch (e) { setError(errorText(e)); } finally { setLoading(false); }
+  }, []);
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(); date.setHours(0, 0, 0, 0); date.setDate(date.getDate() - 6 + i);
+    const key = [date.getFullYear(), String(date.getMonth() + 1).padStart(2,'0'), String(date.getDate()).padStart(2,'0')].join('-');
+    const value = payments.filter(x => x.statusPayment === 'APPROVED' && (x.paidAt || x.createdAt || '').startsWith(key)).reduce((sum, x) => sum + Number(x.amount || 0), 0);
+    return {key, label: ['D','L','M','M','J','V','S'][date.getDay()], value};
+  }), [payments]);
+  const max = Math.max(...days.map(x => x.value), 1);
+  const total = days.reduce((n, x) => n + x.value, 0);
+  return <View className="rounded-3xl bg-white p-5"><View className="flex-row items-center justify-between gap-3"><View className="flex-row items-center gap-3"><View className="h-11 w-11 items-center justify-center rounded-2xl bg-[#EEF3E3]"><Ionicons name="stats-chart-outline" size={23} color="#607B35" /></View><View><Text className="text-lg font-extrabold text-[#252A20]">Ventas de la semana</Text><Text className="text-xs text-[#858A7A]">Pagos aprobados · últimos 7 días</Text></View></View></View>
+    {loading ? <ActivityIndicator color="#607B35" style={{marginVertical:24}}/> : error ? <Text className="my-5 text-sm text-[#B04C4C]">{error}</Text> : <><Text className="mt-4 text-2xl font-extrabold text-[#607B35]">{money(total)}</Text><View className="mt-5 h-[155px] flex-row items-end justify-around gap-2 rounded-2xl bg-[#FAFBF7] px-2 pb-3 pt-4">{days.map(x=><View key={x.key} className="flex-1 items-center justify-end"><View className="w-6 justify-end overflow-hidden rounded-full bg-[#DDE9C5]" style={{height:112}}><View className="w-full rounded-full bg-[#607B35]" style={{height:(x.value/max)*112}} /></View><Text className="mt-2 text-xs font-semibold text-[#777D71]">{x.label}</Text></View>)}</View><Text className="mt-3 text-xs text-[#858A7A]">{payments.length >= 100 ? 'Mostrando pagos entre los primeros 100 registros. Ajusta la paginación para informes completos.' : 'Los pagos pendientes no se contabilizan como ventas.'}</Text></>}
+  </View>;
 }

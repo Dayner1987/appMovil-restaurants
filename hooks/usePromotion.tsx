@@ -1674,6 +1674,8 @@ export function usePromotion(
     query?.pageSize,
     query?.sort,
     query?.restaurantId,
+    query?.restaurantDocumentId,
+    query?.productDocumentId,
     query?.productId,
     query?.type,
 

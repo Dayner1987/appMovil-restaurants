@@ -412,47 +412,26 @@ export default function RestaurantOrdersScreen() {
             // CREATOR
             // =========================================
 
-            if (
-              creatorFilter ===
-              'MINE'
-            ) {
+            if (creatorFilter === 'MINE') {
               return Boolean(
-                order.users
-                  ?.some(
-                    (
-                      orderUser
-                    ) =>
-                      orderUser.id ===
-                      user?.id
-                  )
+                order.createdByUser?.id === user?.id ||
+                order.users?.some((orderUser) => orderUser.id === user?.id)
               );
             }
 
-            if (
-              creatorFilter ===
-              'TEAM'
-            ) {
-              /*
-               * Mostramos órdenes registradas por
-               * otro usuario del sistema.
-               *
-               * Excluimos ONLINE porque normalmente
-               * puede representar pedido del cliente.
-               */
-              return (
-                order.orderType !==
-                  'ONLINE' &&
-                Boolean(
-                  order.users
-                    ?.some(
-                      (
-                        orderUser
-                      ) =>
-                        orderUser.id !==
-                        user?.id
-                    )
-                )
+            if (creatorFilter === 'TEAM') {
+              // Las órdenes del personal se registran en createdByUser.
+              // La relación users se conserva como respaldo para órdenes
+              // creadas con el flujo anterior.
+              const createdByAnotherEmployee = Boolean(
+                order.createdByUser?.id && order.createdByUser.id !== user?.id
               );
+              const linkedToAnotherUser = Boolean(
+                order.users?.some((orderUser) => orderUser.id !== user?.id)
+              );
+
+              return order.orderType !== 'ONLINE' &&
+                (createdByAnotherEmployee || (!order.createdByUser && linkedToAnotherUser));
             }
 
             return true;
@@ -541,14 +520,11 @@ export default function RestaurantOrdersScreen() {
     paymentsLoading;
 
   return (
-    <SafeAreaView
+    <View
       className="
         flex-1
         bg-[#F7F8F2]
       "
-      edges={[
-        'top',
-      ]}
     >
       <DashboardNavbar
         title="Órdenes"
@@ -970,6 +946,6 @@ export default function RestaurantOrdersScreen() {
           ) : null}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

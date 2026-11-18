@@ -1,6 +1,10 @@
+import { mediaUrl } from '@/utils/media';
+import { roleLabel } from '@/utils/role-labels';
 // components/DashboardNavbar.tsx
 
 import {
+  useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -20,6 +24,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 import {
   router,
+  useFocusEffect,
 } from 'expo-router';
 
 import Toast from 'react-native-toast-message';
@@ -33,37 +38,14 @@ import {
 } from '@/hooks/useUsers';
 
 import {
+  subscribeCompanyChanges,
   useCompany,
 } from '@/hooks/useCompany';
 
-import {
-  api,
-} from '@/services/api';
-
-import type {
-  Company,
-} from '@/types/company.types';
 
 interface DashboardNavbarProps {
   title?: string;
 }
-
-type CompanyNavbarData =
-  Company & {
-    name?: string | null;
-
-    companyName?:
-      | string
-      | null;
-
-    logo?:
-      | {
-          url?:
-            | string
-            | null;
-        }
-      | null;
-  };
 
 const SCREEN_WIDTH =
   Dimensions.get(
@@ -76,52 +58,13 @@ const DRAWER_WIDTH =
     360
   );
 
-function getMediaUrl(
-  url?:
-    | string
-    | null
-) {
-  if (!url) {
-    return null;
-  }
-
-  if (
-    url.startsWith(
-      'http://'
-    ) ||
-    url.startsWith(
-      'https://'
-    )
-  ) {
-    return url;
-  }
-
-  const baseUrl =
-    String(
-      api.defaults
-        .baseURL ?? ''
-    ).replace(
-      /\/$/,
-      ''
-    );
-
-  if (!baseUrl) {
-    return null;
-  }
-
-  return `${baseUrl}${
-    url.startsWith('/')
-      ? url
-      : `/${url}`
-  }`;
-}
-
 export default function DashboardNavbar({
   title = 'Panel',
 }: DashboardNavbarProps) {
   const {
     user: authUser,
     isAuthenticated,
+    loading: authLoading,
     logout,
   } = useAuth();
 
@@ -131,10 +74,8 @@ export default function DashboardNavbar({
    */
   const {
     user: currentUser,
-  } = useUser({
-    autoLoad:
-      isAuthenticated,
-  });
+    loadMe,
+  } = useUser({ autoLoad: false });
 
   /*
    * Para el panel administrativo
@@ -143,14 +84,35 @@ export default function DashboardNavbar({
   const {
     company,
     companies,
+    loadCompanies,
   } = useCompany({
-    autoLoad: true,
-
-    query: {
-      page: 1,
-      pageSize: 1,
-    },
+    autoLoad: false,
   });
+
+  // Actualiza el navbar inmediatamente cuando se guarda un cambio de empresa
+  // o se reemplaza el logo, incluso si la pantalla de edición sigue abierta.
+  useEffect(() => subscribeCompanyChanges(() => {
+    void loadCompanies({ page: 1, pageSize: 1 }).catch((error) => {
+      console.warn('No se pudo refrescar la empresa del menú:', error);
+    });
+  }), [loadCompanies]);
+
+  // Al volver desde la edición, se consulta de nuevo la empresa.
+  useFocusEffect(
+    useCallback(() => {
+      void Promise.allSettled([
+        loadCompanies({ page: 1, pageSize: 1 }),
+        ...(isAuthenticated ? [loadMe()] : []),
+      ]).then((results) => {
+        results.forEach((result) => {
+          if (result.status === 'rejected') {
+            console.warn('No se pudo actualizar la información del menú:', result.reason);
+          }
+        });
+      });
+      return undefined;
+    }, [loadCompanies, loadMe, isAuthenticated])
+  );
 
   const [
     drawerVisible,
@@ -182,13 +144,9 @@ export default function DashboardNavbar({
     authUser;
 
   const currentCompany =
-    (
-      company ??
-      companies[0] ??
-      null
-    ) as
-      | CompanyNavbarData
-      | null;
+    company ??
+    companies[0] ??
+    null;
 
   const displayedName =
     useMemo(() => {
@@ -212,16 +170,14 @@ export default function DashboardNavbar({
       user?.username,
     ]);
 
-  const displayedRole =
-    user?.role?.name ??
-    'Usuario';
+  const displayedRole = roleLabel(user?.role?.name ?? user?.role?.type);
 
   const displayedEmail =
     user?.email ??
     '';
 
   const avatarUrl =
-    getMediaUrl(
+    mediaUrl(
       user?.avatar?.url
     );
 
@@ -231,17 +187,15 @@ export default function DashboardNavbar({
       .toUpperCase();
 
   const companyName =
-    currentCompany
-      ?.name?.trim() ||
-    currentCompany
-      ?.companyName?.trim() ||
-    'Mi empresa';
+    currentCompany?.name?.trim() ||
+    'Cuenta Personal';
 
-  const companyLogoUrl =
-    getMediaUrl(
-      currentCompany
-        ?.logo?.url
-    );
+  // El esquema de Strapi define el campo de imagen como logoImg.
+  const companyLogoBaseUrl = mediaUrl(currentCompany?.logoImg);
+  const companyLogoVersion = currentCompany?.logoImg?.updatedAt ?? currentCompany?.updatedAt ?? 'logo';
+  const companyLogoUrl = companyLogoBaseUrl
+    ? `${companyLogoBaseUrl}${companyLogoBaseUrl.includes('?') ? '&' : '?'}v=${encodeURIComponent(companyLogoVersion)}`
+    : null;
 
   const companyLetter =
     companyName
@@ -249,9 +203,8 @@ export default function DashboardNavbar({
       .toUpperCase();
 
   function openDrawer() {
-    setDrawerVisible(
-      true
-    );
+    if (!isAuthenticated || !user) return;
+    setDrawerVisible(true);
 
     Animated.timing(
       translateX,
@@ -288,26 +241,6 @@ export default function DashboardNavbar({
 
       callback?.();
     });
-  }
-
-  function handleCompanyInfo() {
-    closeDrawer(
-      () => {
-        router.push({
-          pathname:
-            '/others/InfoCompany',
-
-          params:
-            currentCompany
-              ?.documentId
-              ? {
-                  documentId:
-                    currentCompany.documentId,
-                }
-              : {},
-        });
-      }
-    );
   }
 
   function handleEditProfile() {
@@ -382,107 +315,85 @@ export default function DashboardNavbar({
       {/* ================================================= */}
 
       <View className="min-h-[72px] flex-row items-center justify-between bg-[#171A15] px-4 py-2.5">
-        {/* ============================================= */}
-        {/* IZQUIERDA - USUARIO */}
-        {/* ============================================= */}
-
-        <Pressable
-          onPress={
-            openDrawer
-          }
-          className="min-w-0 flex-1 flex-row items-center active:opacity-75"
-        >
-          {avatarUrl ? (
-            <Image
-              source={{
-                uri:
-                  avatarUrl,
-              }}
-              resizeMode="cover"
-              className="h-11 w-11 rounded-[15px] border-2 border-[#7B9646]"
-            />
-          ) : (
-            <View className="h-11 w-11 items-center justify-center rounded-[15px] bg-[#7B9646]">
-              <Text className="text-[16px] font-extrabold text-white">
-                {
-                  avatarLetter
-                }
-              </Text>
+        {isAuthenticated && user ? (
+          <Pressable
+            onPress={openDrawer}
+            className="min-w-0 flex-1 flex-row items-center active:opacity-75"
+          >
+            {avatarUrl ? (
+              <Image
+                key={`${avatarUrl}-${user.updatedAt ?? ''}`}
+                source={{ uri: avatarUrl }}
+                resizeMode="cover"
+                className="h-11 w-11 rounded-[15px] border-2 border-[#7B9646]"
+              />
+            ) : (
+              <View className="h-11 w-11 items-center justify-center rounded-[15px] bg-[#7B9646]">
+                <Text className="text-[16px] font-extrabold text-white">{avatarLetter}</Text>
+              </View>
+            )}
+            <View className="ml-3 min-w-0 flex-1">
+              <Text numberOfLines={1} className="text-[14px] font-extrabold text-white">{displayedName}</Text>
+              <View className="mt-0.5 flex-row items-center">
+                <View className="mr-1.5 h-1.5 w-1.5 rounded-full bg-[#9EBD62]" />
+                <Text numberOfLines={1} className="text-[10px] font-semibold text-[#AEB5A6]">{displayedRole}</Text>
+              </View>
             </View>
-          )}
-
-          <View className="ml-3 min-w-0 flex-1">
-            <Text
-              numberOfLines={1}
-              className="text-[14px] font-extrabold text-white"
-            >
-              {
-                displayedName
-              }
-            </Text>
-
-            <View className="mt-0.5 flex-row items-center">
-              <View className="mr-1.5 h-1.5 w-1.5 rounded-full bg-[#9EBD62]" />
-
-              <Text
-                numberOfLines={1}
-                className="text-[10px] font-semibold text-[#AEB5A6]"
-              >
-                {
-                  displayedRole
-                }
-              </Text>
+          </Pressable>
+        ) : (
+          <View className="min-w-0 flex-1 flex-row items-center">
+            {companyLogoUrl ? (
+              <Image
+                key={`${companyLogoUrl}-${companyLogoVersion}`}
+                source={{ uri: companyLogoUrl }}
+                resizeMode="cover"
+                className="h-11 w-11 rounded-[15px] border-2 border-[#7B9646] bg-white"
+              />
+            ) : (
+              <View className="h-11 w-11 items-center justify-center rounded-[15px] bg-[#7B9646]">
+                <Text className="text-[16px] font-extrabold text-white">{companyLetter}</Text>
+              </View>
+            )}
+            <View className="ml-3 min-w-0 flex-1">
+              <Text numberOfLines={1} className="text-[14px] font-extrabold text-white">{companyName}</Text>
+              <Text numberOfLines={1} className="mt-0.5 text-[10px] font-semibold text-[#AEB5A6]">Sin inicio de sessión</Text>
             </View>
           </View>
-        </Pressable>
+        )}
 
-        {/* ============================================= */}
-        {/* DERECHA - EMPRESA */}
-        {/* ============================================= */}
-
-        <Pressable
-          onPress={
-            handleCompanyInfo
-          }
-          className="ml-4 max-w-[48%] flex-row items-center rounded-[18px] bg-[#22261F] py-1.5 pl-3 pr-1.5 active:opacity-75"
-        >
-          <View className="mr-2 min-w-0 flex-1 items-end">
-            <Text
-              numberOfLines={1}
-              className="text-right text-[12px] font-extrabold text-white"
-            >
-              {
-                companyName
-              }
-            </Text>
-
-            <Text
-              numberOfLines={1}
-              className="mt-0.5 text-right text-[9px] font-semibold text-[#A8C56C]"
-            >
-              {title}
-            </Text>
-          </View>
-
-          {companyLogoUrl ? (
-            <Image
-              source={{
-                uri:
-                  companyLogoUrl,
-              }}
-              resizeMode="cover"
-              className="h-10 w-10 rounded-[14px] border border-[#4B5540] bg-white"
-            />
-          ) : (
-            <View className="h-10 w-10 items-center justify-center rounded-[14px] bg-[#7B9646]">
-              <Text className="text-[14px] font-extrabold text-white">
-                {
-                  companyLetter
-                }
-              </Text>
+        {isAuthenticated && user ? (
+          <View className="ml-3 max-w-[46%] flex-row items-center rounded-[18px] bg-[#22261F] py-1.5 pl-3 pr-1.5">
+            <View className="mr-2 min-w-0 flex-1 items-end">
+              <Text numberOfLines={1} className="text-right text-[12px] font-extrabold text-white">{companyName}</Text>
+              <Text numberOfLines={1} className="mt-0.5 text-right text-[9px] font-semibold text-[#A8C56C]">{title}</Text>
             </View>
-          )}
-        </Pressable>
+            {companyLogoUrl ? (
+              <Image
+                key={`${companyLogoUrl}-${companyLogoVersion}`}
+                source={{ uri: companyLogoUrl }}
+                resizeMode="cover"
+                className="h-10 w-10 rounded-[14px] border border-[#4B5540] bg-white"
+              />
+            ) : (
+              <View className="h-10 w-10 items-center justify-center rounded-[14px] bg-[#7B9646]">
+                <Text className="text-[14px] font-extrabold text-white">{companyLetter}</Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          <View className="ml-2 flex-row items-center gap-2">
+            {!authLoading ? (
+              <>
+                <Pressable onPress={() => router.push('/login')} className="rounded-xl border border-[#75816A] px-3 py-2 active:opacity-75">
+                  <Text className="text-[11px] font-bold text-white">Ingresar</Text>
+                </Pressable>
+                <Pressable onPress={() => router.push('/register')} className="rounded-xl bg-[#7B9646] px-3 py-2 active:opacity-75">
+                  <Text className="text-[11px] font-extrabold text-white">Registrarse</Text>
+                </Pressable>
+              </>
+            ) : null}
+          </View>
+        )}
       </View>
 
       {/* ================================================= */}
@@ -596,73 +507,10 @@ export default function DashboardNavbar({
             </View>
 
             {/* ========================================= */}
-            {/* EMPRESA */}
-            {/* ========================================= */}
-
-            <View className="px-4">
-              <Pressable
-                onPress={
-                  handleCompanyInfo
-                }
-                className="flex-row items-center rounded-[22px] bg-white p-4 active:opacity-85"
-              >
-                {companyLogoUrl ? (
-                  <Image
-                    source={{
-                      uri:
-                        companyLogoUrl,
-                    }}
-                    resizeMode="cover"
-                    className="h-12 w-12 rounded-[15px] bg-[#EEF3E3]"
-                  />
-                ) : (
-                  <View className="h-12 w-12 items-center justify-center rounded-[15px] bg-[#EEF3E3]">
-                    <Ionicons
-                      name="business-outline"
-                      size={22}
-                      color="#6F8C3E"
-                    />
-                  </View>
-                )}
-
-                <View className="ml-3 min-w-0 flex-1">
-                  <Text className="text-[10px] font-bold uppercase tracking-wide text-[#979D8D]">
-                    Empresa
-                  </Text>
-
-                  <Text
-                    numberOfLines={1}
-                    className="mt-0.5 text-[15px] font-extrabold text-[#252A20]"
-                  >
-                    {
-                      companyName
-                    }
-                  </Text>
-                </View>
-
-                <Ionicons
-                  name="chevron-forward-outline"
-                  size={20}
-                  color="#9BA18F"
-                />
-              </Pressable>
-            </View>
-
-            {/* ========================================= */}
             {/* OPCIONES */}
             {/* ========================================= */}
 
             <View className="flex-1 px-4 pt-5">
-              <DrawerOption
-                icon="business-outline"
-                title="Información compañía"
-                description="Consulta los datos generales de la empresa"
-                type="light"
-                onPress={
-                  handleCompanyInfo
-                }
-              />
-
               <DrawerOption
                 icon="create-outline"
                 title="Editar perfil"
@@ -788,7 +636,6 @@ export default function DashboardNavbar({
 }
 
 type DrawerOptionType =
-  | 'light'
   | 'orange'
   | 'danger';
 
@@ -816,18 +663,12 @@ function DrawerOption({
   const containerClass =
     type === 'orange'
       ? 'bg-[#FFF1DF]'
-      : type ===
-          'danger'
-        ? 'bg-[#FBEAE6]'
-        : 'bg-white';
+      : 'bg-[#FBEAE6]';
 
   const iconColor =
     type === 'orange'
       ? '#D47A24'
-      : type ===
-          'danger'
-        ? '#B65D51'
-        : '#6F8C3E';
+      : '#B65D51';
 
   const titleColor =
     type === 'danger'

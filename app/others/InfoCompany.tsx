@@ -12,11 +12,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 import {
   useLocalSearchParams,
+  useFocusEffect,
 } from 'expo-router';
 
-import {
-  SafeAreaView,
-} from 'react-native-safe-area-context';
+import { useCallback } from 'react';
 
 import DashboardNavbar from '@/components/DashboardNavbar';
 
@@ -24,106 +23,13 @@ import {
   useCompany,
 } from '@/hooks/useCompany';
 
-import {
-  api,
-} from '@/services/api';
+import { mediaUrl } from '@/utils/media';
 
 import type {
   Company,
 } from '@/types/company.types';
 
-type CompanyInfo =
-  Company & {
-    name?: string | null;
-
-    companyName?:
-      | string
-      | null;
-
-    email?:
-      | string
-      | null;
-
-    phone?:
-      | string
-      | null;
-
-    address?:
-      | string
-      | null;
-
-    nit?:
-      | string
-      | null;
-
-    description?:
-      | string
-      | null;
-
-    website?:
-      | string
-      | null;
-
-    status?:
-      | string
-      | null;
-
-    createdAt?:
-      | string
-      | null;
-
-    updatedAt?:
-      | string
-      | null;
-
-    logo?:
-      | {
-          url?:
-            | string
-            | null;
-        }
-      | null;
-  };
-
-function getMediaUrl(
-  url?:
-    | string
-    | null
-) {
-  if (!url) {
-    return null;
-  }
-
-  if (
-    url.startsWith(
-      'http://'
-    ) ||
-    url.startsWith(
-      'https://'
-    )
-  ) {
-    return url;
-  }
-
-  const baseUrl =
-    String(
-      api.defaults
-        .baseURL ?? ''
-    ).replace(
-      /\/$/,
-      ''
-    );
-
-  if (!baseUrl) {
-    return null;
-  }
-
-  return `${baseUrl}${
-    url.startsWith('/')
-      ? url
-      : `/${url}`
-  }`;
-}
+type CompanyInfo = Company;
 
 function formatDate(
   value?:
@@ -157,43 +63,6 @@ function formatDate(
   );
 }
 
-function formatStatus(
-  status?:
-    | string
-    | null
-) {
-  if (!status) {
-    return 'Activa';
-  }
-
-  const normalized =
-    status.toLowerCase();
-
-  if (
-    normalized ===
-      'active' ||
-    normalized ===
-      'activo' ||
-    normalized ===
-      'activa'
-  ) {
-    return 'Activa';
-  }
-
-  if (
-    normalized ===
-      'inactive' ||
-    normalized ===
-      'inactivo' ||
-    normalized ===
-      'inactiva'
-  ) {
-    return 'Inactiva';
-  }
-
-  return status;
-}
-
 export default function InfoCompanyScreen() {
   const params =
     useLocalSearchParams<{
@@ -213,19 +82,22 @@ export default function InfoCompanyScreen() {
     companies,
     loading,
     error,
+    loadCompany,
+    loadCompanies,
   } = useCompany({
     documentId,
-
-    autoLoad: true,
-
-    query:
-      documentId
-        ? undefined
-        : {
-            page: 1,
-            pageSize: 1,
-          },
+    autoLoad: false,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      const request = documentId
+        ? loadCompany(documentId)
+        : loadCompanies({ page: 1, pageSize: 1 });
+
+      void request.catch(() => undefined);
+    }, [documentId, loadCompany, loadCompanies])
+  );
 
   const selectedCompany =
     (
@@ -241,11 +113,8 @@ export default function InfoCompanyScreen() {
     !selectedCompany
   ) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={[
-          'top',
-        ]}
       >
         <DashboardNavbar
           title="Compañía"
@@ -261,7 +130,7 @@ export default function InfoCompanyScreen() {
             Cargando información...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -269,11 +138,8 @@ export default function InfoCompanyScreen() {
     !selectedCompany
   ) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={[
-          'top',
-        ]}
       >
         <DashboardNavbar
           title="Compañía"
@@ -297,35 +163,19 @@ export default function InfoCompanyScreen() {
               'No existe información registrada.'}
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const companyName =
-    selectedCompany
-      .name?.trim() ||
-    selectedCompany
-      .companyName?.trim() ||
+    selectedCompany.name?.trim() ||
     'Mi empresa';
 
-  const logoUrl =
-    getMediaUrl(
-      selectedCompany
-        .logo?.url
-    );
-
-  const status =
-    formatStatus(
-      selectedCompany
-        .status
-    );
+  const logoUrl = mediaUrl(selectedCompany.logoImg);
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-[#F7F8F2]"
-      edges={[
-        'top',
-      ]}
     >
       <DashboardNavbar
         title="Compañía"
@@ -369,26 +219,9 @@ export default function InfoCompanyScreen() {
                 {companyName}
               </Text>
 
-              {selectedCompany
-                .description ? (
-                <Text className="mt-2 max-w-[520px] text-center text-[13px] leading-5 text-[#BDC4B6]">
-                  {
-                    selectedCompany.description
-                  }
-                </Text>
-              ) : (
-                <Text className="mt-2 text-center text-[13px] text-[#BDC4B6]">
-                  Información general de la compañía
-                </Text>
-              )}
-
-              <View className="mt-4 flex-row items-center rounded-full bg-[#283020] px-4 py-2">
-                <View className="mr-2 h-2 w-2 rounded-full bg-[#A8C56C]" />
-
-                <Text className="text-[11px] font-extrabold text-[#D9E5C2]">
-                  {status}
-                </Text>
-              </View>
+              <Text className="mt-2 text-center text-[13px] text-[#BDC4B6]">
+                Información general de la empresa
+              </Text>
             </View>
           </View>
 
@@ -444,44 +277,15 @@ export default function InfoCompanyScreen() {
 
               <InfoRow
                 icon="call-outline"
-                label="Teléfono"
-                value={
-                  selectedCompany
-                    .phone ||
-                  'No registrado'
-                }
+                label="Número telefónico"
+                value={selectedCompany.number || 'No registrado'}
               />
 
               <InfoRow
-                icon="location-outline"
-                label="Dirección"
-                value={
-                  selectedCompany
-                    .address ||
-                  'No registrada'
-                }
+                icon="link-outline"
+                label="Enlace adicional"
+                value={selectedCompany.aditionalLink || 'No registrado'}
               />
-
-              <InfoRow
-                icon="document-text-outline"
-                label="NIT"
-                value={
-                  selectedCompany
-                    .nit ||
-                  'No registrado'
-                }
-              />
-
-              {selectedCompany
-                .website ? (
-                <InfoRow
-                  icon="globe-outline"
-                  label="Sitio web"
-                  value={
-                    selectedCompany.website
-                  }
-                />
-              ) : null}
             </View>
           </View>
 
@@ -589,7 +393,7 @@ export default function InfoCompanyScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -454,14 +454,11 @@ export default function CreateProductScreen() {
   // =====================================================
 
   return (
-    <SafeAreaView
+    <View
       className="
         flex-1
         bg-[#F7F8F2]
       "
-      edges={[
-        'top',
-      ]}
     >
       {/* =================================================
           HEADER
@@ -603,6 +600,6 @@ export default function CreateProductScreen() {
           />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

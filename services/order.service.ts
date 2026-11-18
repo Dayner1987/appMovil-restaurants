@@ -189,7 +189,7 @@ export const orderService = {
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',

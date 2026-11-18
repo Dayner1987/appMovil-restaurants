@@ -11,6 +11,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { api } from '@/services/api';
 
+import { roleLabel } from '@/utils/role-labels';
+
 import type {
   AppUser,
 } from '@/types/user.types';
@@ -99,9 +101,7 @@ export default function AdminUserCard({
       user
     );
 
-  const roleName =
-    user.role?.name ??
-    'Sin rol';
+  const roleName = roleLabel(user.role?.name ?? user.role?.type);
 
   return (
     <View className="rounded-[24px] border border-[#E9EBE3] bg-white p-4">

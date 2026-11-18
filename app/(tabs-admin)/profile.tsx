@@ -37,6 +37,7 @@ import {
 import type {
   AppUser,
 } from '@/types/user.types';
+import { roleLabel } from '@/utils/role-labels';
 
 // =====================================================
 // HELPERS
@@ -197,11 +198,8 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={[
-          'top',
-        ]}
       >
         <View className="flex-1 items-center justify-center">
           <View className="h-16 w-16 items-center justify-center rounded-[22px] bg-[#EEF3E3]">
@@ -215,7 +213,7 @@ export default function ProfileScreen() {
             Cargando perfil...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -224,11 +222,8 @@ export default function ProfileScreen() {
   // ===================================================
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-[#F7F8F2]"
-      edges={[
-        'top',
-      ]}
     >
       <ScrollView
         className="flex-1"
@@ -377,7 +372,7 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -549,10 +544,7 @@ function AuthenticatedProfile({
     fullName ||
     user.username;
 
-  const displayedRole =
-    user.role?.name ||
-    user.role?.type ||
-    'Usuario';
+  const displayedRole = roleLabel(user.role?.name || user.role?.type);
 
   const avatarUrl =
     getAvatarUrl(

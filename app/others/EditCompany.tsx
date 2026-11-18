@@ -42,9 +42,8 @@ export default function EditCompanyScreen() {
 
   if (!documentId) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={['top']}
       >
         <Header />
 
@@ -53,15 +52,14 @@ export default function EditCompanyScreen() {
             No se recibió el identificador de la empresa.
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (loading && !company) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={['top']}
       >
         <Header />
 
@@ -75,15 +73,14 @@ export default function EditCompanyScreen() {
             Cargando información...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!company) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={['top']}
       >
         <Header />
 
@@ -92,14 +89,13 @@ export default function EditCompanyScreen() {
             {error || 'No se pudo cargar la empresa.'}
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-[#F7F8F2]"
-      edges={['top']}
     >
       <KeyboardAvoidingView
         className="flex-1"
@@ -145,7 +141,7 @@ export default function EditCompanyScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

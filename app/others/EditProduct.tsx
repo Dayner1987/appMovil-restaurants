@@ -742,14 +742,11 @@ export default function EditProductScreen() {
 
   if (!documentId) {
     return (
-      <SafeAreaView
+      <View
         className="
           flex-1
           bg-[#F7F8F2]
         "
-        edges={[
-          'top',
-        ]}
       >
         <View
           className="
@@ -798,7 +795,7 @@ export default function EditProductScreen() {
             </Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -811,16 +808,13 @@ export default function EditProductScreen() {
     !product
   ) {
     return (
-      <SafeAreaView
+      <View
         className="
           flex-1
           items-center
           justify-center
           bg-[#F7F8F2]
         "
-        edges={[
-          'top',
-        ]}
       >
         <ActivityIndicator
           size="large"
@@ -836,7 +830,7 @@ export default function EditProductScreen() {
         >
           Cargando producto...
         </Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -845,14 +839,11 @@ export default function EditProductScreen() {
   // =====================================================
 
   return (
-    <SafeAreaView
+    <View
       className="
         flex-1
         bg-[#F7F8F2]
       "
-      edges={[
-        'top',
-      ]}
     >
       <View
         className="
@@ -1010,6 +1001,6 @@ export default function EditProductScreen() {
           />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

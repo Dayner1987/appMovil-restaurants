@@ -32,6 +32,7 @@ import {
 } from 'react-native-safe-area-context';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { roleLabel } from '@/utils/role-labels';
 
 import * as ImagePicker from 'expo-image-picker';
 
@@ -715,11 +716,8 @@ export default function EditUserAdminScreen() {
     !userId
   ) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={[
-          'top',
-        ]}
       >
         <Header />
 
@@ -729,7 +727,7 @@ export default function EditUserAdminScreen() {
             identificador del usuario.
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -738,11 +736,8 @@ export default function EditUserAdminScreen() {
     !user
   ) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={[
-          'top',
-        ]}
       >
         <Header />
 
@@ -756,17 +751,14 @@ export default function EditUserAdminScreen() {
             Cargando usuario...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!user) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={[
-          'top',
-        ]}
       >
         <Header />
 
@@ -776,16 +768,13 @@ export default function EditUserAdminScreen() {
               'No se pudo cargar el usuario.'}
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-[#F7F8F2]"
-      edges={[
-        'top',
-      ]}
     >
       <KeyboardAvoidingView
         className="flex-1"
@@ -1063,7 +1052,7 @@ export default function EditUserAdminScreen() {
                                 : 'text-[12px] font-bold text-[#5F684F]'
                             }
                           >
-                            {role.name}
+                            {roleLabel(role.name || role.type)}
                           </Text>
                         </Pressable>
                       );
@@ -1229,7 +1218,7 @@ export default function EditUserAdminScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

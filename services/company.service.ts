@@ -1,4 +1,5 @@
 import { api } from './api';
+import { addImageToForm } from './upload';
 
 import type {
   CompanyListResponse,
@@ -65,7 +66,7 @@ export const companyService = {
     documentId: string,
     data: UpdateCompanyData
   ): Promise<CompanyResponse> {
-    const response = await api.put<CompanyResponse>(
+    const response = await api.patch<CompanyResponse>(
       `${COMPANY_URL}/${encodeURIComponent(documentId)}`,
       { data },
       {
@@ -111,22 +112,12 @@ export const companyService = {
   ): Promise<CompanyResponse> {
     const formData = new FormData();
 
-    formData.append(
-      'logoImg',
-      {
-        uri: imageUri,
-        name: fileName,
-        type: mimeType,
-      } as unknown as Blob
-    );
+    await addImageToForm(formData, 'logoImg', imageUri, fileName, mimeType);
 
     const response = await api.patch<CompanyResponse>(
       `${COMPANY_URL}/${encodeURIComponent(documentId)}/logo`,
       formData,
       {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
         params: {
           populate: 'logoImg',
         },

@@ -126,7 +126,7 @@ export const publicationService = {
              * actual.
              */
             status:
-              'draft',
+              params.status ?? 'draft',
 
             populate:
               '*',
@@ -246,7 +246,7 @@ export const publicationService = {
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',
@@ -281,7 +281,7 @@ export const publicationService = {
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',

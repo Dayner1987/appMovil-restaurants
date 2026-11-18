@@ -1,9 +1,11 @@
+import { mediaUrl } from '@/utils/media';
+import { roleLabel } from '@/utils/role-labels';
 // app/(tabs-admin)/profile.tsx
 
 import {
   useState,
 } from 'react';
-
+import LottieView from 'lottie-react-native';
 import {
   ActivityIndicator,
   Image,
@@ -41,46 +43,6 @@ import type {
 // =====================================================
 // HELPERS
 // =====================================================
-
-function getAvatarUrl(
-  url?:
-    | string
-    | null
-): string | null {
-  if (!url) {
-    return null;
-  }
-
-  if (
-    url.startsWith(
-      'http://'
-    ) ||
-    url.startsWith(
-      'https://'
-    )
-  ) {
-    return url;
-  }
-
-  const baseUrl =
-    String(
-      api.defaults
-        .baseURL ?? ''
-    ).replace(
-      /\/$/,
-      ''
-    );
-
-  if (!baseUrl) {
-    return null;
-  }
-
-  return `${baseUrl}${
-    url.startsWith('/')
-      ? url
-      : `/${url}`
-  }`;
-}
 
 // =====================================================
 // SCREEN
@@ -197,11 +159,8 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={[
-          'top',
-        ]}
       >
         <View className="flex-1 items-center justify-center">
           <View className="h-16 w-16 items-center justify-center rounded-[22px] bg-[#EEF3E3]">
@@ -215,7 +174,7 @@ export default function ProfileScreen() {
             Cargando perfil...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -224,11 +183,8 @@ export default function ProfileScreen() {
   // ===================================================
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-[#F7F8F2]"
-      edges={[
-        'top',
-      ]}
     >
       <ScrollView
         className="flex-1"
@@ -264,6 +220,9 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {isAuthenticated && user ? (
+          <Pressable onPress={() => router.push('/my-orders')} className="mx-5 mb-3 flex-row items-center justify-between rounded-2xl bg-[#EEF3E3] p-4"><View className="flex-row items-center gap-3"><Ionicons name="receipt-outline" size={22} color="#607B35" /><Text className="font-bold text-[#607B35]">Ver mis pedidos</Text></View><Ionicons name="chevron-forward" size={20} color="#607B35" /></Pressable>
+        ) : null}
         {isAuthenticated &&
         user ? (
           <AuthenticatedProfile
@@ -377,7 +336,7 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -401,17 +360,31 @@ function GuestProfile({
 }: GuestProfileProps) {
   return (
     <View className="items-center px-5 pb-10 pt-8">
-      {/* ============================================= */}
-      {/* ICONO */}
-      {/* ============================================= */}
+      
+{/* ANIMACIÓN LOTTIE - PERFIL INVITADO */}
+<View className="items-center justify-center">
+  <View
+    className="
+      h-48 w-48
+      items-center justify-center
+      rounded-full
+      border-[3px] border-[#C8D8A8]
+      bg-[#EEF3E3]
+    "
+  >
+    <LottieView
+      source={require('../../assets/lotties/ProfilePrincipal.json')}
+      autoPlay
+      loop
+      resizeMode="contain"
+      style={{
+        width: 180,
+        height: 180,
+      }}
+    />
+  </View>
+</View>
 
-      <View className="h-32 w-32 items-center justify-center rounded-full border-[5px] border-[#C8D8A8] bg-[#EEF3E3]">
-        <Ionicons
-          name="person-outline"
-          size={58}
-          color="#6F8C3E"
-        />
-      </View>
 
       {/* ============================================= */}
       {/* PRESENTACIÓN */}
@@ -423,7 +396,7 @@ function GuestProfile({
 
       <Text className="mt-2 max-w-[360px] text-center text-[14px] leading-6 text-[#858A7A]">
         Inicia sesión o crea una cuenta para realizar
-        pedidos, guardar tus favoritos y administrar tu
+        pedidos, ver sus estados y administrar tu
         perfil.
       </Text>
 
@@ -549,13 +522,10 @@ function AuthenticatedProfile({
     fullName ||
     user.username;
 
-  const displayedRole =
-    user.role?.name ||
-    user.role?.type ||
-    'Usuario';
+  const displayedRole = roleLabel(user.role?.name || user.role?.type);
 
   const avatarUrl =
-    getAvatarUrl(
+    mediaUrl(
       user.avatar?.url
     );
 

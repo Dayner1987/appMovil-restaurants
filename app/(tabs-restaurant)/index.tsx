@@ -103,7 +103,7 @@ function DashboardOption({
 
 export default function RestaurantHomeScreen() {
   return (
-    <SafeAreaView
+    <View
       className="
         flex-1
         bg-[#F7F8F2]
@@ -175,6 +175,13 @@ export default function RestaurantHomeScreen() {
           />
 
           <DashboardOption
+            icon="people-outline"
+            title="Mi equipo"
+            description="Registra empleados, revisa sus datos y gestiona su acceso al restaurante."
+            onPress={() => router.push('/others/Employees')}
+          />
+
+          <DashboardOption
             icon="newspaper-outline"
             title="Publicaciones"
             description="Crea y administra publicaciones del restaurante."
@@ -208,6 +215,6 @@ export default function RestaurantHomeScreen() {
           />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

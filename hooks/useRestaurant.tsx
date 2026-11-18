@@ -63,21 +63,125 @@ const listeners =
         RestaurantChange
     ) => void
   >();
+function notifyChange(change: RestaurantChange) {
+  if (
+    change.type === 'saved' &&
+    !change.restaurant?.documentId
+  ) {
+    console.warn(
+      '[Restaurant] No se notificó un restaurante sin documentId.',
+      change.restaurant
+    );
+    return;
+  }
 
-function notifyChange(
-  change:
-    RestaurantChange
-) {
-  listeners.forEach(
-    (
-      listener
-    ) =>
-      listener(
-        change
-      )
-  );
+  listeners.forEach((listener) => {
+    try {
+      listener(change);
+    } catch (error) {
+      console.error(
+        '[Restaurant] Error sincronizando cambios:',
+        error
+      );
+    }
+  });
 }
 
+// Normaliza respuestas de Strapi y del servicio Axios.
+function extractRestaurant(
+  response: unknown,
+  fallbackDocumentId?: string
+): Restaurant | null {
+  const root = response as any;
+
+  const candidates = [
+    root?.data?.data,
+    root?.data?.restaurant,
+    root?.data,
+    root?.restaurant,
+    root,
+  ];
+
+  for (const candidate of candidates) {
+    if (
+      !candidate ||
+      typeof candidate !== 'object' ||
+      Array.isArray(candidate)
+    ) {
+      continue;
+    }
+
+    const attributes =
+      candidate.attributes &&
+      typeof candidate.attributes === 'object'
+        ? candidate.attributes
+        : {};
+
+    const documentId =
+      candidate.documentId ??
+      attributes.documentId ??
+      fallbackDocumentId;
+
+    const hasRestaurantData =
+      candidate.id !== undefined ||
+      attributes.id !== undefined ||
+      typeof candidate.name === 'string' ||
+      typeof attributes.name === 'string';
+
+    if (
+      !hasRestaurantData ||
+      typeof documentId !== 'string' ||
+      !documentId.trim()
+    ) {
+      continue;
+    }
+
+    return {
+      ...attributes,
+      ...candidate,
+      id: candidate.id ?? attributes.id,
+      documentId,
+    } as Restaurant;
+  }
+
+  return null;
+}
+
+// Recupera el restaurante actualizado después de una operación.
+async function saveRestaurantResponse(
+  response: unknown,
+  documentId?: string
+): Promise<Restaurant> {
+  let savedRestaurant = extractRestaurant(
+    response,
+    documentId
+  );
+
+  // Si el endpoint no devuelve el restaurante completo,
+  // se consulta nuevamente a Strapi.
+  if (!savedRestaurant && documentId) {
+    const freshResponse =
+      await restaurantService.findOne(documentId);
+
+    savedRestaurant = extractRestaurant(
+      freshResponse,
+      documentId
+    );
+  }
+
+  if (!savedRestaurant) {
+    throw new Error(
+      'No se pudo recuperar la información actualizada del restaurante.'
+    );
+  }
+
+  notifyChange({
+    type: 'saved',
+    restaurant: savedRestaurant,
+  });
+
+  return savedRestaurant;
+}
 function getErrorMessage(
   error: unknown
 ): string {
@@ -391,9 +495,18 @@ export function useRestaurant(
               requestId ===
                 requestRef.current
             ) {
-              setRestaurant(
-                response.data
-              );
+              const currentRestaurant = extractRestaurant(
+  response,
+  documentId
+);
+
+if (!currentRestaurant) {
+  throw new Error(
+    'No se pudo recuperar la información del restaurante.'
+  );
+}
+
+setRestaurant(currentRestaurant);
             }
 
             return;
@@ -516,140 +629,102 @@ export function useRestaurant(
   // =====================================================
   // SYNC
   // =====================================================
+useEffect(() => {
+  const onChange = (change: RestaurantChange) => {
+    if (!mountedRef.current) {
+      return;
+    }
 
-  useEffect(() => {
-    const onChange = (
-      change:
-        RestaurantChange
-    ) => {
+    if (change.type === 'saved') {
+      const savedRestaurant = change.restaurant;
+
       if (
-        !mountedRef.current
+        !savedRestaurant ||
+        !savedRestaurant.documentId
       ) {
+        console.warn(
+          '[Restaurant] Cambio recibido sin restaurante válido.'
+        );
+
+        if (documentId) {
+          void refresh().catch(() => undefined);
+        }
+
         return;
       }
 
-      if (
-        documentId
-      ) {
-        const changedId =
-          change.type ===
-          'saved'
-            ? change.restaurant
-                .documentId
-            : change.documentId;
-
+      if (documentId) {
         if (
-          changedId !==
-          documentId
+          savedRestaurant.documentId !== documentId
         ) {
           return;
         }
 
-        requestRef.current +=
-          1;
+        requestRef.current += 1;
 
-        setLoading(
-          false
-        );
-
-        setRestaurant(
-          change.type ===
-            'saved'
-            ? change.restaurant
-            : null
-        );
+        setLoading(false);
+        setRestaurant(savedRestaurant);
 
         return;
       }
 
-      if (
-        change.type ===
-        'saved'
-      ) {
-        setRestaurants(
-          (
-            current
-          ) => {
-            const exists =
-              current.some(
-                (
-                  item
-                ) =>
-                  item.documentId ===
-                  change.restaurant
-                    .documentId
-              );
-
-            return exists
-              ? current.map(
-                  (
-                    item
-                  ) =>
-                    item.documentId ===
-                    change.restaurant
-                      .documentId
-                      ? change.restaurant
-                      : item
-                )
-              : [
-                  change.restaurant,
-                  ...current,
-                ];
-          }
+      setRestaurants((current) => {
+        const exists = current.some(
+          (item) =>
+            item.documentId === savedRestaurant.documentId
         );
 
-        setRestaurant(
-          (
-            current
-          ) =>
-            current
-              ?.documentId ===
-            change.restaurant
-              .documentId
-              ? change.restaurant
-              : current
-        );
+        return exists
+          ? current.map((item) =>
+              item.documentId === savedRestaurant.documentId
+                ? savedRestaurant
+                : item
+            )
+          : [savedRestaurant, ...current];
+      });
 
+      setRestaurant((current) =>
+        current?.documentId === savedRestaurant.documentId
+          ? savedRestaurant
+          : current
+      );
+
+      return;
+    }
+
+    // Eliminación de restaurante.
+    if (documentId) {
+      if (change.documentId !== documentId) {
         return;
       }
 
-      setRestaurants(
-        (
-          current
-        ) =>
-          current.filter(
-            (
-              item
-            ) =>
-              item.documentId !==
-              change.documentId
-          )
-      );
+      requestRef.current += 1;
 
-      setRestaurant(
-        (
-          current
-        ) =>
-          current
-            ?.documentId ===
-          change.documentId
-            ? null
-            : current
-      );
-    };
+      setLoading(false);
+      setRestaurant(null);
 
-    listeners.add(
-      onChange
+      return;
+    }
+
+    setRestaurants((current) =>
+      current.filter(
+        (item) => item.documentId !== change.documentId
+      )
     );
 
-    return () => {
-      listeners.delete(
-        onChange
-      );
-    };
-  }, [
-    documentId,
-  ]);
+    setRestaurant((current) =>
+      current?.documentId === change.documentId
+        ? null
+        : current
+    );
+  };
+
+  listeners.add(onChange);
+
+  return () => {
+    listeners.delete(onChange);
+  };
+}, [documentId, refresh]);
 
   // =====================================================
   // MUTATION
@@ -822,15 +897,7 @@ export function useRestaurant(
                 payload
               );
 
-            notifyChange({
-              type:
-                'saved',
-
-              restaurant:
-                response.data,
-            });
-
-            return response.data;
+            return await saveRestaurantResponse(response);
           }
         ),
       [
@@ -861,15 +928,7 @@ export function useRestaurant(
                 )
               );
 
-            notifyChange({
-              type:
-                'saved',
-
-              restaurant:
-                response.data,
-            });
-
-            return response.data;
+            return await saveRestaurantResponse(response, id);
           }
         ),
       [
@@ -901,15 +960,7 @@ export function useRestaurant(
                   'image/jpeg'
               );
 
-            notifyChange({
-              type:
-                'saved',
-
-              restaurant:
-                response.data,
-            });
-
-            return response.data;
+            return await saveRestaurantResponse(response, id);
           }
         ),
       [
@@ -937,15 +988,7 @@ export function useRestaurant(
                   'image/jpeg'
               );
 
-            notifyChange({
-              type:
-                'saved',
-
-              restaurant:
-                response.data,
-            });
-
-            return response.data;
+            return await saveRestaurantResponse(response, id);
           }
         ),
       [
@@ -965,15 +1008,7 @@ export function useRestaurant(
                 id
               );
 
-            notifyChange({
-              type:
-                'saved',
-
-              restaurant:
-                response.data,
-            });
-
-            return response.data;
+            return await saveRestaurantResponse(response, id);
           }
         ),
       [
@@ -1005,15 +1040,7 @@ export function useRestaurant(
                   'image/png'
               );
 
-            notifyChange({
-              type:
-                'saved',
-
-              restaurant:
-                response.data,
-            });
-
-            return response.data;
+            return await saveRestaurantResponse(response, id);
           }
         ),
       [
@@ -1041,15 +1068,7 @@ export function useRestaurant(
                   'image/png'
               );
 
-            notifyChange({
-              type:
-                'saved',
-
-              restaurant:
-                response.data,
-            });
-
-            return response.data;
+            return await saveRestaurantResponse(response, id);
           }
         ),
       [
@@ -1069,15 +1088,7 @@ export function useRestaurant(
                 id
               );
 
-            notifyChange({
-              type:
-                'saved',
-
-              restaurant:
-                response.data,
-            });
-
-            return response.data;
+            return await saveRestaurantResponse(response, id);
           }
         ),
       [

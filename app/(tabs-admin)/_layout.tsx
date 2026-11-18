@@ -1,3 +1,4 @@
+// app/(tabs-admin)/_layout.tsx
 import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -6,12 +7,15 @@ export default function AdminLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#6F8C3E',
-        tabBarInactiveTintColor: '#9C98AA',
+        tabBarActiveTintColor: '#607B35',
+        tabBarInactiveTintColor: '#858A7A',
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
         tabBarStyle: {
           height: 65,
           paddingBottom: 8,
           paddingTop: 6,
+          backgroundColor: '#FAFBF7',
+          borderTopColor: '#E5E8DE',
         },
       }}
     >
@@ -42,7 +46,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="company"
         options={{
-          title: 'Company',
+          title: 'Empresa',
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name="business-outline"
@@ -56,7 +60,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="others"
         options={{
-          title: 'Others',
+          title: 'Gestión',
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name="ellipsis-horizontal-circle-outline"

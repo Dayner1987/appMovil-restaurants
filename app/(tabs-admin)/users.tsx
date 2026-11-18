@@ -39,10 +39,11 @@ import DeleteUserModal from '@/components/admin/users/DeleteUserModal';
 import {
   useUser,
 } from '@/hooks/useUsers';
-import CreateUserButton from '@/components/admin/users/CreateUserButton';
+
 import type {
   AppUser,
 } from '@/types/user.types';
+import { roleLabel } from '@/utils/role-labels';
 
 export default function AdminUsersScreen() {
   const {
@@ -169,15 +170,9 @@ export default function AdminUsersScreen() {
               .includes(
                 normalized
               ) ||
-            (
-              user.role
-                ?.name ??
-              ''
-            )
+            roleLabel(user.role?.name ?? user.role?.type)
               .toLowerCase()
-              .includes(
-                normalized
-              );
+              .includes(normalized);
 
           if (
             !matchesSearch
@@ -298,11 +293,8 @@ export default function AdminUsersScreen() {
     );
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-[#F7F8F2]"
-      edges={[
-        'top',
-      ]}
     >
       <DashboardNavbar
         title="Usuarios"
@@ -345,25 +337,17 @@ export default function AdminUsersScreen() {
         )}
         ListHeaderComponent={
           <View className="mb-5 gap-5">
-           <View className="gap-4">
-  <View>
-    <Text className="text-[24px] font-extrabold text-[#252A20]">
-      Administrar usuarios
-    </Text>
+            <View>
+              <Text className="text-[24px] font-extrabold text-[#252A20]">
+                Administrar usuarios
+              </Text>
 
-    <Text className="mt-1 text-[13px] text-[#858A7A]">
-      Busca, crea y administra las cuentas registradas
-    </Text>
-  </View>
-
-  <CreateUserButton
-    onPress={() => {
-      router.push(
-        '/others/CreateUserAdmin'
-      );
-    }}
-  />
-</View>
+              <Text className="mt-1 text-[13px] text-[#858A7A]">
+                Busca, filtra y
+                administra las cuentas
+                registradas
+              </Text>
+            </View>
 
             <View className="flex-row items-center justify-between rounded-[22px] bg-[#EEF3E3] px-4 py-4">
               <View>
@@ -480,6 +464,6 @@ export default function AdminUsersScreen() {
           handleDelete
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }

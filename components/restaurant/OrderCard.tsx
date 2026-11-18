@@ -12,6 +12,7 @@ import type {
   Order,
   OrderStatus,
 } from '@/types/orders.types';
+import { statusLabel } from '@/utils/status-labels';
 
 interface OrderCardProps {
   order:
@@ -92,10 +93,10 @@ function getStatusClasses(
   ) {
     return {
       container:
-        'bg-[#E9EFFB]',
+        'bg-[#EEF3E3]',
 
       text:
-        'text-[#536F9F]',
+        'text-[#607B35]',
     };
   }
 
@@ -141,7 +142,10 @@ function getCreator(
     Order
 ): string {
   const user =
-    order.users?.[0];
+    order.createdByUser ??
+    order.users?.[0] ??
+    order.customer ??
+    null;
 
   if (!user) {
     return 'Sin responsable';
@@ -343,8 +347,7 @@ export default function OrderCard({
               text-[#343A30]
             "
           >
-            {order.paymentStatus ??
-              'PENDING'}
+            {statusLabel(order.paymentStatus, 'Pendiente')}
           </Text>
         </View>
 

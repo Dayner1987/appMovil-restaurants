@@ -42,6 +42,7 @@ import {
 import type {
   OrderStatus,
 } from '@/types/orders.types';
+import { statusLabel } from '@/utils/status-labels';
 
 // =====================================================
 // STATUS
@@ -602,16 +603,13 @@ export default function OrderDetailsScreen() {
     !order
   ) {
     return (
-      <SafeAreaView
+      <View
         className="
           flex-1
           items-center
           justify-center
           bg-[#F7F8F2]
         "
-        edges={[
-          'top',
-        ]}
       >
         <ActivityIndicator
           size="large"
@@ -627,7 +625,7 @@ export default function OrderDetailsScreen() {
         >
           Cargando orden...
         </Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -637,7 +635,7 @@ export default function OrderDetailsScreen() {
 
   if (!order) {
     return (
-      <SafeAreaView
+      <View
         className="
           flex-1
           items-center
@@ -645,9 +643,6 @@ export default function OrderDetailsScreen() {
           bg-[#F7F8F2]
           px-6
         "
-        edges={[
-          'top',
-        ]}
       >
         <Ionicons
           name="receipt-outline"
@@ -687,7 +682,7 @@ export default function OrderDetailsScreen() {
             Volver
           </Text>
         </Pressable>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -696,14 +691,11 @@ export default function OrderDetailsScreen() {
   // =====================================================
 
   return (
-    <SafeAreaView
+    <View
       className="
         flex-1
         bg-[#F7F8F2]
       "
-      edges={[
-        'top',
-      ]}
     >
       {/* HEADER */}
 
@@ -867,8 +859,7 @@ export default function OrderDetailsScreen() {
                     text-[#343A30]
                   "
                 >
-                  {order.paymentStatus ??
-                    'PENDING'}
+                  {statusLabel(order.paymentStatus, 'Pendiente')}
                 </Text>
               </View>
 
@@ -1196,8 +1187,7 @@ export default function OrderDetailsScreen() {
                             text-[#171A15]
                           "
                         >
-                          {payment.method ??
-                            'Sin método'}
+                          {payment.method === 'CASH' ? 'Efectivo' : payment.method === 'QR' ? 'QR' : 'Método anterior'}
                         </Text>
 
                         <Text
@@ -1207,8 +1197,7 @@ export default function OrderDetailsScreen() {
                             text-[#858B80]
                           "
                         >
-                          {payment.statusPayment ??
-                            'PENDING'}
+                          {statusLabel(payment.statusPayment, 'Pendiente')}
                         </Text>
                       </View>
 
@@ -1262,7 +1251,7 @@ export default function OrderDetailsScreen() {
                               text-[#4D7A54]
                             "
                           >
-                            Aprobar
+                            {payment.method === 'QR' ? 'Verificar comprobante y abono' : 'Confirmar efectivo recibido'}
                           </Text>
                         </Pressable>
 
@@ -1481,6 +1470,6 @@ export default function OrderDetailsScreen() {
           ) : null}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

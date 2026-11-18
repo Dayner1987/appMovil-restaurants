@@ -10,14 +10,14 @@ export default function RestaurantLayout() {
         headerShown: false,
 
         tabBarActiveTintColor:
-          '#6F8C3E',
+          '#607B35',
 
         tabBarInactiveTintColor:
           '#858B80',
 
         tabBarStyle: {
           backgroundColor:
-            '#FFFFFF',
+            '#FAFBF7',
 
           borderTopColor:
             '#E6E9E1',

@@ -1,3 +1,4 @@
+import { addImageToForm } from '@/services/upload';
 // services/user.service.ts
 
 import {
@@ -12,7 +13,6 @@ import type {
   RoleListResponse,
   RoleResponse,
   UpdateRoleData,
-   CreateUserData,
 } from '@/types/user.types';
 
 import {
@@ -63,31 +63,7 @@ export const userService = {
   // ===================================================
   // ADMIN - LISTAR USUARIOS
   // ===================================================
-// services/user.service.ts
 
-  // ===================================================
-  // ADMIN - CREAR USUARIO
-  // POST /api/users
-  // ===================================================
-
-  async create(
-    data:
-      CreateUserData
-  ): Promise<AppUser> {
-    const response =
-      await api.post<AppUser>(
-        USERS_URL,
-        data,
-        {
-          params: {
-            populate:
-              'role,avatar,restaurant',
-          },
-        }
-      );
-
-    return response.data;
-  },
   async findAll(
   params: UserQueryParams = {}
 ): Promise<UserListResponse> {
@@ -270,28 +246,7 @@ async uploadUserAvatar(
 ): Promise<AdminAvatarResponse> {
   const formData = new FormData();
 
-  if (Platform.OS === 'web') {
-    const imageResponse =
-      await fetch(imageUri);
-
-    const blob =
-      await imageResponse.blob();
-
-    formData.append(
-      'avatar',
-      blob,
-      fileName
-    );
-  } else {
-    formData.append(
-      'avatar',
-      {
-        uri: imageUri,
-        name: fileName,
-        type: mimeType,
-      } as any
-    );
-  }
+  await addImageToForm(formData, 'avatar', imageUri, fileName, mimeType);
 
   const response =
     await api.patch<AdminAvatarResponse>(
@@ -396,28 +351,7 @@ async getMe(): Promise<AppUser> {
   const formData =
     new FormData();
 
-  if (Platform.OS === 'web') {
-    const imageResponse =
-      await fetch(imageUri);
-
-    const blob =
-      await imageResponse.blob();
-
-    formData.append(
-      'avatar',
-      blob,
-      fileName
-    );
-  } else {
-    formData.append(
-      'avatar',
-      {
-        uri: imageUri,
-        name: fileName,
-        type: mimeType,
-      } as any
-    );
-  }
+  await addImageToForm(formData, 'avatar', imageUri, fileName, mimeType);
 
   const response =
     await api.put<MyAvatarResponse>(

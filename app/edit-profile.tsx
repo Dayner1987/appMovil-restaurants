@@ -95,11 +95,8 @@ export default function EditProfileScreen() {
     !user
   ) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={[
-          'top',
-        ]}
       >
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator
@@ -111,7 +108,7 @@ export default function EditProfileScreen() {
             Cargando perfil...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -121,11 +118,8 @@ export default function EditProfileScreen() {
 
   if (!user) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={[
-          'top',
-        ]}
       >
         <View className="flex-row items-center px-4 py-3">
           <Pressable
@@ -165,16 +159,13 @@ export default function EditProfileScreen() {
             </Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-[#F7F8F2]"
-      edges={[
-        'top',
-      ]}
     >
       <KeyboardAvoidingView
         className="flex-1"
@@ -256,6 +247,6 @@ export default function EditProfileScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }

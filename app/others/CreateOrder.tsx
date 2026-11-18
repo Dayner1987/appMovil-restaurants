@@ -1,3 +1,4 @@
+import RestaurantPaymentQR from '@/components/RestaurantPaymentQR';
 // app/others/CreateOrder.tsx
 
 import {
@@ -110,22 +111,6 @@ const paymentMethods: {
 
     label:
       'QR',
-  },
-
-  {
-    value:
-      'CARD',
-
-    label:
-      'Tarjeta',
-  },
-
-  {
-    value:
-      'TRANSFER',
-
-    label:
-      'Transferencia',
   },
 ];
 
@@ -384,14 +369,11 @@ export default function CreateOrderScreen() {
     };
 
   return (
-    <SafeAreaView
+    <View
       className="
         flex-1
         bg-[#F7F8F2]
       "
-      edges={[
-        'top',
-      ]}
     >
       {/* HEADER */}
 
@@ -673,6 +655,7 @@ export default function CreateOrderScreen() {
               gap-2
             "
           >
+            {paymentMethod === 'QR' && restaurantDocumentId ? <RestaurantPaymentQR restaurantId={restaurantDocumentId} /> : null}
             {paymentMethods.map(
               (
                 option
@@ -875,6 +858,6 @@ export default function CreateOrderScreen() {
           </Pressable>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

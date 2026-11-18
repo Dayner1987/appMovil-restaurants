@@ -40,6 +40,8 @@ export default function RestaurantSolScreen() {
     setSuccessVisible,
   ] = useState(false);
 
+  const [repairAction, setRepairAction] = useState(false);
+
   const {
     application,
     loading,
@@ -90,6 +92,7 @@ export default function RestaurantSolScreen() {
     }
 
     try {
+      setRepairAction(application?.status === 'approved');
       await approveApplication(
         documentId
       );
@@ -403,6 +406,20 @@ export default function RestaurantSolScreen() {
                 application.createdAt
               ).toLocaleDateString()}
             />
+            {isApproved ? (
+              <>
+                <InfoRow
+                  icon="shield-checkmark-outline"
+                  label="Rol del propietario"
+                  value={applicant?.role?.name || 'Sin rol asignado'}
+                />
+                <InfoRow
+                  icon="restaurant-outline"
+                  label="Restaurante vinculado"
+                  value={applicant?.restaurant?.name || 'No registrado'}
+                />
+              </>
+            ) : null}
 
             <InfoRow
               icon="chatbox-ellipses-outline"
@@ -505,8 +522,18 @@ export default function RestaurantSolScreen() {
                 </Text>
 
                 <Text className="mt-1 text-[11px] leading-4 text-[#6F7D58]">
-                  Esta solicitud ya fue aprobada correctamente.
+                  Esta solicitud ya fue aprobada. Se puede volver a verificar la cuenta del propietario.
                 </Text>
+                <Pressable
+                  disabled={saving}
+                  onPress={() => {
+                    setRepairAction(true);
+                    setConfirmVisible(true);
+                  }}
+                  className="mt-3 self-start rounded-xl bg-white px-3 py-2 active:opacity-75"
+                >
+                  <Text className="text-[11px] font-extrabold text-[#4F6930]">Verificar y sincronizar cuenta</Text>
+                </Pressable>
               </View>
             </View>
           )}
@@ -539,17 +566,15 @@ export default function RestaurantSolScreen() {
             </View>
 
             <Text className="mt-5 text-[22px] font-extrabold text-[#272B20]">
-              Aprobar restaurante
+              {repairAction ? 'Verificar cuenta de restaurante' : 'Aprobar restaurante'}
             </Text>
 
             <Text className="mt-2 text-[13px] leading-5 text-[#808575]">
-              ¿Estás seguro de aprobar la solicitud de{' '}
-              <Text className="font-extrabold text-[#3C4232]">
-                {
-                  application.proposedRestaurantName
-                }
-              </Text>
-              ?
+              {repairAction ? (
+                <>Se volverá a verificar la cuenta de <Text className="font-extrabold text-[#3C4232]">{application.proposedRestaurantName}</Text>. Se corregirá el rol del propietario y la relación con su restaurante si estuvieran incompletos.</>
+              ) : (
+                <>¿Estás seguro de aprobar la solicitud de <Text className="font-extrabold text-[#3C4232]">{application.proposedRestaurantName}</Text>?</>
+              )}
             </Text>
 
             <View className="mt-4 rounded-[18px] bg-[#F5F7EF] p-4">
@@ -561,7 +586,7 @@ export default function RestaurantSolScreen() {
                 />
 
                 <Text className="ml-2 flex-1 text-[12px] leading-5 text-[#737967]">
-                  Se creará el restaurante, se asociará al propietario y su cuenta quedará habilitada.
+                  {repairAction ? 'Se comprobará que el usuario tenga el rol Restaurante y que exista un restaurante activo vinculado.' : 'Se creará el restaurante, se asociará al propietario y su cuenta quedará habilitada.'}
                 </Text>
               </View>
             </View>
@@ -603,7 +628,7 @@ export default function RestaurantSolScreen() {
                     />
 
                     <Text className="ml-2 font-extrabold text-white">
-                      Aprobar
+                      {repairAction ? 'Sincronizar' : 'Aprobar'}
                     </Text>
                   </>
                 )}
@@ -657,11 +682,11 @@ export default function RestaurantSolScreen() {
             </LinearGradient>
 
             <Text className="mt-5 text-center text-[23px] font-extrabold text-[#272B20]">
-              Restaurante aprobado
+              {repairAction ? 'Cuenta sincronizada' : 'Restaurante aprobado'}
             </Text>
 
             <Text className="mt-2 max-w-[300px] text-center text-[13px] leading-5 text-[#858A7A]">
-              El restaurante fue creado correctamente y el propietario ya puede acceder al sistema.
+              {repairAction ? 'Se verificó el rol del propietario y su vinculación con el restaurante.' : 'El restaurante fue creado correctamente y el propietario ya puede acceder al sistema.'}
             </Text>
 
             <Pressable
@@ -712,7 +737,9 @@ function InfoRow({
     | 'call-outline'
     | 'pulse-outline'
     | 'calendar-outline'
-    | 'chatbox-ellipses-outline';
+    | 'chatbox-ellipses-outline'
+    | 'shield-checkmark-outline'
+    | 'restaurant-outline';
 
   label: string;
   value: string;

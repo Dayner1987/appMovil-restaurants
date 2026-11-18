@@ -11,65 +11,92 @@ import type {
 } from '@/types/auth.types';
 
 async function fetchCurrentUser(jwt: string): Promise<AppUser> {
-  const response = await api.get<AppUser>('/api/users/me', {
-    params: {
-      populate: 'role',
+  const response = await api.get<AppUser>(
+    '/api/users/me',
+    {
+      params: {
+        // El restaurante autenticado necesita conocer
+        // su relación restaurant desde el inicio de sesión.
+        populate: 'role,avatar,restaurant',
+      },
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
     },
-    headers: {
-      Authorization: `Bearer ${jwt}`,
-    },
-  });
+  );
 
   return response.data;
 }
 
 async function completeSession(
-  response: LoginResponse
+  response: LoginResponse,
 ): Promise<LoginResponse> {
   const { jwt } = response;
 
   if (!jwt) {
-    throw new Error('El servidor no devolvió el token de acceso');
+    throw new Error(
+      'El servidor no devolvió el token de acceso',
+    );
   }
 
   const user = await fetchCurrentUser(jwt);
 
-  await authStorage.saveSession(jwt, user);
+  await authStorage.saveSession(
+    jwt,
+    user,
+  );
 
-  return { jwt, user };
+  return {
+    jwt,
+    user,
+  };
 }
 
 export const authService = {
   async login(
-    credentials: LoginCredentials
+    credentials: LoginCredentials,
   ): Promise<LoginResponse> {
-    const response = await api.post<LoginResponse>(
-      '/api/auth/local',
-      credentials
-    );
+    const response =
+      await api.post<LoginResponse>(
+        '/api/auth/local',
+        credentials,
+      );
 
-    return completeSession(response.data);
+    return completeSession(
+      response.data,
+    );
   },
 
-  async register(data: RegisterData): Promise<LoginResponse> {
-    const response = await api.post<LoginResponse>(
-      '/api/auth/local/register',
-      data
-    );
+  async register(
+    data: RegisterData,
+  ): Promise<LoginResponse> {
+    const response =
+      await api.post<LoginResponse>(
+        '/api/auth/local/register',
+        data,
+      );
 
-    return completeSession(response.data);
+    return completeSession(
+      response.data,
+    );
   },
 
   async getCurrentUser(): Promise<AppUser> {
-    const jwt = await authStorage.getToken();
+    const jwt =
+      await authStorage.getToken();
 
     if (!jwt) {
-      throw new Error('No existe una sesión activa');
+      throw new Error(
+        'No existe una sesión activa',
+      );
     }
 
-    const user = await fetchCurrentUser(jwt);
+    const user =
+      await fetchCurrentUser(jwt);
 
-    await authStorage.saveUser(user);
+    await authStorage.saveUser(
+      user,
+    );
 
     return user;
   },
@@ -87,12 +114,13 @@ export const authService = {
   },
 
   async registerRestaurant(
-    data: RestaurantRegisterData
+    data: RestaurantRegisterData,
   ): Promise<RestaurantRegisterResponse> {
-    const response = await api.post<RestaurantRegisterResponse>(
-      '/api/restaurant-applications/register',
-      data
-    );
+    const response =
+      await api.post<RestaurantRegisterResponse>(
+        '/api/restaurant-applications/register',
+        data,
+      );
 
     return response.data;
   },

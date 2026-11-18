@@ -177,7 +177,7 @@ export const paymentService = {
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',

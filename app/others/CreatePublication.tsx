@@ -270,14 +270,11 @@ export default function CreatePublicationScreen() {
     };
 
   return (
-    <SafeAreaView
+    <View
       className="
         flex-1
         bg-[#F7F8F2]
       "
-      edges={[
-        'top',
-      ]}
     >
       <View
         className="
@@ -390,6 +387,6 @@ export default function CreatePublicationScreen() {
           />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

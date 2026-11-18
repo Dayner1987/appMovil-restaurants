@@ -46,9 +46,8 @@ export default function AdminCompanyScreen() {
 
   if (loading && !company) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={['top']}
       >
         <DashboardNavbar title="Empresa" />
 
@@ -62,15 +61,14 @@ export default function AdminCompanyScreen() {
             Cargando información...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!company) {
     return (
-      <SafeAreaView
+      <View
         className="flex-1 bg-[#F7F8F2]"
-        edges={['top']}
       >
         <DashboardNavbar title="Empresa" />
 
@@ -99,16 +97,15 @@ export default function AdminCompanyScreen() {
             </Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const logoUrl = getImageUrl(company.logoImg?.url);
 
   return (
-    <SafeAreaView
+    <View
       className="flex-1 bg-[#F7F8F2]"
-      edges={['top']}
     >
       <DashboardNavbar title="Empresa" />
 
@@ -203,7 +200,7 @@ export default function AdminCompanyScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

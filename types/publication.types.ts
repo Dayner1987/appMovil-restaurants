@@ -277,6 +277,7 @@ export interface PublicationImageResponse {
 // =====================================================
 
 export interface PublicationQueryParams {
+  status?: 'draft' | 'published';
   page?: number;
 
   pageSize?: number;

@@ -14,6 +14,14 @@ export interface RestaurantApplicationApplicant {
   phone?: string | null;
   blocked?: boolean;
   confirmed?: boolean;
+  role?: { id: number; name: string; type: string } | null;
+  restaurant?: {
+    id: number;
+    documentId?: string;
+    name?: string;
+    email?: string;
+    statusRes?: string;
+  } | null;
 }
 
 export interface RestaurantApplication {

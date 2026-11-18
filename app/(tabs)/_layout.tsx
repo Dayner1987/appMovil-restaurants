@@ -1,142 +1,74 @@
 // app/(tabs)/_layout.tsx
-
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { Tabs, useSegments } from 'expo-router';
+import DashboardNavbar from '@/components/DashboardNavbar';
+import { View } from 'react-native';
+
+const ACTIVE = '#2F6A46';
+const INACTIVE = '#87938A';
+
+function TabIcon({ name, selected, color }: {
+  name: keyof typeof Ionicons.glyphMap;
+  selected: boolean;
+  color: string;
+}) {
+  return (
+    <View style={{ width: 42, height: 32, borderRadius: 16,
+      backgroundColor: selected ? '#E1F0E4' : 'transparent',
+      justifyContent: 'center', alignItems: 'center' }}>
+      <Ionicons name={name} size={23} color={color} />
+    </View>
+  );
+}
+
+
+function ClientTabHeader() {
+  const segments = useSegments();
+  const active = String(segments[1] ?? 'index');
+  const titles: Record<string, string> = {
+    index: 'Inicio',
+    restaurants: 'Locales',
+    products: 'Productos',
+    publications: 'Novedades',
+    profile: 'Perfil',
+  };
+  return <DashboardNavbar title={titles[active] ?? 'Sistema'} />;
+}
 
 export default function ClientTabsLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-
-        tabBarActiveTintColor:
-          '#6F8C3E',
-
-        tabBarInactiveTintColor:
-          '#969B91',
-
-        tabBarStyle: {
-          height: 72,
-          paddingTop: 8,
-          paddingBottom: 10,
-          borderTopWidth: 0,
-          backgroundColor:
-            '#FFFFFF',
-
-          elevation: 12,
-
-          shadowColor:
-            '#000000',
-
-          shadowOffset: {
-            width: 0,
-            height: -2,
-          },
-
-          shadowOpacity:
-            0.06,
-
-          shadowRadius:
-            8,
-        },
-
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Inicio',
-
-          tabBarIcon: ({
-            color,
-            size,
-            focused,
-          }) => (
-            <Ionicons
-              name={
-                focused
-                  ? 'home'
-                  : 'home-outline'
-              }
-              size={size}
-              color={color}
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="restaurants"
-        options={{
-          title: 'Restaurantes',
-
-          tabBarIcon: ({
-            color,
-            size,
-            focused,
-          }) => (
-            <Ionicons
-              name={
-                focused
-                  ? 'restaurant'
-                  : 'restaurant-outline'
-              }
-              size={size}
-              color={color}
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="products"
-        options={{
-          title: 'Productos',
-
-          tabBarIcon: ({
-            color,
-            size,
-            focused,
-          }) => (
-            <Ionicons
-              name={
-                focused
-                  ? 'fast-food'
-                  : 'fast-food-outline'
-              }
-              size={size}
-              color={color}
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Perfil',
-
-          tabBarIcon: ({
-            color,
-            size,
-            focused,
-          }) => (
-            <Ionicons
-              name={
-                focused
-                  ? 'person'
-                  : 'person-outline'
-              }
-              size={size}
-              color={color}
-            />
-          ),
-        }}
-      />
+    <Tabs screenOptions={{
+      headerShown: true,
+      header: () => <ClientTabHeader />,
+      tabBarActiveTintColor: ACTIVE,
+      tabBarInactiveTintColor: INACTIVE,
+      tabBarHideOnKeyboard: true,
+      tabBarStyle: {
+        height: 72, paddingTop: 7, paddingBottom: 8,
+        borderTopWidth: 1, borderTopColor: '#EBF0EA', backgroundColor: '#FFFFFF', elevation: 13,
+      },
+      tabBarLabelStyle: { fontSize: 10, fontWeight: '800', marginTop: 1 },
+    }}>
+      <Tabs.Screen name="index" options={{
+        title: 'Inicio', tabBarIcon: ({ color, focused }) =>
+          <TabIcon name={focused ? 'home' : 'home-outline'} selected={focused} color={color} />,
+      }} />
+      <Tabs.Screen name="restaurants" options={{
+        title: 'Locales', tabBarIcon: ({ color, focused }) =>
+          <TabIcon name={focused ? 'storefront' : 'storefront-outline'} selected={focused} color={color} />,
+      }} />
+      <Tabs.Screen name="products" options={{
+        title: 'Productos', tabBarIcon: ({ color, focused }) =>
+          <TabIcon name={focused ? 'fast-food' : 'fast-food-outline'} selected={focused} color={color} />,
+      }} />
+      <Tabs.Screen name="publications" options={{
+        title: 'Novedades', tabBarIcon: ({ color, focused }) =>
+          <TabIcon name={focused ? 'newspaper' : 'newspaper-outline'} selected={focused} color={color} />,
+      }} />
+      <Tabs.Screen name="profile" options={{
+        title: 'Perfil', tabBarIcon: ({ color, focused }) =>
+          <TabIcon name={focused ? 'person' : 'person-outline'} selected={focused} color={color} />,
+      }} />
     </Tabs>
   );
 }

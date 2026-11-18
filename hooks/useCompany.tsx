@@ -14,6 +14,17 @@ import type {
   UpdateCompanyData,
 } from '@/types/company.types';
 
+const companyChangeListeners = new Set<() => void>();
+
+export function subscribeCompanyChanges(listener: () => void) {
+  companyChangeListeners.add(listener);
+  return () => { companyChangeListeners.delete(listener); };
+}
+
+function notifyCompanyChanges() {
+  companyChangeListeners.forEach((listener) => listener());
+}
+
 interface UseCompanyOptions {
   documentId?: string;
   autoLoad?: boolean;
@@ -38,6 +49,8 @@ export function useCompany(
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
     };
@@ -114,6 +127,7 @@ export function useCompany(
         ]);
         setCompany(newCompany);
       }
+      notifyCompanyChanges();
 
       return newCompany;
     } catch (requestError) {
@@ -151,6 +165,7 @@ export function useCompany(
           )
         );
       }
+      notifyCompanyChanges();
 
       return updatedCompany;
     } catch (requestError) {
@@ -187,6 +202,7 @@ const patchCompany = useCallback(async (
         )
       );
     }
+    notifyCompanyChanges();
 
     return updatedCompany;
   } catch (requestError) {
@@ -232,6 +248,7 @@ const patchCompany = useCallback(async (
         )
       );
     }
+    notifyCompanyChanges();
 
     return updatedCompany;
   } catch (requestError) {
@@ -267,6 +284,7 @@ const patchCompany = useCallback(async (
           setCompany(null);
         }
       }
+      notifyCompanyChanges();
     } catch (requestError) {
       if (mountedRef.current) {
         setError('No se pudo eliminar la empresa');
@@ -321,6 +339,7 @@ const patchCompany = useCallback(async (
         )
       );
     }
+    notifyCompanyChanges();
 
     return updatedCompany;
   } catch (requestError) {

@@ -356,14 +356,11 @@ export default function RestaurantPublicationsScreen() {
   // =====================================================
 
   return (
-    <SafeAreaView
+    <View
       className="
         flex-1
         bg-[#F7F8F2]
       "
-      edges={[
-        'top',
-      ]}
     >
       <DashboardNavbar
         title="Publicaciones"
@@ -748,6 +745,6 @@ export default function RestaurantPublicationsScreen() {
           handleDelete
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }

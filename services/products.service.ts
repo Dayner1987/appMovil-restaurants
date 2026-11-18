@@ -180,10 +180,10 @@ export const productService = {
         PRODUCT_URL,
         {
           params: {
-            // IMPORTANTE:
-            // Los productos actuales están en draft.
+            // El panel de gestión consulta la versión de trabajo.
+            // Las nuevas altas y actualizaciones se publican al guardar.
             status:
-              'draft',
+              params.status ?? 'draft',
 
             populate:
               '*',
@@ -224,7 +224,8 @@ export const productService = {
 
   async findOne(
     documentId:
-      string
+      string,
+    status: 'draft' | 'published' = 'draft'
   ): Promise<ProductResponse> {
     const response =
       await api.get<ProductResponse>(
@@ -233,8 +234,7 @@ export const productService = {
         )}`,
         {
           params: {
-            status:
-              'draft',
+            status,
 
             populate:
               '*',
@@ -262,7 +262,7 @@ export const productService = {
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',
@@ -295,7 +295,7 @@ export const productService = {
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',
@@ -328,7 +328,7 @@ export const productService = {
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',

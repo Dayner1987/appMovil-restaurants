@@ -133,7 +133,7 @@ export interface CreatePromotionData {
     | string
     | null;
 
-  products?: number[];
+  products?: Array<string | number>;
 }
 
 // =====================================================
@@ -180,6 +180,7 @@ export interface PromotionResponse {
 // =====================================================
 
 export interface PromotionQueryParams {
+  status?: 'draft' | 'published';
   page?: number;
 
   pageSize?: number;
@@ -187,6 +188,9 @@ export interface PromotionQueryParams {
   sort?:
     | string
     | string[];
+
+  restaurantDocumentId?: string;
+  productDocumentId?: string;
 
   restaurantId?:
     | number

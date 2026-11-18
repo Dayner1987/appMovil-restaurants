@@ -1,6 +1,6 @@
 // components/profile/ProfileAvatarSection.tsx
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   ActivityIndicator,
@@ -13,6 +13,7 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
+import { mediaUrl } from '@/utils/media';
 
 import type {
   AppUser,
@@ -40,24 +41,6 @@ type Feedback = {
   message: string;
 } | null;
 
-const API_URL =
-  'http://localhost:1337';
-
-function getAvatarUrl(
-  avatar: UserImage | null
-) {
-  if (!avatar?.url) {
-    return null;
-  }
-
-  if (
-    avatar.url.startsWith('http')
-  ) {
-    return avatar.url;
-  }
-
-  return `${API_URL}${avatar.url}`;
-}
 
 function getErrorMessage(
   error: unknown,
@@ -92,7 +75,9 @@ export default function ProfileAvatarSection({
   ] = useState<Feedback>(null);
 
   const avatarUrl =
-    getAvatarUrl(avatar);
+    mediaUrl(avatar);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  useEffect(() => { setAvatarFailed(false); }, [avatarUrl]);
 
   const initial =
     (
@@ -210,13 +195,14 @@ export default function ProfileAvatarSection({
 
       <View className="mt-5 items-center">
         <View className="h-[112px] w-[112px] items-center justify-center overflow-hidden rounded-full border-[5px] border-[#EEF3DF] bg-[#20251B]">
-          {avatarUrl ? (
+          {avatarUrl && !avatarFailed ? (
             <Image
               source={{
                 uri: avatarUrl,
               }}
               className="h-full w-full"
               resizeMode="cover"
+              onError={() => setAvatarFailed(true)}
             />
           ) : (
             <Text className="text-[42px] font-extrabold text-[#B8D36F]">

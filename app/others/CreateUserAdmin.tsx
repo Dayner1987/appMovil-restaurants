@@ -7,6 +7,7 @@ import {
 } from 'react';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { roleLabel } from '@/utils/role-labels';
 
 import {
   router,
@@ -844,15 +845,11 @@ export default function CreateUserAdminScreen() {
                                 : 'text-[#343A2F]'
                             }`}
                           >
-                            {
-                              role.name
-                            }
+                            {roleLabel(role.name || role.type)}
                           </Text>
 
                           <Text className="mt-0.5 text-[11px] text-[#858A7A]">
-                            {
-                              role.type
-                            }
+                            Perfil de acceso del usuario
                           </Text>
                         </View>
 

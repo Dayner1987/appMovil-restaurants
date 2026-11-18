@@ -462,7 +462,7 @@ export default function EditPublicationScreen() {
     !documentId
   ) {
     return (
-      <SafeAreaView
+      <View
         className="
           flex-1
           items-center
@@ -470,9 +470,6 @@ export default function EditPublicationScreen() {
           bg-[#F7F8F2]
           px-6
         "
-        edges={[
-          'top',
-        ]}
       >
         <Ionicons
           name="alert-circle-outline"
@@ -512,7 +509,7 @@ export default function EditPublicationScreen() {
             Volver
           </Text>
         </Pressable>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -525,16 +522,13 @@ export default function EditPublicationScreen() {
     !publication
   ) {
     return (
-      <SafeAreaView
+      <View
         className="
           flex-1
           items-center
           justify-center
           bg-[#F7F8F2]
         "
-        edges={[
-          'top',
-        ]}
       >
         <ActivityIndicator
           size="large"
@@ -550,7 +544,7 @@ export default function EditPublicationScreen() {
         >
           Cargando publicación...
         </Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -559,14 +553,11 @@ export default function EditPublicationScreen() {
   // =====================================================
 
   return (
-    <SafeAreaView
+    <View
       className="
         flex-1
         bg-[#F7F8F2]
       "
-      edges={[
-        'top',
-      ]}
     >
       <View
         className="
@@ -688,6 +679,6 @@ export default function EditPublicationScreen() {
           />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

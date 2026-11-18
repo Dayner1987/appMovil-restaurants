@@ -36,10 +36,9 @@ export const restaurantApplicationService = {
   ): Promise<RestaurantApplicationListResponse> {
     const response =
       await api.get<RestaurantApplicationListResponse>(
-        APPLICATION_URL,
+        `${APPLICATION_URL}/admin`,
         {
           params: {
-            populate: 'applicant',
 
             'pagination[page]':
               params.page ?? 1,
@@ -71,13 +70,11 @@ export const restaurantApplicationService = {
   ): Promise<RestaurantApplicationResponse> {
     const response =
       await api.get<RestaurantApplicationResponse>(
-        `${APPLICATION_URL}/${encodeURIComponent(
+        `${APPLICATION_URL}/admin/${encodeURIComponent(
           documentId
         )}`,
         {
-          params: {
-            populate: 'applicant',
-          },
+          params: {},
         }
       );
 

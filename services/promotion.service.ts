@@ -29,6 +29,7 @@ export const promotionService = {
         PROMOTION_URL,
         {
           params: {
+            status: params.status ?? 'published',
             populate:
               '*',
 
@@ -43,11 +44,13 @@ export const promotionService = {
             sort:
               params.sort,
 
+            'filters[restaurant][documentId][$eq]': params.restaurantDocumentId,
             'filters[restaurant][id][$eq]':
-              params.restaurantId,
+              params.restaurantDocumentId ? undefined : params.restaurantId,
 
+            'filters[products][documentId][$eq]': params.productDocumentId,
             'filters[products][id][$eq]':
-              params.productId,
+              params.productDocumentId ? undefined : params.productId,
 
             'filters[type][$eq]':
               params.type,
