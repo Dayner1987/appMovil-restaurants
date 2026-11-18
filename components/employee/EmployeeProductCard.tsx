@@ -4,6 +4,8 @@ import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import type { Product } from '@/types/product.types';
 import { mediaUrl } from '@/utils/media';
 
+import { calculatePromotionPrice, getProductActivePromotion, promotionShortLabel } from '@/utils/promotion-pricing';
+
 interface EmployeeProductCardProps {
   product: Product;
   saving?: boolean;
@@ -16,13 +18,15 @@ export default function EmployeeProductCard({
   onToggle,
 }: EmployeeProductCardProps) {
   const available = Boolean(product.isAvailable);
+  const promo = getProductActivePromotion(product);
+  const price = calculatePromotionPrice(promo, 1, Number(product.price));
   const stock = Number(product.stock ?? 0);
   const imageUri = mediaUrl(product.mainImage ?? product.gallery?.[0] ?? null);
   const [imageError, setImageError] = useState(false);
   useEffect(() => setImageError(false), [imageUri]);
 
   return (
-    <View className="rounded-[24px] border border-[#E8EDE1] bg-white p-4">
+    <View className={`rounded-[24px] bg-white p-4 ${promo ? 'border-2 border-[#E56B37]' : 'border border-[#E8EDE1]'}`}>
       <View className="flex-row items-start">
         <View className="h-24 w-24 overflow-hidden rounded-[18px] bg-[#EDF3E5]">
           {imageUri && !imageError ? (
@@ -48,8 +52,9 @@ export default function EmployeeProductCard({
             {product.category?.name || 'Sin categoría'}
           </Text>
           <Text className="mt-2 text-[18px] font-extrabold text-[#617D34]">
-            Bs {Number(product.price ?? 0).toFixed(2)}
+            Bs {price.finalTotal.toFixed(2)}
           </Text>
+          {promo && <Text className="font-bold text-[#B65320]">{promotionShortLabel(promo)}</Text>}
           <View className="mt-2 flex-row items-center">
             <Ionicons name="cube-outline" size={14} color="#7C8773" />
             <Text className="ml-1 text-[11px] font-medium text-[#7C8773]">

@@ -173,12 +173,19 @@ export default function CartScreen() {
             {method === 'QR' ? groups.map(group => <RestaurantPaymentQR key={group.restaurantId} restaurantId={group.restaurantId} />) : null}
             <View className="mt-4 rounded-3xl bg-[#223F2F] p-5">
               <Text className="font-semibold text-[#D4EBDD]">Resumen · {groups.length} restaurante(s)</Text>
-              {groups.map(group => <View key={group.restaurantId} className="mt-3 flex-row justify-between gap-3">
+              {groups.map(group => <View key={group.restaurantId} className="mt-3"><View className="flex-row justify-between gap-3">
                 <Text numberOfLines={1} className="flex-1 text-sm text-[#E9F2EC]">{group.restaurantName}</Text>
                 <View className="items-end">
                   <Text className="font-bold text-white">{money(group.subtotal)}</Text>
                   {group.discount > 0 ? <Text className="text-[10px] text-[#F4C95D] line-through">{money(group.originalSubtotal)}</Text> : null}
                 </View>
+              </View>
+                {group.lines.map(({ product, quantity }) => (
+                  <View key={product.documentId} className="mt-2 flex-row justify-between gap-3">
+                    <Text className="flex-1 text-sm text-[#D4EBDD]">{quantity} × {product.name}</Text>
+                    <Text className="text-sm text-white">{money(calculatePromotionPrice(getProductActivePromotion(product), quantity, Number(product.price)).finalTotal)}</Text>
+                  </View>
+                ))}
               </View>)}
               {groups.some(group => group.discount > 0) ? <View className="mt-3 flex-row justify-between border-t border-[#52715E] pt-3"><Text className="text-sm font-semibold text-[#F4C95D]">Ahorro por promociones</Text><Text className="font-bold text-[#F4C95D]">- {money(groups.reduce((sum, group) => sum + group.discount, 0))}</Text></View> : null}
               <View className="mt-4 flex-row items-center justify-between border-t border-[#52715E] pt-4">

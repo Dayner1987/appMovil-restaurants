@@ -24,13 +24,13 @@ export const orderService = {
     params:
       OrderQueryParams = {}
   ): Promise<OrderListResponse> {
-    const response =
+    let response =
       await api.get<OrderListResponse>(
         ORDER_URL,
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',
@@ -100,6 +100,18 @@ export const orderService = {
         }
       );
 
+    if (!response.data?.data?.length) {
+      response = await api.get<OrderListResponse>(
+        ORDER_URL,
+        {
+          params: {
+            ...response.config.params,
+            status: 'draft',
+          },
+        },
+      );
+    }
+
     return response.data;
   },
 
@@ -111,23 +123,35 @@ export const orderService = {
     documentId:
       string
   ): Promise<OrderResponse> {
-    const response =
-      await api.get<OrderResponse>(
-        `${ORDER_URL}/${encodeURIComponent(
-          documentId
-        )}`,
-        {
-          params: {
-            status:
-              'draft',
+    const url = `${ORDER_URL}/${encodeURIComponent(documentId)}`;
 
-            populate:
-              '*',
-          },
-        }
-      );
+    // Prefer Published: el backend de pagos actualiza/publica la
+    // orden al aprobar un pago. Si la orden todavía no tiene versión
+    // publicada, usamos Draft como fallback para órdenes recién creadas.
+    try {
+      const published = await api.get<OrderResponse>(url, {
+        params: {
+          status: 'published',
+          populate: '*',
+        },
+      });
 
-    return response.data;
+      if (published.data?.data?.documentId) {
+        return published.data;
+      }
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status !== 404) throw error;
+    }
+
+    const draft = await api.get<OrderResponse>(url, {
+      params: {
+        status: 'draft',
+        populate: '*',
+      },
+    });
+
+    return draft.data;
   },
 
   // ===================================================

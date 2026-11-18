@@ -1,4 +1,7 @@
 // hooks/useEmployeeShift.ts
+//
+// Hook para la jornada del empleado autenticado.
+// La relación empleado/restaurante se resuelve en el backend a partir del JWT.
 
 import {
   useCallback,
@@ -7,337 +10,153 @@ import {
   useState,
 } from 'react';
 
-import {
-  employeeShiftService,
-} from '@/services/employee-shift.service';
-
-import type {
-  EmployeeShift,
-} from '@/types/employee.types';
+import { employeeShiftService } from '@/services/employee-shift.service';
+import type { EmployeeShift } from '@/types/employee.types';
 
 interface UseEmployeeShiftOptions {
-  employeeId?:
-    number;
-
-  restaurantDocumentId?:
-    string;
-
-  autoLoad?:
-    boolean;
+  autoLoad?: boolean;
 }
 
 export function useEmployeeShift(
-  options:
-    UseEmployeeShiftOptions = {}
+  options: UseEmployeeShiftOptions = {},
 ) {
-  const {
-    employeeId,
+  const { autoLoad = true } = options;
 
-    restaurantDocumentId,
+  const [shift, setShift] = useState<EmployeeShift | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    autoLoad =
-      true,
-  } = options;
-
-  const [
-    shift,
-    setShift,
-  ] =
-    useState<EmployeeShift | null>(
-      null
-    );
-
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(false);
-
-  const [
-    saving,
-    setSaving,
-  ] =
-    useState(false);
-
-  const [
-    error,
-    setError,
-  ] =
-    useState<
-      string | null
-    >(null);
-
-  const mountedRef =
-    useRef(true);
+  const mountedRef = useRef(true);
+  const mutationRef = useRef(false);
 
   useEffect(() => {
-    mountedRef.current =
-      true;
-
+    mountedRef.current = true;
     return () => {
-      mountedRef.current =
-        false;
+      mountedRef.current = false;
     };
   }, []);
 
-  // ===================================================
-  // CURRENT
-  // ===================================================
+  const loadCurrentShift = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-  const loadCurrentShift =
-    useCallback(
-      async () => {
-        if (
-          !employeeId ||
-          !restaurantDocumentId
-        ) {
-          if (
-            mountedRef.current
-          ) {
-            setShift(
-              null
-            );
-          }
+    try {
+      const current = await employeeShiftService.findCurrentOpen();
 
-          return null;
-        }
+      if (mountedRef.current) {
+        setShift(current);
+      }
 
-        setLoading(
-          true
-        );
+      return current;
+    } catch (requestError) {
+      const message = requestError instanceof Error
+        ? requestError.message
+        : 'No se pudo consultar la jornada.';
 
-        setError(
-          null
-        );
+      if (mountedRef.current) setError(message);
+      throw requestError;
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  }, []);
 
-        try {
-          const current =
-            await employeeShiftService
-              .findCurrentOpen(
-                employeeId,
-                restaurantDocumentId
-              );
-
-          if (
-            mountedRef.current
-          ) {
-            setShift(
-              current
-            );
-          }
-
-          return current;
-        } catch (
-          requestError
-        ) {
-          if (
-            mountedRef.current
-          ) {
-            setError(
-              requestError instanceof
-                Error
-                ? requestError.message
-                : 'No se pudo cargar la jornada.'
-            );
-          }
-
-          throw requestError;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setLoading(
-              false
-            );
-          }
-        }
-      },
-      [
-        employeeId,
-        restaurantDocumentId,
-      ]
-    );
-
-  // ===================================================
-  // START
-  // ===================================================
-
-  const startShift =
-    useCallback(
-      async () => {
-        if (
-          !employeeId ||
-          !restaurantDocumentId
-        ) {
-          throw new Error(
-            'No se pudo identificar al empleado o restaurante.'
-          );
-        }
-
-        const existing =
-          await employeeShiftService
-            .findCurrentOpen(
-              employeeId,
-              restaurantDocumentId
-            );
-
-        if (
-          existing
-        ) {
-          if (
-            mountedRef.current
-          ) {
-            setShift(
-              existing
-            );
-          }
-
-          throw new Error(
-            'Ya existe una jornada abierta.'
-          );
-        }
-
-        setSaving(
-          true
-        );
-
-        try {
-          const response =
-            await employeeShiftService
-              .create({
-                startedAt:
-                  new Date()
-                    .toISOString(),
-
-                statusEm:
-                  'OPEN',
-
-                employee:
-                  employeeId,
-
-                restaurant:
-                  restaurantDocumentId,
-              });
-
-          if (
-            mountedRef.current
-          ) {
-            setShift(
-              response.data
-            );
-          }
-
-          return response.data;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setSaving(
-              false
-            );
-          }
-        }
-      },
-      [
-        employeeId,
-        restaurantDocumentId,
-      ]
-    );
-
-  // ===================================================
-  // CLOSE
-  // ===================================================
-
-  const closeShift =
-    useCallback(
-      async () => {
-        if (
-          !shift
-        ) {
-          throw new Error(
-            'No existe una jornada abierta.'
-          );
-        }
-
-        setSaving(
-          true
-        );
-
-        try {
-          const response =
-            await employeeShiftService
-              .update(
-                shift.documentId,
-                {
-                  statusEm:
-                    'CLOSED',
-
-                  endedAt:
-                    new Date()
-                      .toISOString(),
-                }
-              );
-
-          if (
-            mountedRef.current
-          ) {
-            setShift(
-              null
-            );
-          }
-
-          return response.data;
-        } finally {
-          if (
-            mountedRef.current
-          ) {
-            setSaving(
-              false
-            );
-          }
-        }
-      },
-      [
-        shift,
-      ]
-    );
-
-  useEffect(() => {
-    if (
-      !autoLoad
-    ) {
-      return;
+  const startShift = useCallback(async () => {
+    if (mutationRef.current) {
+      throw new Error('Espera a que termine la operación actual.');
     }
 
-    void loadCurrentShift()
-      .catch(
-        () =>
-          undefined
-      );
-  }, [
-    autoLoad,
-    loadCurrentShift,
-  ]);
+    mutationRef.current = true;
+    setSaving(true);
+    setError(null);
+
+    try {
+      // Evita duplicar una jornada si ya existe una abierta.
+      const existing = await employeeShiftService.findCurrentOpen();
+
+      if (existing) {
+        if (mountedRef.current) setShift(existing);
+        throw new Error('Ya tienes una jornada abierta.');
+      }
+
+      await employeeShiftService.openMine();
+
+      // El GET posterior es la fuente de verdad del estado actual.
+      const current = await employeeShiftService.findCurrentOpen();
+
+      if (!current) {
+        throw new Error('La jornada se envió para abrir, pero no aparece activa al consultar el servidor.');
+      }
+
+      if (mountedRef.current) setShift(current);
+      return current;
+    } catch (requestError) {
+      const message = requestError instanceof Error
+        ? requestError.message
+        : 'No se pudo abrir la jornada.';
+
+      if (mountedRef.current) setError(message);
+      throw requestError;
+    } finally {
+      mutationRef.current = false;
+      if (mountedRef.current) setSaving(false);
+    }
+  }, []);
+
+  const closeShift = useCallback(async () => {
+    if (mutationRef.current) {
+      throw new Error('Espera a que termine la operación actual.');
+    }
+
+    if (!shift?.documentId) {
+      throw new Error('No existe una jornada abierta para cerrar.');
+    }
+
+    mutationRef.current = true;
+    setSaving(true);
+    setError(null);
+
+    try {
+      await employeeShiftService.closeMine(shift.documentId);
+
+      // El endpoint probado responde data:null al cerrar.
+      // Por eso no intentamos leer response.data.documentId.
+      const current = await employeeShiftService.findCurrentOpen();
+
+      if (mountedRef.current) setShift(current);
+
+      if (current) {
+        throw new Error('El servidor respondió al cierre, pero la jornada todavía aparece abierta.');
+      }
+
+      return null;
+    } catch (requestError) {
+      const message = requestError instanceof Error
+        ? requestError.message
+        : 'No se pudo cerrar la jornada.';
+
+      if (mountedRef.current) setError(message);
+      throw requestError;
+    } finally {
+      mutationRef.current = false;
+      if (mountedRef.current) setSaving(false);
+    }
+  }, [shift]);
+
+  useEffect(() => {
+    if (!autoLoad) return;
+    void loadCurrentShift().catch(() => undefined);
+  }, [autoLoad, loadCurrentShift]);
 
   return {
     shift,
-
-    hasOpenShift:
-      Boolean(
-        shift &&
-        shift.statusEm ===
-          'OPEN'
-      ),
-
+    hasOpenShift: Boolean(shift?.statusEm === 'OPEN'),
     loading,
     saving,
     error,
-
     loadCurrentShift,
     startShift,
     closeShift,
-
-    refresh:
-      loadCurrentShift,
+    refresh: loadCurrentShift,
   };
 }

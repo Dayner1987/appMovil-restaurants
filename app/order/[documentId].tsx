@@ -1,3 +1,5 @@
+import { openCompletedOrderReceipt } from '@/config/generate.order-receipt';
+import Toast from 'react-native-toast-message';
 import RestaurantPaymentQR from '@/components/RestaurantPaymentQR';
 // app/order/[documentId].tsx
 // Recibo independiente por restaurante (pago pendiente, no factura fiscal).
@@ -16,6 +18,7 @@ export default function MyOrderDetails() {
   const { documentId } = useLocalSearchParams<{ documentId: string }>();
   const { user } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,11 +27,9 @@ export default function MyOrderDetails() {
     if (!documentId || !user) { setLoading(false); return; }
     if (refresh) setRefreshing(true); else setLoading(true);
     try {
-      const response = await orderService.findOne(documentId);
-      const result = response.data;
-      if (result.users?.length && !result.users.some(item => item.id === user.id)) {
-        throw new Error('No tienes acceso a este pedido.');
-      }
+      const response = await orderService.history({ documentId });
+      const result = response.data[0];
+      if (!result) throw new Error('No se encontró este pedido en tu historial.');
       setOrder(result);
       setError(null);
     } catch (requestError) { setOrder(null); setError(errorText(requestError)); }
@@ -78,7 +79,17 @@ export default function MyOrderDetails() {
               </View>
             </View>
             {order.paymentStatus !== 'PAID' && order.payments?.some(payment => payment.method === 'QR') && order.restaurant?.documentId ? <RestaurantPaymentQR restaurantId={order.restaurant.documentId} /> : null}
-            <Text className="mt-4 text-center text-xs leading-5 text-[#829083]">Este es un comprobante de pedido, no una factura fiscal. El pago debe confirmarse con el restaurante.</Text>
+            {order.statusOrder === 'COMPLETED' && (
+              <Pressable disabled={exporting} onPress={async () => {
+                setExporting(true);
+                try { await openCompletedOrderReceipt(order, true); }
+                catch (e) { Toast.show({ type: 'error', text1: 'No se pudo guardar el recibo', text2: errorText(e) }); }
+                finally { setExporting(false); }
+              }} className="mt-4 items-center rounded-2xl bg-[#2F6A46] py-4">
+                <Text className="font-bold text-white">{exporting ? 'Preparando PDF…' : 'Descargar recibo PDF'}</Text>
+              </Pressable>
+            )}
+            <Text className="mt-4 text-center text-xs leading-5 text-[#829083]">Este es un comprobante de pedido, no una factura fiscal. {order.paymentStatus === 'PAID' ? 'Pago confirmado.' : 'Pago pendiente de confirmación.'}</Text>
             <Pressable onPress={() => router.push('/my-orders')} className="mt-5 items-center rounded-2xl bg-[#E3F0E4] py-4">
               <Text className="font-extrabold text-[#2F6A46]">Ver todos mis pedidos</Text>
             </Pressable>

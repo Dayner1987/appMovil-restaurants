@@ -4,7 +4,9 @@ import {
   Platform,
 } from 'react-native';
 
+import * as FileSystem from 'expo-file-system/legacy';
 import {
+  generateReceiptPdf,
   printReceipt,
   shareReceiptPdf,
 } from '@/config/generate.receip';
@@ -126,7 +128,8 @@ function buildReceiptFromOrder(
 
 export async function openCompletedOrderReceipt(
   order:
-    Order
+    Order,
+  download = false
 ): Promise<void> {
   if (
     order.statusOrder !==
@@ -238,6 +241,17 @@ export async function openCompletedOrderReceipt(
   //
   // Genera el PDF real y abre las opciones del sistema.
   // ===================================================
+
+  if (download && Platform.OS === 'android') {
+    const directory = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+    if (!directory.granted) return;
+    const generated = await generateReceiptPdf(options);
+    const content = await FileSystem.readAsStringAsync(generated.uri, { encoding: FileSystem.EncodingType.Base64 });
+    const safeName = String(order.orderCode || order.documentId).replace(/[^a-z0-9_-]/gi, '_');
+    const destination = await FileSystem.StorageAccessFramework.createFileAsync(directory.directoryUri, safeName + '.pdf', 'application/pdf');
+    await FileSystem.writeAsStringAsync(destination, content, { encoding: FileSystem.EncodingType.Base64 });
+    return;
+  }
 
   await shareReceiptPdf(
     options

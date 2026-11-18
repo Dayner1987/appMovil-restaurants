@@ -461,6 +461,16 @@ export interface EmployeeShiftQueryParams {
 // SHIFT RESPONSES
 // =====================================================
 
+export interface EmployeeShiftCurrentResponse {
+  data:
+    EmployeeShift | null;
+}
+
+export interface EmployeeShiftCloseResponse {
+  data:
+    EmployeeShift | null;
+}
+
 export interface EmployeeShiftResponse {
   data:
     EmployeeShift;

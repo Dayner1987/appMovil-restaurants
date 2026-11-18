@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import DashboardNavbar from '@/components/DashboardNavbar';
 import { Tabs } from 'expo-router';
 
 const GREEN = '#617D34';
@@ -8,7 +9,8 @@ export default function EmployeeLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        header: ({ options }) => <DashboardNavbar title={options.title || 'Empleado'} />,
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: GREEN,
         tabBarInactiveTintColor: MUTED,

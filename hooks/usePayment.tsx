@@ -1262,45 +1262,42 @@ export function usePayment(
                   )
                 );
 
+            // paymentService.update ejecuta PATCH y luego GET Published.
+            // No leemos el body del PATCH porque el backend probado responde {}.
             const updated =
-              response.data;
+              response?.data;
+
+            if (
+              !updated?.documentId
+            ) {
+              throw new Error(
+                'El pago se actualizó, pero no se pudo recuperar su información. Actualiza la pantalla.'
+              );
+            }
 
             if (
               mountedRef.current
             ) {
-              setPayment(
-                (
-                  current
-                ) =>
-                  current
-                    ?.documentId ===
-                  updated.documentId
-                    ? updated
-                    : current
-              );
+              setPayment(updated);
 
               setPayments(
-                (
-                  current
-                ) =>
-                  current.map(
-                    (
-                      item
-                    ) =>
-                      item.documentId ===
-                      updated.documentId
-                        ? updated
-                        : item
-                  )
+                (current) => {
+                  const exists = current.some(
+                    (item) => item.documentId === id
+                  );
+
+                  return exists
+                    ? current.map((item) =>
+                        item.documentId === id ? updated : item
+                      )
+                    : [updated, ...current];
+                }
               );
             }
 
             const orderDocumentId =
-              updated.order
-                ?.documentId ??
-              currentPayment
-                ?.order
-                ?.documentId;
+              updated.order?.documentId ??
+              currentPayment?.order?.documentId;
 
             if (
               orderDocumentId

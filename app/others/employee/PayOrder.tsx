@@ -240,14 +240,9 @@ export default function PayEmployeeOrderScreen() {
         await paymentService.update(created.data.documentId, { statusPayment: 'APPROVED' });
       }
 
-      await employeeOperationsService
-        .patchOrder(
-          order.documentId,
-          {
-            paymentStatus:
-              'PAID',
-          }
-        );
+      // El endpoint personalizado de aprobación del pago actualiza
+      // automáticamente Order.paymentStatus en el backend.
+      // No duplicamos esa escritura desde el cliente.
 
       Toast.show({
         type:

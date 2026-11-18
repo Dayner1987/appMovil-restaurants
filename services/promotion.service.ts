@@ -30,8 +30,8 @@ export const promotionService = {
         {
           params: {
             status: params.status ?? 'published',
-            populate:
-              '*',
+            'populate[products][populate][0]': 'mainImage',
+            'populate[restaurant]': true,
 
             'pagination[page]':
               params.page ??

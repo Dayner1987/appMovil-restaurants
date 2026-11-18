@@ -78,7 +78,7 @@ export default function HomeClient() {
           <Pressable onPress={() => router.push('/my-orders')} className="mx-5 mt-4 flex-row items-center justify-between rounded-2xl border border-[#E4EAE2] bg-white p-4">
             <View className="flex-row items-center gap-3"><Ionicons name="receipt-outline" size={22} color="#2F6A46" />
               <View><Text className="font-extrabold text-[#273A2B]">Mis pedidos</Text>
-                <Text className="mt-1 text-xs text-[#7B8B7E]">Consulta cada recibo por restaurante</Text></View></View>
+                <Text className="mt-1 text-xs text-[#7B8B7E]">Historial, estados y recibos PDF</Text></View></View>
             <Ionicons name="chevron-forward" size={20} color="#2F6A46" />
           </Pressable>
         )}

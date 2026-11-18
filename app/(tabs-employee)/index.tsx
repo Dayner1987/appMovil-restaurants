@@ -5,6 +5,8 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import EmployeeScreenHeader from '@/components/employee/EmployeeScreenHeader';
 import { useEmployeeContext } from '@/hooks/useEmployeeContext';
+import { useEmployeeShift } from '@/hooks/useEmployeeShift';
+import Toast from 'react-native-toast-message';
 import { employeeOperationsService } from '@/services/employee-operations.service';
 import type { EmployeeOrder } from '@/types/employee.types';
 
@@ -17,6 +19,16 @@ const statusLabel: Record<string, string> = {
 
 export default function EmployeeHomeScreen() {
   const { user, restaurantDocumentId, restaurantName, loading: contextLoading } = useEmployeeContext();
+  const {
+    shift,
+    hasOpenShift,
+    loading: shiftLoading,
+    saving: shiftSaving,
+    error: shiftError,
+    refresh: refreshShift,
+    startShift,
+    closeShift,
+  } = useEmployeeShift({ autoLoad: true });
   const [orders, setOrders] = useState<EmployeeOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,16 +47,34 @@ export default function EmployeeHomeScreen() {
     finally { setLoading(false); }
   }, [restaurantDocumentId]);
 
-  useFocusEffect(useCallback(() => { void load(); return undefined; }, [load]));
+  useFocusEffect(useCallback(() => {
+    void load();
+    void refreshShift().catch(() => undefined);
+    return undefined;
+  }, [load, refreshShift]));
+
+  const handleShiftAction = async () => {
+    try {
+      if (hasOpenShift) {
+        await closeShift();
+        Toast.show({ type: 'success', text1: 'Jornada cerrada', text2: 'Tu jornada se cerró correctamente.', position: 'bottom' });
+      } else {
+        await startShift();
+        Toast.show({ type: 'success', text1: 'Jornada iniciada', text2: 'Tu jornada está abierta. Ya puedes gestionar órdenes.', position: 'bottom' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'No se pudo actualizar la jornada', text2: e instanceof Error ? e.message : 'Intenta nuevamente.', position: 'bottom' });
+    }
+  };
   const activeOrders = orders.filter(item => item.statusOrder !== 'COMPLETED' && item.statusOrder !== 'CANCELLED');
   const pendingOrders = activeOrders.filter(item => item.statusOrder === 'PENDING').length;
   const readyOrders = activeOrders.filter(item => item.statusOrder === 'READY').length;
   const name = user?.firstName?.trim() || user?.username || 'Equipo';
 
   return <SafeAreaView edges={['top']} className="flex-1 bg-[#F7F8F2]">
-    <EmployeeScreenHeader title="Mi jornada" subtitle={restaurantName} icon="briefcase-outline" onAction={() => void load()} />
+    <EmployeeScreenHeader title="Mi jornada" subtitle={restaurantName} icon="briefcase-outline" onAction={() => { void load(); void refreshShift().catch(() => undefined); }} />
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 55 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); try { await load(); } finally { setRefreshing(false); } }} tintColor={GREEN} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); try { await Promise.all([load(), refreshShift().catch(() => undefined)]); } finally { setRefreshing(false); } }} tintColor={GREEN} />}
     >
       <View className="overflow-hidden rounded-[28px] bg-[#617D34] p-5">
         <View className="absolute -right-5 -top-9 h-36 w-36 rounded-full bg-white/10" />
@@ -55,6 +85,44 @@ export default function EmployeeHomeScreen() {
           <Ionicons name="storefront-outline" size={21} color="#FFFFFF" />
           <Text numberOfLines={1} className="ml-2 flex-1 font-bold text-white">{restaurantName}</Text>
         </View>
+      </View>
+
+      <View className="mt-4 rounded-[24px] bg-white p-4">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1">
+            <Text className="text-base font-extrabold text-[#20291B]">Estado de mi jornada</Text>
+            <Text className="mt-1 text-sm text-[#788473]">
+              {shiftLoading
+                ? 'Consultando jornada...'
+                : hasOpenShift
+                  ? `Abierta desde ${shift?.startedAt ? new Date(shift.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'hoy'}`
+                  : 'No tienes una jornada abierta.'}
+            </Text>
+          </View>
+          <View className={`h-3 w-3 rounded-full ${hasOpenShift ? 'bg-[#5E9B55]' : 'bg-[#D6A34A]'}`} />
+        </View>
+
+        {shiftError ? (
+          <Pressable onPress={() => void refreshShift().catch(() => undefined)} className="mt-3 rounded-xl bg-[#FFF1EF] p-3">
+            <Text className="text-sm font-semibold text-[#A95651]">{shiftError}</Text>
+            <Text className="mt-1 text-xs font-bold text-[#A95651]">Toca para volver a consultar.</Text>
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          onPress={() => void handleShiftAction()}
+          disabled={shiftLoading || shiftSaving || contextLoading || !restaurantDocumentId}
+          className={`mt-4 flex-row items-center justify-center rounded-2xl py-3.5 ${hasOpenShift ? 'bg-[#FBECEA]' : 'bg-[#617D34]'} ${(shiftLoading || shiftSaving || !restaurantDocumentId) ? 'opacity-60' : ''}`}
+        >
+          {(shiftLoading || shiftSaving) ? (
+            <ActivityIndicator size="small" color={hasOpenShift ? '#A95651' : '#FFFFFF'} />
+          ) : (
+            <Ionicons name={hasOpenShift ? 'lock-closed-outline' : 'play-circle-outline'} size={19} color={hasOpenShift ? '#A95651' : '#FFFFFF'} />
+          )}
+          <Text className={`ml-2 font-extrabold ${hasOpenShift ? 'text-[#A95651]' : 'text-white'}`}>
+            {shiftSaving ? 'Procesando...' : hasOpenShift ? 'Cerrar jornada' : 'Abrir jornada'}
+          </Text>
+        </Pressable>
       </View>
 
       {!contextLoading && !restaurantDocumentId ? (

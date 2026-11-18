@@ -112,6 +112,7 @@ export default function EmployeeProductsScreen() {
 
         try {
           await loadProducts({
+            status: 'published',
             page:
               1,
 

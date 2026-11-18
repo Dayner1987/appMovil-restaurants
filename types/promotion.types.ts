@@ -23,6 +23,7 @@ export interface PromotionRestaurant {
 // =====================================================
 
 export interface PromotionProduct {
+  mainImage?: import('./product.types').ProductMedia | null;
   id: number;
 
   documentId?: string;

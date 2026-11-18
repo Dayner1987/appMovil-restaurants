@@ -25,7 +25,7 @@ const getApiUrl = () => {
   }
 
   // 3. Respaldo por defecto
-  return "http://192.168.100.99:1337";
+  return "http://192.168.100.19:1337";
 };
 
 const API_BASE_URL = getApiUrl();

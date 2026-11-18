@@ -1,8 +1,6 @@
 // services/payment.service.ts
 
-import {
-  api,
-} from './api';
+import { api } from './api';
 
 import type {
   CreatePaymentData,
@@ -12,194 +10,109 @@ import type {
   UpdatePaymentData,
 } from '@/types/payment.types';
 
-const PAYMENT_URL =
-  '/api/payments';
+const PAYMENT_URL = '/api/payments';
+const READ_STATUS = 'published';
+
+const paymentPopulateParams = {
+  status: READ_STATUS,
+  'populate[order][populate][restaurant]': true,
+  'populate[order][populate][users]': true,
+};
 
 export const paymentService = {
-  // ===================================================
-  // GET ALL
-  // ===================================================
-
+  // GET ALL: los pagos creados por el backend se consultan en
+  // la versión publicada. Se conserva el filtro Payment -> Order -> Restaurant.
   async findAll(
-    params:
-      PaymentQueryParams = {}
+    params: PaymentQueryParams = {},
   ): Promise<PaymentListResponse> {
-    const response =
-      await api.get<PaymentListResponse>(
-        PAYMENT_URL,
-        {
-          params: {
-            status:
-              'draft',
+    const response = await api.get<PaymentListResponse>(
+      PAYMENT_URL,
+      {
+        params: {
+          ...paymentPopulateParams,
+          'pagination[page]': params.page ?? 1,
+          'pagination[pageSize]': params.pageSize ?? 100,
+          sort: params.sort ?? 'paidAt:desc',
 
-            populate:
-              '*',
+          'filters[order][documentId][$eq]': params.orderDocumentId,
+          'filters[order][restaurant][documentId][$eq]': params.restaurantDocumentId,
+          'filters[statusPayment][$eq]': params.statusPayment,
+          'filters[method][$eq]': params.method,
+          'filters[paidAt][$gte]': params.paidFrom,
+          'filters[paidAt][$lte]': params.paidTo,
+        },
+      },
+    );
 
-            'pagination[page]':
-              params.page ??
-              1,
+    return {
+      ...response.data,
+      data: Array.isArray(response.data?.data) ? response.data.data : [],
+    };
+  },
 
-            'pagination[pageSize]':
-              params.pageSize ??
-              100,
+  // GET ONE: se consulta Published porque el controlador de pagos
+  // publica el pago y la prueba de Insomnia confirmó esta variante.
+  async findOne(documentId: string): Promise<PaymentResponse> {
+    if (!documentId) {
+      throw new Error('Falta el identificador del pago.');
+    }
 
-            sort:
-              params.sort ??
-              'paidAt:desc',
+    const response = await api.get<PaymentResponse>(
+      `${PAYMENT_URL}/${encodeURIComponent(documentId)}`,
+      { params: paymentPopulateParams },
+    );
 
-            // =========================================
-            // ORDER
-            // =========================================
-
-            'filters[order][documentId][$eq]':
-              params.orderDocumentId,
-
-            // =========================================
-            // RESTAURANT
-            //
-            // API comprobada en Insomnia:
-            //
-            // Payment
-            // -> Order
-            // -> Restaurant
-            // =========================================
-
-            'filters[order][restaurant][documentId][$eq]':
-              params.restaurantDocumentId,
-
-            // =========================================
-            // PAYMENT STATUS
-            // =========================================
-
-            'filters[statusPayment][$eq]':
-              params.statusPayment,
-
-            // =========================================
-            // METHOD
-            // =========================================
-
-            'filters[method][$eq]':
-              params.method,
-
-            // =========================================
-            // PAID DATE RANGE
-            // =========================================
-
-            'filters[paidAt][$gte]':
-              params.paidFrom,
-
-            'filters[paidAt][$lte]':
-              params.paidTo,
-          },
-        }
-      );
+    if (!response.data?.data?.documentId) {
+      throw new Error('El servidor no devolvió el pago solicitado.');
+    }
 
     return response.data;
   },
 
-  // ===================================================
-  // GET ONE
-  // ===================================================
-
-  async findOne(
-    documentId:
-      string
-  ): Promise<PaymentResponse> {
-    const response =
-      await api.get<PaymentResponse>(
-        `${PAYMENT_URL}/${encodeURIComponent(
-          documentId
-        )}`,
-        {
-          params: {
-            status:
-              'draft',
-
-            populate:
-              '*',
-          },
-        }
-      );
-
-    return response.data;
-  },
-
-  // ===================================================
-  // CREATE
-  //
   // POST /api/payments
-  // ===================================================
-
-  async create(
-    data:
-      CreatePaymentData
-  ): Promise<PaymentResponse> {
-    const response =
-      await api.post<PaymentResponse>(
-        PAYMENT_URL,
-        {
-          data,
+  async create(data: CreatePaymentData): Promise<PaymentResponse> {
+    const response = await api.post<PaymentResponse>(
+      PAYMENT_URL,
+      { data },
+      {
+        params: {
+          'populate[order][populate][restaurant]': true,
+          'populate[order][populate][users]': true,
         },
-        {
-          params: {
-            populate:
-              '*',
-          },
-        }
-      );
+      },
+    );
+
+    if (!response.data?.data?.documentId) {
+      throw new Error('El servidor no devolvió el pago creado.');
+    }
 
     return response.data;
   },
 
-  // ===================================================
-  // UPDATE
+  // PATCH personalizado /api/payments/:documentId.
   //
-  // Payment no tiene PATCH personalizado.
-  //
-  // Usamos PUT nativo.
-  // ===================================================
-
+  // IMPORTANTE: la ruta comprobada en Insomnia responde {} aunque
+  // sí actualiza el pago y la orden. Por eso no usamos el body del
+  // PATCH como Payment: hacemos GET Published después de la mutación.
   async update(
-    documentId:
-      string,
-
-    data:
-      UpdatePaymentData
+    documentId: string,
+    data: UpdatePaymentData,
   ): Promise<PaymentResponse> {
-    const response =
-      await api.put<PaymentResponse>(
-        `${PAYMENT_URL}/${encodeURIComponent(
-          documentId
-        )}`,
-        {
-          data,
-        },
-        {
-          params: {
-            status:
-              'published',
+    if (!documentId) {
+      throw new Error('Falta el identificador del pago.');
+    }
 
-            populate:
-              '*',
-          },
-        }
-      );
+    await api.patch(
+      `${PAYMENT_URL}/${encodeURIComponent(documentId)}`,
+      { data },
+    );
 
-    return response.data;
+    return this.findOne(documentId);
   },
 
-  // ===================================================
-  // DELETE
-  // ===================================================
-
-  async remove(
-    documentId:
-      string
-  ): Promise<void> {
+  async remove(documentId: string): Promise<void> {
     await api.delete(
-      `${PAYMENT_URL}/${encodeURIComponent(
-        documentId
-      )}`
+      `${PAYMENT_URL}/${encodeURIComponent(documentId)}`,
     );
   },
 };

@@ -292,13 +292,13 @@ export const employeeOperationsService = {
     params:
       EmployeeOrderQueryParams = {}
   ): Promise<EmployeeOrderListResponse> {
-    const response =
+    let response =
       await api.get<EmployeeOrderListResponse>(
         ORDER_URL,
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',
@@ -338,6 +338,18 @@ export const employeeOperationsService = {
         }
       );
 
+    if (!response.data?.data?.length) {
+      response = await api.get<EmployeeOrderListResponse>(
+        ORDER_URL,
+        {
+          params: {
+            ...response.config.params,
+            status: 'draft',
+          },
+        },
+      );
+    }
+
     return response.data;
   },
 
@@ -345,23 +357,35 @@ export const employeeOperationsService = {
     documentId:
       string
   ): Promise<EmployeeOrderResponse> {
-    const response =
-      await api.get<EmployeeOrderResponse>(
-        `${ORDER_URL}/${encodeURIComponent(
-          documentId
-        )}`,
-        {
-          params: {
-            status:
-              'draft',
+    const url = `${ORDER_URL}/${encodeURIComponent(documentId)}`;
 
-            populate:
-              '*',
-          },
-        }
-      );
+    // Después de aprobar un pago, el backend publica la orden.
+    // Preferimos Published para leer paymentStatus actualizado y
+    // recurrimos a Draft cuando la orden aún no fue publicada.
+    try {
+      const published = await api.get<EmployeeOrderResponse>(url, {
+        params: {
+          status: 'published',
+          populate: '*',
+        },
+      });
 
-    return response.data;
+      if (published.data?.data?.documentId) {
+        return published.data;
+      }
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status !== 404) throw error;
+    }
+
+    const draft = await api.get<EmployeeOrderResponse>(url, {
+      params: {
+        status: 'draft',
+        populate: '*',
+      },
+    });
+
+    return draft.data;
   },
 
   async createOrder(
@@ -466,7 +490,7 @@ export const employeeOperationsService = {
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',
@@ -515,7 +539,7 @@ export const employeeOperationsService = {
         {
           params: {
             status:
-              'draft',
+              'published',
 
             populate:
               '*',

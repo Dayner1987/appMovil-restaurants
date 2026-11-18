@@ -9,8 +9,10 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DashboardNavbar from '@/components/DashboardNavbar';
 import { MediaThumb } from '@/components/client/CatalogUI';
-import { usePromotion } from '@/hooks/usePromotion';
-import { promotionShortLabel } from '@/utils/promotion-pricing';
+
+import { promotionService } from '@/services/promotion.service';
+import type { Promotion } from '@/types/promotion.types';
+import { calculatePromotionPrice, findPromotionForProduct, getProductActivePromotion, promotionShortLabel } from '@/utils/promotion-pricing';
 
 import {
   router,
@@ -72,7 +74,6 @@ export default function CreateEmployeeOrderScreen() {
   const {
     employeeId,
 
-    restaurant,
 
     restaurantDocumentId,
 
@@ -94,11 +95,10 @@ export default function CreateEmployeeOrderScreen() {
         false,
     });
 
-  const {
-    loadPromotions,
-    calculateProductPrice,
-  } = usePromotion({ autoLoad: false });
 
+
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [catalogReady, setCatalogReady] = useState(false);
   const [
     shift,
     setShift,
@@ -143,37 +143,23 @@ export default function CreateEmployeeOrderScreen() {
         }
 
         try {
-          const [currentShift] = await Promise.all([
+          setCatalogReady(false);
+          const [currentShift, , offers] = await Promise.all([
             employeeShiftService.findCurrentOpen(employeeId, restaurantDocumentId),
             loadProducts({
               page: 1,
               pageSize: 100,
               sort: 'name:asc',
               available: true,
+              status: 'published',
               restaurantDocumentId,
             }),
+            promotionService.findAll({ restaurantDocumentId, status: 'published', pageSize: 100 }),
           ]);
-
+          setPromotions(offers.data);
+          setCatalogReady(true);
           setShift(currentShift);
 
-          // La falta de permiso de lectura de promociones no debe bloquear
-          // la creación de órdenes del personal. Si falla, se muestran los
-          // precios normales y el administrador puede revisar permisos.
-          try {
-            await loadPromotions({
-              restaurantDocumentId,
-              page: 1,
-              pageSize: 100,
-              status: 'published',
-            });
-          } catch {
-            Toast.show({
-              type: 'warning',
-              text1: 'No se pudieron cargar las promociones',
-              text2: 'Se mostrarán los precios normales. Revisa los permisos de lectura.',
-              position: 'bottom',
-            });
-          }
         } catch {
           Toast.show({
             type:
@@ -190,9 +176,9 @@ export default function CreateEmployeeOrderScreen() {
       [
         employeeId,
         restaurantDocumentId,
-        restaurant?.id,
+
         loadProducts,
-        loadPromotions,
+
       ]
     );
 
@@ -255,19 +241,19 @@ export default function CreateEmployeeOrderScreen() {
       ]
     );
 
+  const offerFor = useCallback((product: Product) =>
+    findPromotionForProduct(promotions, product) ?? getProductActivePromotion(product),
+    [promotions]
+  );
+
   const calculatedLines =
     useMemo(
       () => selectedLines.map((line) => {
         const price = Number(line.product.price ?? 0);
-        const calculation = calculateProductPrice(
-          line.quantity,
-          price,
-          undefined,
-          line.product.documentId
-        );
+        const calculation = calculatePromotionPrice(offerFor(line.product), line.quantity, price);
         return { ...line, calculation };
       }),
-      [selectedLines, calculateProductPrice]
+      [selectedLines, offerFor]
     );
 
   const subtotal = useMemo(
@@ -328,7 +314,7 @@ export default function CreateEmployeeOrderScreen() {
 
   async function handleCreate() {
     if (
-      saving
+      saving || !catalogReady
     ) {
       return;
     }
@@ -584,12 +570,18 @@ export default function CreateEmployeeOrderScreen() {
             160,
         }}
       >
+        {!catalogReady && !productsLoading && !contextLoading && <Pressable onPress={loadData} className="mb-3 rounded-xl bg-white p-3">
+          <Text className="font-bold text-[#617D34]">Actualizar catálogo y promociones</Text>
+        </Pressable>}
         {!shift &&
         !contextLoading ? (
           <View className="mb-4 rounded-[18px] bg-[#F7ECE8] p-4">
             <Text className="text-[13px] font-bold text-[#9A5D51]">
               No tienes una jornada abierta.
             </Text>
+            <Pressable onPress={() => router.push('/(tabs-employee)')} className="mt-2 py-2">
+              <Text className="font-bold text-[#617D34]">Ir a Mi jornada</Text>
+            </Pressable>
           </View>
         ) : null}
 
@@ -662,12 +654,14 @@ export default function CreateEmployeeOrderScreen() {
                 ] ??
                 0;
 
+              const promotion = offerFor(product);
+              const unit = calculatePromotionPrice(promotion, 1, Number(product.price));
               return (
                 <View
                   key={
                     product.documentId
                   }
-                  className={`mb-3 flex-row items-center rounded-[20px] bg-white p-4 ${calculateProductPrice(1, Number(product.price ?? 0), undefined, product.documentId).appliedPromotion ? 'border-2 border-[#E36B35]' : 'border border-transparent'}`}
+                  className={`mb-3 flex-row items-center rounded-[20px] bg-white p-4 ${promotion ? 'border-2 border-[#E36B35]' : 'border border-transparent'}`}
                 >
                   <View className="h-16 w-16 overflow-hidden rounded-[16px] bg-[#EEF3E3]">
                     <MediaThumb src={product.mainImage ?? product.gallery?.[0]} height={64} icon="fast-food-outline" />
@@ -678,19 +672,19 @@ export default function CreateEmployeeOrderScreen() {
                       {product.name}
                     </Text>
 
-                    {calculateProductPrice(1, Number(product.price ?? 0), undefined, product.documentId).appliedPromotion ? (
+                    {promotion ? (
                       <View className="mt-1 self-start rounded-full bg-[#FFF0E8] px-2 py-1">
                         <Text className="text-[9px] font-extrabold text-[#D45E2A]">
-                          {promotionShortLabel(calculateProductPrice(1, Number(product.price ?? 0), undefined, product.documentId).appliedPromotion!)}
+                          {promotionShortLabel(promotion!)}
                         </Text>
                       </View>
                     ) : null}
 
                     <View className="mt-1 flex-row flex-wrap items-center gap-2">
-                      <Text className={`text-[12px] font-bold ${calculateProductPrice(1, Number(product.price ?? 0), undefined, product.documentId).appliedPromotion ? 'text-[#D45E2A]' : 'text-[#617D34]'}`}>
-                        Bs {calculateProductPrice(1, Number(product.price ?? 0), undefined, product.documentId).finalTotal.toFixed(2)}
+                      <Text className={`text-[12px] font-bold ${promotion ? 'text-[#D45E2A]' : 'text-[#617D34]'}`}>
+                        Bs {unit.finalTotal.toFixed(2)}
                       </Text>
-                      {calculateProductPrice(1, Number(product.price ?? 0), undefined, product.documentId).appliedPromotion ? (
+                      {unit.discount > 0 ? (
                         <Text className="text-[10px] text-[#929889] line-through">Bs {Number(product.price ?? 0).toFixed(2)}</Text>
                       ) : null}
                     </View>
@@ -757,9 +751,7 @@ export default function CreateEmployeeOrderScreen() {
         </View>
 
         <Pressable
-          disabled={
-            saving
-          }
+          disabled={saving || !catalogReady || !shift}
           onPress={() =>
             void handleCreate()
           }

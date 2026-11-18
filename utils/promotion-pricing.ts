@@ -103,7 +103,7 @@ export function promotionShortLabel(promotion: PromotionRule): string {
   switch (promotion.type) {
     case 'PERCENTAGE': return `${Number(promotion.percentage) || 0}% de descuento`;
     case 'FIXED_AMOUNT': return `Bs ${Number(promotion.discountAmount) || 0} menos`;
-    case 'TWO_FOR_ONE': return 'Promoción 2x1';
+    case 'TWO_FOR_ONE': return `Lleva ${promotion.buyQuantity || 2} y paga ${promotion.payQuantity || 1}`;
     default: return 'En promoción';
   }
 }
