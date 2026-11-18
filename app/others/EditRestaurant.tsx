@@ -146,16 +146,8 @@ export default function EditRestaurantScreen() {
     const result =
       await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing:
-          type === 'logo',
-        aspect:
-          type === 'logo'
-            ? [1, 1]
-            : undefined,
-        quality:
-          type === 'logo'
-            ? 0.9
-            : 1,
+        allowsEditing: false,
+        quality: 1,
       });
 
     if (

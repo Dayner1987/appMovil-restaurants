@@ -29,6 +29,7 @@ function ClientTabHeader() {
     index: 'Inicio',
     restaurants: 'Locales',
     products: 'Productos',
+    orders: 'Órdenes',
     publications: 'Novedades',
     profile: 'Perfil',
   };
@@ -47,7 +48,8 @@ export default function ClientTabsLayout() {
         height: 72, paddingTop: 7, paddingBottom: 8,
         borderTopWidth: 1, borderTopColor: '#EBF0EA', backgroundColor: '#FFFFFF', elevation: 13,
       },
-      tabBarLabelStyle: { fontSize: 10, fontWeight: '800', marginTop: 1 },
+      tabBarLabelStyle: { fontSize: 9, fontWeight: '800', marginTop: 1 },
+      tabBarItemStyle: { minWidth: 0 },
     }}>
       <Tabs.Screen name="index" options={{
         title: 'Inicio', tabBarIcon: ({ color, focused }) =>
@@ -61,9 +63,14 @@ export default function ClientTabsLayout() {
         title: 'Productos', tabBarIcon: ({ color, focused }) =>
           <TabIcon name={focused ? 'fast-food' : 'fast-food-outline'} selected={focused} color={color} />,
       }} />
+     
       <Tabs.Screen name="publications" options={{
         title: 'Novedades', tabBarIcon: ({ color, focused }) =>
           <TabIcon name={focused ? 'newspaper' : 'newspaper-outline'} selected={focused} color={color} />,
+      }} />
+       <Tabs.Screen name="orders" options={{
+        title: 'Órdenes', tabBarIcon: ({ color, focused }) =>
+          <TabIcon name={focused ? 'receipt' : 'receipt-outline'} selected={focused} color={color} />,
       }} />
       <Tabs.Screen name="profile" options={{
         title: 'Perfil', tabBarIcon: ({ color, focused }) =>

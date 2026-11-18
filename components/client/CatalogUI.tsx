@@ -3,6 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import type { ImageResizeMode } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { mediaUrl } from '@/utils/media';
 import { useCart } from '@/hooks/useCart';
@@ -13,12 +14,12 @@ import type { Promotion } from '@/types/promotion.types';
 import { calculatePromotionPrice, getProductActivePromotion, promotionShortLabel } from '@/utils/promotion-pricing';
 
 export const money = (value: unknown) => `Bs ${Number(value || 0).toFixed(2)}`;
-export function MediaThumb({ src, height = 150, icon = 'image-outline' }: { src: unknown; height?: number; icon?: keyof typeof Ionicons.glyphMap }) {
+export function MediaThumb({ src, height = 150, icon = 'image-outline', resizeMode = 'cover', imageBackground = '#EEF3E3' }: { src: unknown; height?: number; icon?: keyof typeof Ionicons.glyphMap; resizeMode?: ImageResizeMode; imageBackground?: string }) {
   const uri = mediaUrl(src);
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [uri]);
-  return <View style={{ height, width: '100%' }} className="overflow-hidden items-center justify-center bg-[#EEF3E3]">
-    {uri && !failed ? <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => setFailed(true)} /> : <Ionicons name={icon} color="#82976B" size={40} />}
+  return <View style={{ height, width: '100%', backgroundColor: imageBackground }} className="overflow-hidden items-center justify-center">
+    {uri && !failed ? <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode={resizeMode} onError={() => setFailed(true)} /> : <Ionicons name={icon} color="#82976B" size={40} />}
   </View>;
 }
 export function PageHeading({ title, subtitle, back = false }: { title: string; subtitle?: string; back?: boolean }) {
@@ -56,39 +57,95 @@ export function ProductTile({ product }: { product: Product }) {
   const available = product.isAvailable && (product.stock == null || product.stock > 0);
   const promotion = getProductActivePromotion(product);
   const price = calculatePromotionPrice(promotion, 1, Number(product.price) || 0);
-  const isPromoted = Boolean(promotion);
+  const isPromoted = Boolean(price.appliedPromotion);
   return <Pressable onPress={() => router.push({ pathname: '/product/[documentId]', params: { documentId: product.documentId } })} className={`relative mb-3 flex-row overflow-hidden rounded-3xl bg-white active:opacity-85 ${isPromoted ? 'border-2 border-[#E56B37]' : 'border border-transparent'}`}>
-    <View className="w-[116px]"><MediaThumb src={product.mainImage} height={142} icon="fast-food-outline" /></View>
+    <View className="w-[116px]"><MediaThumb src={product.mainImage} height={142} icon="fast-food-outline" resizeMode="contain" imageBackground="#F5F5EF" /></View>
     <View className="flex-1 justify-between p-3">
       <View>
-        {isPromoted ? <View className="mb-1 self-start rounded-full bg-[#FFF0E8] px-2.5 py-1"><Text className="text-[9px] font-extrabold uppercase tracking-wide text-[#D45E2A]">{promotionShortLabel(promotion!)}</Text></View> : null}
+        {isPromoted ? <View className="mb-1 self-start rounded-full bg-[#FFF0E8] px-2.5 py-1"><Text className="text-[9px] font-extrabold uppercase tracking-wide text-[#D45E2A]">{promotionShortLabel(price.appliedPromotion!)}</Text></View> : null}
         <Text className="text-[15px] font-extrabold text-[#252A20]" numberOfLines={2}>{product.name}</Text><Text className="mt-1 text-xs text-[#858A7A]" numberOfLines={1}>{product.restaurant?.name || 'Restaurante'}</Text><Text className="mt-1 text-[12px] text-[#929889]" numberOfLines={1}>{product.description || product.category?.name || 'Comida deliciosa'}</Text>
       </View>
       <View className="mt-2 flex-row items-center justify-between gap-2">
-        <View className="flex-row flex-wrap items-center gap-2"><Text className={`font-extrabold ${isPromoted ? 'text-[#D45E2A]' : 'text-[#607B35]'}`}>{money(price.finalTotal)}</Text>{price.discount > 0 ? <Text className="text-[10px] text-[#929889] line-through">{money(product.price)}</Text> : null}</View>
+        <View className="flex-row flex-wrap items-center gap-2"><Text className={`font-extrabold ${isPromoted ? 'text-[#D45E2A]' : 'text-[#607B35]'}`}>{money(price.finalTotal)}</Text>{isPromoted ? <Text className="text-[10px] text-[#929889] line-through">{money(product.price)}</Text> : null}</View>
         <Pressable disabled={!available} onPress={e => { e.stopPropagation(); if (add(product)) Toast.show({ type: 'success', text1: 'Agregado a tu carrito', text2: 'Puedes comprar en varios restaurantes.' }); else Toast.show({ type: 'error', text1: 'No se puede agregar el producto', text2: 'Revisa la disponibilidad o el stock.' }); }} className={`h-9 w-9 items-center justify-center rounded-xl ${available ? 'bg-[#607B35]' : 'bg-[#DDE1D7]'}`}><Ionicons name={available ? 'add' : 'close'} color="#FFFFFF" size={23} /></Pressable>
       </View>
     </View>
   </Pressable>;
 }
 export function RestaurantTile({ restaurant }: { restaurant: Restaurant }) {
-  return <Pressable onPress={() => router.push({ pathname: '/restaurant/[documentId]', params: { documentId: restaurant.documentId } })} className="mb-4 overflow-hidden rounded-3xl bg-white active:opacity-85"><MediaThumb src={restaurant.logo ?? restaurant.QRImage} icon="restaurant-outline" height={156} /><View className="p-4"><Text className="text-lg font-extrabold text-[#252A20]">{restaurant.name}</Text><Text className="mt-1 text-sm text-[#777D71]" numberOfLines={2}>{restaurant.description || restaurant.address || 'Explora su menú y realiza tu pedido'}</Text><Text className="mt-2 font-semibold text-[#607B35]">Ver restaurante y menú  →</Text></View></Pressable>;
+  return <Pressable onPress={() => router.push({ pathname: '/restaurant/[documentId]', params: { documentId: restaurant.documentId } })} className="mb-4 overflow-hidden rounded-3xl bg-white active:opacity-85"><MediaThumb src={restaurant.logo ?? restaurant.QRImage} icon="restaurant-outline" height={156} resizeMode="contain" imageBackground="#FFFFFF" /><View className="p-4"><Text className="text-lg font-extrabold text-[#252A20]">{restaurant.name}</Text><Text className="mt-1 text-sm text-[#777D71]" numberOfLines={2}>{restaurant.description || restaurant.address || 'Explora su menú y realiza tu pedido'}</Text><Text className="mt-2 font-semibold text-[#607B35]">Ver restaurante y menú  →</Text></View></Pressable>;
 }
 export function PublicationTile({ publication }: { publication: Publication }) {
-  return <View className="mb-4 overflow-hidden rounded-3xl bg-white"><MediaThumb src={publication.image} height={180} icon="newspaper-outline" /><View className="p-4"><Text className="text-xs font-bold uppercase tracking-wider text-[#607B35]">{publication.restaurant?.name || 'Novedades'}</Text><Text className="mt-2 text-lg font-extrabold text-[#252A20]">{publication.title}</Text><Text className="mt-2 text-sm leading-6 text-[#777D71]">{publication.description}</Text></View></View>;
+  return <View className="mb-4 overflow-hidden rounded-3xl bg-white"><MediaThumb src={publication.image} height={180} icon="newspaper-outline" resizeMode="contain" imageBackground="#FFFFFF" /><View className="p-4"><Text className="text-xs font-bold uppercase tracking-wider text-[#607B35]">{publication.restaurant?.name || 'Novedades'}</Text><Text className="mt-2 text-lg font-extrabold text-[#252A20]">{publication.title}</Text><Text className="mt-2 text-sm leading-6 text-[#777D71]">{publication.description}</Text></View></View>;
 }
+
 export function PromotionTile({ promotion }: { promotion: Promotion }) {
-  return <View className="mb-3 rounded-3xl border-2 border-[#E56B37] bg-white p-4">
-    <Text className="text-xs font-bold text-[#91603C]">{promotion.restaurant?.name}</Text>
-    <Text className="mt-1 text-lg font-extrabold text-[#252A20]">{promotion.name}</Text>
-    <Text className="mt-1 font-bold text-[#AD491C]">{promotionShortLabel(promotion)}</Text>
-    {promotion.description && <Text className="mt-1 text-sm text-[#70796C]">{promotion.description}</Text>}
-    {promotion.products?.map(product => (
-      <View key={product.documentId || product.id} className="mt-3 flex-row items-center gap-3 rounded-2xl border border-[#EEA27D] p-2">
-        {product.mainImage && <View className="w-16 overflow-hidden rounded-xl"><MediaThumb src={product.mainImage} height={56} /></View>}
-        <Text className="flex-1 font-bold text-[#283428]">{product.name}</Text>
-        {product.price != null && <Text className="font-bold text-[#AD491C]">{money(calculatePromotionPrice(promotion, 1, Number(product.price)).finalTotal)}</Text>}
+  const product = promotion.products?.[0];
+
+  const discount =
+    promotion.type === 'PERCENTAGE'
+      ? `${promotion.percentage}% de descuento`
+      : promotion.type === 'FIXED_AMOUNT'
+        ? `${money(promotion.discountAmount)} de descuento`
+        : promotion.type === 'TWO_FOR_ONE'
+          ? `${promotion.buyQuantity ?? 2}x${promotion.payQuantity ?? 1}`
+          : 'Oferta especial';
+
+  return (
+    <View className="mb-4 overflow-hidden rounded-[35px] border-2 border-[#E56B37] bg-white">
+      <View className="min-h-[170px] flex-row">
+
+        {/* FOTOGRAFÍA DEL PRODUCTO */}
+        <View className="w-[165px] bg-[#FFF8F1]">
+          <MediaThumb
+            src={product?.mainImage}
+            height={166}
+            icon="fast-food-outline"
+            resizeMode="contain"
+            imageBackground="#FFF8F1"
+          />
+        </View>
+
+        {/* INFORMACIÓN DE LA PROMOCIÓN */}
+        <View className="flex-1 justify-center p-3">
+
+          <View className="mb-2 self-start rounded-full bg-[#FFF0E8] px-3 py-1">
+            <Text className="text-[10px] font-extrabold uppercase tracking-wide text-[#D45E2A]">
+              {discount}
+            </Text>
+          </View>
+
+          <Text
+            className="text-[15px] font-extrabold leading-5 text-[#252A20]"
+            numberOfLines={2}
+          >
+            {promotion.name}
+          </Text>
+
+          {product?.name ? (
+            <Text
+              className="mt-1 text-xs font-semibold text-[#607B35]"
+              numberOfLines={1}
+            >
+              {product.name}
+            </Text>
+          ) : null}
+
+          <Text className="mt-1 text-xs text-[#858A7A]">
+            {promotion.restaurant?.name || 'Restaurante'}
+          </Text>
+
+          {promotion.description ? (
+            <Text
+              className="mt-2 text-xs leading-5 text-[#858A7A]"
+              numberOfLines={3}
+            >
+              {promotion.description}
+            </Text>
+          ) : null}
+        </View>
       </View>
-    ))}
-  </View>;
+    </View>
+  );
 }
+

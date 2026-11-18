@@ -27,7 +27,7 @@ function PublicationFeedCard({ publication }: { publication: Publication }) {
         </View>
         {publication.featured ? <View className="rounded-full bg-[#FFF2D7] px-3 py-1"><Text className="text-xs font-bold text-[#98601C]">Destacada</Text></View> : null}
       </View>
-      <MediaThumb src={publication.image} height={220} icon="newspaper-outline" />
+      <MediaThumb src={publication.image} height={240} icon="newspaper-outline" resizeMode="contain" imageBackground="#FFFFFF" />
       <View className="p-4">
         <Text className="text-xl font-extrabold text-[#233728]">{publication.title}</Text>
         <Text className="mt-2 text-sm leading-6 text-[#627267]">{publication.description}</Text>

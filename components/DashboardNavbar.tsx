@@ -252,6 +252,11 @@ export default function DashboardNavbar({
       }
     );
   }
+  function handleCochaStoreInfo() {
+  closeDrawer(() => {
+    router.push('/others/CochaStoreInfo');
+  });
+}
 
   function handleLogout() {
     closeDrawer(
@@ -506,33 +511,38 @@ export default function DashboardNavbar({
               </View>
             </View>
 
-            {/* ========================================= */}
-            {/* OPCIONES */}
-            {/* ========================================= */}
+           <View className="flex-1 px-4 pt-5">
 
-            <View className="flex-1 px-4 pt-5">
-              <DrawerOption
-                icon="create-outline"
-                title="Editar perfil"
-                description="Actualiza tus datos personales"
-                type="orange"
-                onPress={
-                  handleEditProfile
-                }
-              />
+  {/* EDITAR PERFIL */}
+  <DrawerOption
+    icon="create-outline"
+    title="Editar perfil"
+    description="Actualiza tus datos personales"
+    type="orange"
+    onPress={handleEditProfile}
+  />
 
-              <View className="my-3 h-px bg-white/25" />
+  {/* INFORMACIÓN COCHASTORE */}
+  <DrawerOption
+    icon="storefront-outline"
+    title="Información de CochaStore"
+    description="Conoce nuestra empresa y plataforma"
+    type="orange"
+    onPress={handleCochaStoreInfo}
+  />
 
-              <DrawerOption
-                icon="log-out-outline"
-                title="Cerrar sesión"
-                description="Salir de la cuenta actual"
-                type="danger"
-                onPress={
-                  handleLogout
-                }
-              />
-            </View>
+  <View className="my-3 h-px bg-white/25" />
+
+  {/* CERRAR SESIÓN */}
+  <DrawerOption
+    icon="log-out-outline"
+    title="Cerrar sesión"
+    description="Salir de la cuenta actual"
+    type="danger"
+    onPress={handleLogout}
+  />
+
+</View>
 
             {/* ========================================= */}
             {/* FOOTER */}

@@ -221,7 +221,7 @@ export default function ProfileScreen() {
         </View>
 
         {isAuthenticated && user ? (
-          <Pressable onPress={() => router.push('/my-orders')} className="mx-5 mb-3 flex-row items-center justify-between rounded-2xl bg-[#EEF3E3] p-4"><View className="flex-row items-center gap-3"><Ionicons name="receipt-outline" size={22} color="#607B35" /><Text className="font-bold text-[#607B35]">Ver mis pedidos</Text></View><Ionicons name="chevron-forward" size={20} color="#607B35" /></Pressable>
+          <Pressable onPress={() => router.push('/(tabs)/orders')} className="mx-5 mb-3 flex-row items-center justify-between rounded-2xl bg-[#EEF3E3] p-4"><View className="flex-row items-center gap-3"><Ionicons name="receipt-outline" size={22} color="#607B35" /><Text className="font-bold text-[#607B35]">Ver mis pedidos</Text></View><Ionicons name="chevron-forward" size={20} color="#607B35" /></Pressable>
         ) : null}
         {isAuthenticated &&
         user ? (

@@ -291,16 +291,8 @@ export default function ProductForm({
               'images',
             ],
 
-            allowsEditing:
-              true,
-
-            aspect: [
-              1,
-              1,
-            ],
-
-            quality:
-              0.85,
+            allowsEditing: false,
+            quality: 0.9,
           });
 
       if (
@@ -572,7 +564,7 @@ export default function ProductForm({
                   uri:
                     previewUri,
                 }}
-                resizeMode="cover"
+                resizeMode="contain"
                 className="
                   h-full
                   w-full
@@ -872,7 +864,7 @@ export default function ProductForm({
                             uri:
                               url,
                           }}
-                          resizeMode="cover"
+                          resizeMode="contain"
                           className="
                             h-full
                             w-full
@@ -974,7 +966,7 @@ export default function ProductForm({
                           uri:
                             galleryImage.uri,
                         }}
-                        resizeMode="cover"
+                        resizeMode="contain"
                         className="
                           h-full
                           w-full

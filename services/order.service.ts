@@ -30,7 +30,7 @@ export const orderService = {
         {
           params: {
             status:
-              'published',
+              params.status ?? 'published',
 
             populate:
               '*',
@@ -100,7 +100,7 @@ export const orderService = {
         }
       );
 
-    if (!response.data?.data?.length) {
+    if (!response.data?.data?.length && params.status === undefined) {
       response = await api.get<OrderListResponse>(
         ORDER_URL,
         {

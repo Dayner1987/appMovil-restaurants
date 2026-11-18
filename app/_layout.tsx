@@ -24,6 +24,7 @@ export default function RootLayout() {
               <Stack.Screen name="login" options={{ presentation: 'modal' }} />
               <Stack.Screen name="register" options={{ presentation: 'modal' }} />
               <Stack.Screen name="registerRes" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="others/CochaStoreInfo" options={{ headerShown: false }} />
             </Stack>
             <GlobalCartButton />
             <Toast position="bottom" bottomOffset={24} />

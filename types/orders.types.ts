@@ -405,6 +405,9 @@ export interface OrderResponse {
 // =====================================================
 
 export interface OrderQueryParams {
+  /** Strapi Document Service state. Existing callers default to draft. */
+  status?: 'draft' | 'published';
+
   page?: number;
 
   pageSize?: number;

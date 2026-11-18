@@ -71,7 +71,7 @@ export default function RestaurantDetailScreen() {
         {restaurant ? (
           <>
             <View style={{ marginHorizontal: 20, borderRadius: 26, overflow: 'hidden' }}>
-              <MediaThumb src={restaurant.logo} icon="storefront-outline" height={184} />
+              <MediaThumb src={restaurant.logo} icon="storefront-outline" height={220} resizeMode="contain" imageBackground="#FFFFFF" />
             </View>
             <View className="mx-5 mt-4 rounded-3xl bg-white p-5">
               <Text className="text-lg font-extrabold text-[#243528]">{restaurant.name}</Text>

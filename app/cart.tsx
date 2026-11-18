@@ -59,7 +59,7 @@ export default function CartScreen() {
         if (completed.length === 1) {
           router.replace({ pathname: '/order/[documentId]', params: { documentId: completed[0].orderId } });
         } else {
-          router.replace('/my-orders');
+          router.replace('/(tabs)/orders');
         }
       } else if (completed.length) {
         Toast.show({ type: 'error', text1: `${completed.length} pedido(s) guardados`,
@@ -87,7 +87,7 @@ export default function CartScreen() {
             <Pressable onPress={() => router.push('/(tabs)/products')} className="mt-6 items-center rounded-2xl bg-[#2F6A46] py-4">
               <Text className="font-extrabold text-white">Explorar productos</Text>
             </Pressable>
-            <Pressable onPress={() => router.push('/my-orders')} className="mt-4 items-center py-3">
+            <Pressable onPress={() => router.push('/(tabs)/orders')} className="mt-4 items-center py-3">
               <Text className="font-bold text-[#2F6A46]">Ver mis pedidos anteriores</Text>
             </Pressable>
           </View>
@@ -173,19 +173,12 @@ export default function CartScreen() {
             {method === 'QR' ? groups.map(group => <RestaurantPaymentQR key={group.restaurantId} restaurantId={group.restaurantId} />) : null}
             <View className="mt-4 rounded-3xl bg-[#223F2F] p-5">
               <Text className="font-semibold text-[#D4EBDD]">Resumen · {groups.length} restaurante(s)</Text>
-              {groups.map(group => <View key={group.restaurantId} className="mt-3"><View className="flex-row justify-between gap-3">
+              {groups.map(group => <View key={group.restaurantId} className="mt-3 flex-row justify-between gap-3">
                 <Text numberOfLines={1} className="flex-1 text-sm text-[#E9F2EC]">{group.restaurantName}</Text>
                 <View className="items-end">
                   <Text className="font-bold text-white">{money(group.subtotal)}</Text>
                   {group.discount > 0 ? <Text className="text-[10px] text-[#F4C95D] line-through">{money(group.originalSubtotal)}</Text> : null}
                 </View>
-              </View>
-                {group.lines.map(({ product, quantity }) => (
-                  <View key={product.documentId} className="mt-2 flex-row justify-between gap-3">
-                    <Text className="flex-1 text-sm text-[#D4EBDD]">{quantity} × {product.name}</Text>
-                    <Text className="text-sm text-white">{money(calculatePromotionPrice(getProductActivePromotion(product), quantity, Number(product.price)).finalTotal)}</Text>
-                  </View>
-                ))}
               </View>)}
               {groups.some(group => group.discount > 0) ? <View className="mt-3 flex-row justify-between border-t border-[#52715E] pt-3"><Text className="text-sm font-semibold text-[#F4C95D]">Ahorro por promociones</Text><Text className="font-bold text-[#F4C95D]">- {money(groups.reduce((sum, group) => sum + group.discount, 0))}</Text></View> : null}
               <View className="mt-4 flex-row items-center justify-between border-t border-[#52715E] pt-4">
@@ -215,7 +208,7 @@ export default function CartScreen() {
               </Text>
             </Pressable>
             <Text className="mt-3 text-center text-xs leading-5 text-[#7E8A80]">Cada pedido se crea con un pago pendiente. No se efectúa ningún cobro automático.</Text>
-            <Pressable onPress={() => router.push('/my-orders')} className="mt-3 items-center py-3"><Text className="font-bold text-[#2F6A46]">Consultar mis pedidos</Text></Pressable>
+            <Pressable onPress={() => router.push('/(tabs)/orders')} className="mt-3 items-center py-3"><Text className="font-bold text-[#2F6A46]">Consultar mis pedidos</Text></Pressable>
           </>
         )}
       </ScrollView>

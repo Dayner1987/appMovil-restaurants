@@ -155,16 +155,8 @@ export default function PublicationForm({
               'images',
             ],
 
-            allowsEditing:
-              true,
-
-            aspect: [
-              16,
-              9,
-            ],
-
-            quality:
-              0.85,
+            allowsEditing: false,
+            quality: 0.9,
           });
 
       if (
@@ -272,7 +264,7 @@ export default function PublicationForm({
                 uri:
                   previewUri,
               }}
-              resizeMode="cover"
+              resizeMode="contain"
               className="
                 h-full
                 w-full
