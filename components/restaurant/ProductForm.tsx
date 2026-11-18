@@ -687,7 +687,7 @@ export default function ProductForm({
             GALERÍA
         ================================================= */}
 
-        <View>
+        {onGalleryImagesChange && <View>
           <View
             className="
               mb-2
@@ -1006,7 +1006,7 @@ export default function ProductForm({
               </View>
             </View>
           ) : null}
-        </View>
+        </View>}
 
         {/* =================================================
             NOMBRE

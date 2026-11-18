@@ -29,6 +29,7 @@ export default function CompanyInfoEditor({
   saving,
   onSave,
 }: CompanyInfoEditorProps) {
+  const [nit, setNit] = useState(company.nit ?? '');
   const [name, setName] = useState(company.name);
   const [email, setEmail] = useState(company.email);
   const [number, setNumber] = useState(company.number);
@@ -37,6 +38,7 @@ export default function CompanyInfoEditor({
   );
 
   useEffect(() => {
+    setNit(company.nit ?? '');
     setName(company.name);
     setEmail(company.email);
     setNumber(company.number);
@@ -76,6 +78,7 @@ export default function CompanyInfoEditor({
 
     const data: UpdateCompanyData = {
       name: name.trim(),
+      nit: nit.trim() || null,
       email: email.trim(),
       number: number.trim(),
       aditionalLink: aditionalLink.trim() || null,
@@ -127,6 +130,9 @@ export default function CompanyInfoEditor({
         onChangeText={setName}
         placeholder="Ej. CochaStore"
       />
+
+      <CompanyInput label="NIT de la empresa" icon="document-text-outline"
+        value={nit} onChangeText={setNit} placeholder="NIT del propietario del sistema" keyboardType="number-pad" />
 
       <CompanyInput
         label="Correo electrónico"

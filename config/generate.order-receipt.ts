@@ -1,3 +1,6 @@
+import { api } from '@/services/api';
+import { companyService } from '@/services/company.service';
+import { mediaUrl } from '@/utils/media';
 // config/generate.order-receipt.ts
 
 import {
@@ -23,39 +26,27 @@ import type {
 // CUSTOMER LABEL
 // =====================================================
 
-function getCustomerLabel(
-  order:
-    Order
-): string {
-  switch (
-    order.orderType
-  ) {
-    case 'COUNTER':
-      return 'Cliente mostrador';
-
-    case 'PICKUP':
-      return 'Cliente para recoger';
-
-    case 'ONLINE':
-      return 'Cliente online';
-
-    default:
-      return 'Cliente';
-  }
+interface ReceiptInfo {
+  buyer: { name: string | null; ci: string | null; phone: string | null };
+  restaurant: { name: string; nit: string | null; logoUrl: string | null };
 }
 
-// =====================================================
-// VIRTUAL RECEIPT
-//
-// No crea otro registro en Strapi.
-//
-// Simplemente adapta la Order actual al formato que
-// necesita generate.receip.ts para producir el PDF.
-// =====================================================
+async function printableLogo(path: string | null) {
+  const url = mediaUrl(path);
+  if (!url) return null;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('No se pudo descargar el logo del restaurante.');
+  const blob = await response.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('No se pudo preparar el logo del recibo.'));
+    reader.readAsDataURL(blob);
+  });
+}
 
 function buildReceiptFromOrder(
-  order:
-    Order
+  order: Order, buyer: ReceiptInfo['buyer']
 ): Receipt {
   const receipt = {
     id:
@@ -72,13 +63,8 @@ function buildReceiptFromOrder(
       order.updatedAt ??
       order.orderedAt,
 
-    completeName:
-      getCustomerLabel(
-        order
-      ),
-
-    ci:
-      null,
+    completeName: buyer.name || 'Sin registrar',
+    ci: buyer.ci,
 
     subtotal:
       Number(
@@ -140,82 +126,16 @@ export async function openCompletedOrderReceipt(
     );
   }
 
-  /*
-   * Para mostrar información del pago preferimos
-   * primero uno APPROVED.
-   *
-   * Si la orden antigua no tiene uno aprobado,
-   * tomamos el primer pago existente.
-   */
-  const payment =
-    order.payments
-      ?.find(
-        (
-          item
-        ) =>
-          item.statusPayment ===
-          'APPROVED'
-      ) ??
-    order.payments?.[0] ??
-    null;
-
-  const receipt =
-    buildReceiptFromOrder(
-      order
-    );
-
+  const [context, companies] = await Promise.all([
+    api.get<{ data: ReceiptInfo }>(`/api/orders/${encodeURIComponent(order.documentId)}/receipt-info`),
+    companyService.findAll({ page: 1, pageSize: 1 }),
+  ]);
+  const { buyer, restaurant } = context.data.data;
+  const company = companies.data[0];
   const options = {
-    receipt,
-
-    order,
-
-    restaurant:
-      order.restaurant
-        ? {
-            name:
-              order.restaurant
-                .name,
-
-            email:
-              order.restaurant
-                .email,
-
-            phone:
-              order.restaurant
-                .phone,
-
-            address:
-              order.restaurant
-                .address,
-
-            nit:
-              order.restaurant
-                .nit,
-
-            /*
-             * No mandamos logo porque con Order
-             * no estamos haciendo populate profundo
-             * de restaurant.logo.
-             */
-            logoUrl:
-              null,
-          }
-        : null,
-
-    payment:
-      payment
-        ? {
-            method:
-              payment.method ??
-              undefined,
-
-            status:
-              payment.statusPayment,
-
-            transactionReference:
-              payment.transactionReference,
-          }
-        : null,
+    order, receipt: buildReceiptFromOrder(order, buyer), buyerPhone: buyer.phone,
+    restaurant: { ...restaurant, logoUrl: await printableLogo(restaurant.logoUrl) },
+    company: company ? { name: company.name, nit: company.nit } : null,
   };
 
   // ===================================================

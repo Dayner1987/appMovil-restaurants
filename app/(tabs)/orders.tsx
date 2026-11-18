@@ -1,3 +1,4 @@
+import ReceiptCompanyLogo from '@/components/orders/ReceiptCompanyLogo';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect, router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -110,7 +111,7 @@ export default function CustomerOrdersTab() {
       {!user ? <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 125 }}><OrdersGuestState /></ScrollView> : (
         <>
           <View className="mx-5 mb-4 flex-row items-center gap-3 rounded-2xl bg-[#E8F1E7] p-4">
-            <Ionicons name="receipt-outline" size={25} color="#2F6A46" />
+            <ReceiptCompanyLogo />
             <View className="flex-1"><Text className="font-extrabold text-[#2E5037]">Tu historial de compras</Text><Text className="mt-1 text-xs leading-5 text-[#718272]">Aquí solo aparecen las órdenes asociadas a tu cuenta.</Text></View>
           </View>
           <OrderStatusSelector selected={selectedTab} counts={{ PENDING: grouped.PENDING.length, COMPLETED: grouped.COMPLETED.length, CANCELLED: grouped.CANCELLED.length }} onSelect={setSelectedTab} />

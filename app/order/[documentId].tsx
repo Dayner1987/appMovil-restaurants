@@ -1,7 +1,7 @@
+import ReceiptCompanyLogo from '@/components/orders/ReceiptCompanyLogo';
 import RestaurantPaymentQR from '@/components/RestaurantPaymentQR';
 // app/order/[documentId].tsx
 // Recibo independiente por restaurante (pago pendiente, no factura fiscal).
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
@@ -50,7 +50,7 @@ export default function MyOrderDetails() {
             <View className="overflow-hidden rounded-3xl border border-[#E6EDE5] bg-white">
               <View className="items-center bg-[#234C34] px-5 py-6">
                 <View className="h-14 w-14 items-center justify-center rounded-full bg-[#3D6F4E]">
-                  <Ionicons name="receipt-outline" size={30} color="white" />
+                  <ReceiptCompanyLogo />
                 </View>
                 <Text className="mt-3 text-xl font-extrabold text-white">Comprobante de pedido</Text>
                 <Text className="mt-2 text-sm text-[#CCE3D2]">{order.orderCode || order.documentId}</Text>

@@ -16,4 +16,4 @@ npx expo install expo-constants expo-file-system
 npx expo install --check
 npx expo-doctor
 
-npx expo start --go --no-dev --minify
+npx expo start --go --no-dev --minify --clear

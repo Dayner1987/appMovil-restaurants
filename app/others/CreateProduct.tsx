@@ -81,13 +81,6 @@ export default function CreateProductScreen() {
       null
     );
 
-  const [
-    galleryImages,
-    setGalleryImages,
-  ] =
-    useState<ProductImageUpload[]>(
-      []
-    );
 
   const {
     categories,
@@ -100,7 +93,6 @@ export default function CreateProductScreen() {
     createProduct,
 
     createMainImage,
-    addGalleryImages,
   } =
     useProduct({
       autoLoad: false,
@@ -336,27 +328,6 @@ export default function CreateProductScreen() {
         }
 
         // ===============================================
-        // GALERÍA
-        // ===============================================
-
-        if (
-          galleryImages.length >
-          0
-        ) {
-          try {
-            await addGalleryImages(
-              newProduct
-                .documentId,
-              galleryImages
-            );
-          } catch {
-            mediaErrors.push(
-              'galería'
-            );
-          }
-        }
-
-        // ===============================================
         // PARCIAL
         // ===============================================
 
@@ -405,9 +376,7 @@ export default function CreateProductScreen() {
             'Producto creado',
 
           text2:
-            image ||
-            galleryImages.length >
-              0
+            image
               ? 'El producto y sus imágenes fueron guardados correctamente.'
               : 'El producto se agregó correctamente al catálogo.',
 
@@ -563,9 +532,6 @@ export default function CreateProductScreen() {
               image
             }
 
-            galleryImages={
-              galleryImages
-            }
 
             saving={
               saving
@@ -586,9 +552,6 @@ export default function CreateProductScreen() {
               setImage
             }
 
-            onGalleryImagesChange={
-              setGalleryImages
-            }
 
             onCreateCategory={
               handleCreateCategory

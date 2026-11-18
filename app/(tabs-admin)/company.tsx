@@ -7,12 +7,13 @@ import {
   View,
 } from 'react-native';
 
-import { router } from 'expo-router';
+import { useCallback } from 'react';
+import { useFocusEffect, router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import DashboardNavbar from '@/components/DashboardNavbar';
-import { useCompany } from '@/hooks/useCompany';
+import { useCompany, subscribeCompanyChanges } from '@/hooks/useCompany';
 import { api } from '@/services/api';
 
 function getImageUrl(url?: string | null) {
@@ -34,13 +35,13 @@ export default function AdminCompanyScreen() {
     loading,
     error,
     loadCompanies,
-  } = useCompany({
-    autoLoad: true,
-    query: {
-      page: 1,
-      pageSize: 1,
-    },
-  });
+  } = useCompany({ autoLoad: false });
+
+  useFocusEffect(useCallback(() => {
+    const reload = () => { void loadCompanies({ page: 1, pageSize: 1 }).catch(() => undefined); };
+    reload();
+    return subscribeCompanyChanges(reload);
+  }, [loadCompanies]));
 
   const company = companies[0];
 
@@ -155,6 +156,7 @@ export default function AdminCompanyScreen() {
             </View>
 
             <View className="mt-6 gap-4">
+              <InfoRow icon="document-text-outline" label="NIT" value={company.nit || 'Sin registrar'} />
               <InfoRow
                 icon="mail-outline"
                 label="Correo electrónico"

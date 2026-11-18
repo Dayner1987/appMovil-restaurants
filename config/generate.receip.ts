@@ -101,6 +101,7 @@ export interface ReceiptPaymentPdfInfo {
 // =====================================================
 
 export interface ReceiptPdfOptions {
+  buyerPhone?: string | null;
   receipt:
     Receipt;
 
@@ -448,104 +449,12 @@ function buildOrderItemsHtml(
 // PAYMENT HTML
 // =====================================================
 
-function buildPaymentHtml(
-  payment?:
-    | ReceiptPaymentPdfInfo
-    | null,
-
-  receipt?:
-    Receipt
-): string {
-  const paymentStatus =
-    payment?.status ??
-    receipt?.order
-      ?.paymentStatus;
-
-  if (
-    !payment?.method &&
-    !paymentStatus &&
-    !payment
-      ?.transactionReference
-  ) {
-    return '';
-  }
-
-  return `
-    <section class="section">
-      <div class="section-title">
-        Información de pago
-      </div>
-
-      <div class="info-grid">
-        ${
-          payment?.method
-            ? `
-              <div class="info-item">
-                <span class="label">
-                  Método
-                </span>
-
-                <span class="value">
-                  ${escapeHtml(
-                    payment.method
-                  )}
-                </span>
-              </div>
-            `
-            : ''
-        }
-
-        ${
-          paymentStatus
-            ? `
-              <div class="info-item">
-                <span class="label">
-                  Estado
-                </span>
-
-                <span class="value status-paid">
-                  ${escapeHtml(
-                    paymentStatus
-                  )}
-                </span>
-              </div>
-            `
-            : ''
-        }
-
-        ${
-          payment
-            ?.transactionReference
-            ? `
-              <div class="info-item full">
-                <span class="label">
-                  Referencia
-                </span>
-
-                <span class="value">
-                  ${escapeHtml(
-                    payment.transactionReference
-                  )}
-                </span>
-              </div>
-            `
-            : ''
-        }
-      </div>
-    </section>
-  `;
-}
-
-// =====================================================
-// HTML
-// =====================================================
-
 export function buildReceiptHtml({
   receipt,
   order,
   company,
   restaurant,
-  payment,
+  buyerPhone,
 }: ReceiptPdfOptions): string {
   const currentOrder =
     order ??
@@ -558,20 +467,7 @@ export function buildReceiptHtml({
       ?.orderCode ??
     'Sin código';
 
-  const orderType =
-    currentOrder
-      ?.orderType ??
-    receipt.order
-      ?.orderType ??
-    '';
-
-  const companyName =
-    company?.name ??
-    'Sistema móvil de restaurantes';
-
-  const currentYear =
-    new Date()
-      .getFullYear();
+  const sellerName = restaurant?.name || order?.restaurant?.name || 'Restaurante';
 
   return `
 <!DOCTYPE html>
@@ -845,32 +741,9 @@ export function buildReceiptHtml({
 
       <div class="brand">
 
-        ${buildLogoHtml(
-          company?.logoUrl,
-          companyName
-        )}
-
-        <div>
-          <div class="company-name">
-            ${escapeHtml(
-              companyName
-            )}
-          </div>
-
-          ${
-            company
-              ?.description
-              ? `
-                <div class="company-description">
-                  ${escapeHtml(
-                    company.description
-                  )}
-                </div>
-              `
-              : ''
-          }
-        </div>
-
+        ${restaurant?.logoUrl ? buildLogoHtml(restaurant.logoUrl, sellerName) : ''}
+        <div><div class="company-name">${escapeHtml(sellerName)}</div>
+        ${restaurant?.nit ? '<div class="company-description">NIT: ' + escapeHtml(restaurant.nit) + '</div>' : ''}</div>
       </div>
 
       <div class="receipt-title">
@@ -921,48 +794,6 @@ export function buildReceiptHtml({
           </span>
         </div>
 
-        ${
-          orderType
-            ? `
-              <div class="info-item">
-                <span class="label">
-                  Tipo de pedido
-                </span>
-
-                <span class="value">
-                  ${escapeHtml(
-                    orderType
-                  )}
-                </span>
-              </div>
-            `
-            : ''
-        }
-
-        ${
-          receipt.order
-            ?.statusOrder ||
-          currentOrder
-            ?.statusOrder
-            ? `
-              <div class="info-item">
-                <span class="label">
-                  Estado
-                </span>
-
-                <span class="value">
-                  ${escapeHtml(
-                    currentOrder
-                      ?.statusOrder ??
-                    receipt.order
-                      ?.statusOrder
-                  )}
-                </span>
-              </div>
-            `
-            : ''
-        }
-
       </div>
 
     </section>
@@ -1003,6 +834,8 @@ export function buildReceiptHtml({
             </span>
           </div>
 
+          <div class="info-item"><span class="label">Celular</span>
+            <span class="value">${escapeHtml(buyerPhone || 'Sin registrar')}</span></div>
         </div>
 
       </div>
@@ -1011,11 +844,6 @@ export function buildReceiptHtml({
 
     ${buildOrderItemsHtml(
       currentOrder
-    )}
-
-    ${buildPaymentHtml(
-      payment,
-      receipt
     )}
 
     <div class="summary">
@@ -1059,107 +887,11 @@ export function buildReceiptHtml({
 
     </div>
 
-    ${
-      restaurant
-        ? `
-          <div class="restaurant-box">
-
-            <div class="restaurant-name">
-              ${escapeHtml(
-                restaurant.name ??
-                  'Restaurante'
-              )}
-            </div>
-
-            <div class="small">
-
-              ${
-                restaurant.nit
-                  ? `NIT: ${escapeHtml(
-                      restaurant.nit
-                    )}<br />`
-                  : ''
-              }
-
-              ${
-                restaurant.address
-                  ? `${escapeHtml(
-                      restaurant.address
-                    )}<br />`
-                  : ''
-              }
-
-              ${
-                restaurant.phone
-                  ? `Tel.: ${escapeHtml(
-                      restaurant.phone
-                    )}<br />`
-                  : ''
-              }
-
-              ${
-                restaurant.email
-                  ? `${escapeHtml(
-                      restaurant.email
-                    )}`
-                  : ''
-              }
-
-            </div>
-
-          </div>
-        `
-        : ''
-    }
-
-    <div class="footer">
-
-      <div class="thank-you">
-        Gracias por su compra
-      </div>
-
-      <div class="legal">
-
-        ${
-          company?.nit
-            ? `NIT: ${escapeHtml(
-                company.nit
-              )} · `
-            : ''
-        }
-
-        ${
-          company?.address
-            ? `${escapeHtml(
-                company.address
-              )} · `
-            : ''
-        }
-
-        ${
-          company?.phone
-            ? `Tel. ${escapeHtml(
-                company.phone
-              )}<br />`
-            : '<br />'
-        }
-
-        ${
-          company?.email
-            ? `${escapeHtml(
-                company.email
-              )}<br />`
-            : ''
-        }
-
-        © ${currentYear}
-        ${escapeHtml(
-          companyName
-        )}.
-        Todos los derechos reservados.
-
-      </div>
-
+    <div class="footer" style="text-align: left; break-inside: avoid">
+      <div class="label">Empresa propietaria del sistema</div>
+      <div class="restaurant-name">${escapeHtml(company?.name || 'Sin registrar')}</div>
+      <div class="small">NIT: ${escapeHtml(company?.nit || 'Sin registrar')}</div>
+      <div class="thank-you" style="margin-top: 12px">Gracias por su compra</div>
     </div>
 
   </div>

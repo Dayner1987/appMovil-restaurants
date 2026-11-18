@@ -32,6 +32,7 @@ export interface Company {
   name: string;
   email: string;
   number: string;
+  nit?: string | null;
   logoImg?: CompanyImage | null;
   aditionalLink: string | null;
   createdAt: string;
@@ -43,6 +44,7 @@ export interface CreateCompanyData {
   name: string;
   email: string;
   number: string;
+  nit?: string | null;
   logoImg?: number | null;
   aditionalLink?: string | null;
 }

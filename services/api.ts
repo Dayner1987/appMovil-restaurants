@@ -5,8 +5,7 @@ import axios from "axios";
 // Define EXPO_PUBLIC_API_URL in .env, e.g. http://192.168.1.100:1337
 ///salon reflejos http://192.168.100.19:1337
 // On an actual phone, localhost is the PHONE, not your PC.
-// instituto icepal 192.168.1.30
-//icepal 2 http://192.168.1.17:1337
+//instituto icepal 192.168.1.42
 // services/api.ts
 import Constants from "expo-constants";
 
@@ -25,7 +24,7 @@ const getApiUrl = () => {
   }
 
   // 3. Respaldo por defecto
-  return "http://192.168.100.19:1337";
+  return "http://192.168.1.42:1337";
 };
 
 const API_BASE_URL = getApiUrl();
