@@ -1,5 +1,3 @@
-// src/api/restaurant-application/controllers/restaurant-application.ts
-
 import { factories } from '@strapi/strapi';
 
 interface RestaurantRegisterBody {
@@ -12,152 +10,84 @@ interface RestaurantRegisterBody {
   proposedRestaurantName: string;
 }
 
-type ApplicationStatus =
-  | 'pending'
-  | 'approved'
-  | 'rejected';
+type ApplicationStatus = 'pending' | 'approved' | 'rejected';
 
-const APPLICATION_UID =
-  'api::restaurant-application.restaurant-application';
+const APPLICATION_UID = 'api::restaurant-application.restaurant-application';
+const RESTAURANT_UID = 'api::restaurant.restaurant';
+const USER_UID = 'plugin::users-permissions.user';
+const ROLE_UID = 'plugin::users-permissions.role';
 
-const USER_UID =
-  'plugin::users-permissions.user';
+const applicantPopulate = {
+  applicant: {
+    populate: {
+      role: true,
+      restaurant: true,
+    },
+  },
+};
 
-const RESTAURANT_UID =
-  'api::restaurant.restaurant';
-
-const ROLE_UID =
-  'plugin::users-permissions.role';
-
-// =====================================================
-// AGREGAR APPLICANT A LOS GET
-// =====================================================
-function populateApplicant(ctx: any) {
-  ctx.query = {
-    ...(ctx.query || {}),
-    populate:
-      ctx.query?.populate || {
-        applicant: {
-          populate: ['role', 'restaurant'],
-        },
-      },
-  };
-}
-
-// =====================================================
-// RESPUESTA SEGURA DE SOLICITUD
-// No devolvemos password ni campos sensibles.
-// =====================================================
-function buildApplicationResponse(
-  application: any
-) {
-  const applicant =
-    application?.applicant;
+function buildApplicationResponse(application: any) {
+  const applicant = application.applicant;
+  const role = applicant?.role;
+  const restaurant = applicant?.restaurant;
 
   return {
     data: {
-      id:
-        application.id,
-
-      documentId:
-        application.documentId,
-
-      proposedRestaurantName:
-        application.proposedRestaurantName,
-
-      status:
-        application.status,
-
-      rejectionReason:
-        application.rejectionReason ?? null,
-
-      reviewedAt:
-        application.reviewedAt ?? null,
-
-      createdAt:
-        application.createdAt,
-
-      updatedAt:
-        application.updatedAt,
-
-      publishedAt:
-        application.publishedAt ?? null,
+      id: application.id,
+      documentId: application.documentId,
+      proposedRestaurantName: application.proposedRestaurantName,
+      status: application.status,
+      rejectionReason: application.rejectionReason ?? null,
+      reviewedAt: application.reviewedAt ?? null,
+      createdAt: application.createdAt,
+      updatedAt: application.updatedAt,
+      publishedAt: application.publishedAt ?? null,
 
       applicant: applicant
         ? {
-            id:
-              applicant.id,
+            id: applicant.id,
+            documentId: applicant.documentId,
+            username: applicant.username,
+            email: applicant.email,
+            firstName: applicant.firstName ?? null,
+            middleName: applicant.middleName ?? null,
+            lastName: applicant.lastName ?? null,
+            secondLastName: applicant.secondLastName ?? null,
+            ci: applicant.ci ?? null,
+            phone: applicant.phone ?? null,
+            blocked: applicant.blocked,
+            confirmed: applicant.confirmed,
 
-            documentId:
-              applicant.documentId,
-
-            username:
-              applicant.username,
-
-            email:
-              applicant.email,
-
-            firstName:
-              applicant.firstName ?? null,
-
-            middleName:
-              applicant.middleName ?? null,
-
-            lastName:
-              applicant.lastName ?? null,
-
-            secondLastName:
-              applicant.secondLastName ?? null,
-
-            ci:
-              applicant.ci ?? null,
-
-            phone:
-              applicant.phone ?? null,
-
-            blocked:
-              applicant.blocked,
-
-            confirmed:
-              applicant.confirmed,
-
-            role: applicant.role
+            role: role
               ? {
-                  id: applicant.role.id,
-                  name: applicant.role.name,
-                  type: applicant.role.type,
+                  id: role.id,
+                  name: role.name,
+                  type: role.type,
                 }
               : null,
 
-            restaurant: applicant.restaurant
+            restaurant: restaurant
               ? {
-                  id: applicant.restaurant.id,
-                  documentId: applicant.restaurant.documentId,
-                  name: applicant.restaurant.name,
-                  email: applicant.restaurant.email,
-                  statusRes: applicant.restaurant.statusRes,
+                  id: restaurant.id,
+                  documentId: restaurant.documentId,
+                  name: restaurant.name,
+                  email: restaurant.email,
+                  statusRes: restaurant.statusRes,
                 }
               : null,
           }
         : null,
     },
-
     meta: {},
   };
 }
 
 export default factories.createCoreController(
   APPLICATION_UID,
-
   ({ strapi }) => ({
-    // =====================================================
-    // REGISTRAR SOLICITUD
     // POST /api/restaurant-applications/register
-    // =====================================================
     async register(ctx: any) {
-      const body = (
-        ctx.request.body || {}
-      ) as Partial<RestaurantRegisterBody>;
+      const body = (ctx.request.body || {}) as Partial<RestaurantRegisterBody>;
 
       const {
         username,
@@ -169,9 +99,6 @@ export default factories.createCoreController(
         proposedRestaurantName,
       } = body;
 
-      // ===================================================
-      // VALIDACIONES
-      // ===================================================
       if (
         typeof username !== 'string' ||
         typeof email !== 'string' ||
@@ -179,8 +106,7 @@ export default factories.createCoreController(
         typeof firstName !== 'string' ||
         typeof lastName !== 'string' ||
         typeof phone !== 'string' ||
-        typeof proposedRestaurantName !==
-          'string' ||
+        typeof proposedRestaurantName !== 'string' ||
         !username.trim() ||
         !email.trim() ||
         !password ||
@@ -189,50 +115,27 @@ export default factories.createCoreController(
         !phone.trim() ||
         !proposedRestaurantName.trim()
       ) {
-        return ctx.badRequest(
-          'Todos los campos son obligatorios'
-        );
+        return ctx.badRequest('Todos los campos son obligatorios');
       }
 
       if (password.length < 6) {
-        return ctx.badRequest(
-          'La contraseña debe tener al menos 6 caracteres'
-        );
+        return ctx.badRequest('La contraseña debe tener al menos 6 caracteres');
       }
 
-      const normalizedUsername =
-        username.trim();
+      const normalizedUsername = username.trim();
+      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedPhone = phone.trim();
 
-      const normalizedEmail =
-        email.trim().toLowerCase();
-
-      const normalizedPhone =
-        phone.trim();
-
-      // ===================================================
-      // VERIFICAR USUARIO EXISTENTE
-      // ===================================================
-      const existingUser =
-        await strapi.db
-          .query(USER_UID)
-          .findOne({
-            where: {
-              $or: [
-                {
-                  username:
-                    normalizedUsername,
-                },
-                {
-                  email:
-                    normalizedEmail,
-                },
-                {
-                  phone:
-                    normalizedPhone,
-                },
-              ],
-            },
-          });
+      const users = strapi.db.query(USER_UID);
+      const existingUser = await users.findOne({
+        where: {
+          $or: [
+            { username: normalizedUsername },
+            { email: normalizedEmail },
+            { phone: normalizedPhone },
+          ],
+        },
+      });
 
       if (existingUser) {
         return ctx.badRequest(
@@ -240,134 +143,61 @@ export default factories.createCoreController(
         );
       }
 
-      // ===================================================
-      // OBTENER ROL AUTHENTICATED
-      // ===================================================
-      const authenticatedRole =
-        await strapi.db
-          .query(
-            'plugin::users-permissions.role'
-          )
-          .findOne({
-            where: {
-              type: 'authenticated',
-            },
-          });
+      const authenticatedRole = await strapi.db.query(ROLE_UID).findOne({
+        where: { type: 'authenticated' },
+      });
 
       if (!authenticatedRole) {
-        return ctx.internalServerError(
-          'No se encontró el rol Authenticated'
-        );
+        return ctx.internalServerError('No se encontró el rol Authenticated');
       }
 
       let createdUser: any = null;
 
       try {
-        // =================================================
-        // CREAR USUARIO BLOQUEADO
-        // =================================================
-        const userService = strapi
-          .plugin('users-permissions')
-          .service('user');
+        const userService = strapi.plugin('users-permissions').service('user');
 
-        createdUser =
-          await userService.add({
-            username:
-              normalizedUsername,
+        createdUser = await userService.add({
+          username: normalizedUsername,
+          email: normalizedEmail,
+          password,
+          provider: 'local',
+          confirmed: true,
+          blocked: true,
+          role: authenticatedRole.id,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone: normalizedPhone,
+        });
 
-            email:
-              normalizedEmail,
-
-            password,
-
-            provider:
-              'local',
-
-            confirmed:
-              true,
-
-            // No puede iniciar sesión hasta ser aprobado.
-            blocked:
-              true,
-
-            role:
-              authenticatedRole.id,
-
-            firstName:
-              firstName.trim(),
-
-            lastName:
-              lastName.trim(),
-
-            phone:
-              normalizedPhone,
-          });
-
-        // =================================================
-        // CREAR SOLICITUD
-        // =================================================
-        const application =
-          await strapi.db
-            .query(APPLICATION_UID)
-            .create({
-              data: {
-                proposedRestaurantName:
-                  proposedRestaurantName.trim(),
-
-                status:
-                  'pending',
-
-                rejectionReason:
-                  null,
-
-                reviewedAt:
-                  null,
-
-                applicant:
-                  createdUser.id,
-              },
-            });
+        const application = await strapi.db.query(APPLICATION_UID).create({
+          data: {
+            proposedRestaurantName: proposedRestaurantName.trim(),
+            status: 'pending',
+            rejectionReason: null,
+            reviewedAt: null,
+            applicant: createdUser.id,
+          },
+        });
 
         ctx.status = 201;
-
         ctx.body = {
           message:
             'Solicitud registrada correctamente. Debe esperar la aprobación del administrador.',
-
           application: {
-            id:
-              application.id,
-
-            documentId:
-              application.documentId,
-
-            proposedRestaurantName:
-              application.proposedRestaurantName,
-
-            status:
-              application.status,
+            id: application.id,
+            documentId: application.documentId,
+            proposedRestaurantName: application.proposedRestaurantName,
+            status: application.status,
           },
         };
 
         return ctx.body;
       } catch (error) {
-        strapi.log.error(
-          'Error registrando solicitud de restaurante',
-          error
-        );
+        strapi.log.error('Error registrando solicitud de restaurante', error);
 
-        // Si el usuario fue creado pero la solicitud falló,
-        // eliminamos el usuario para no dejar datos huérfanos.
         if (createdUser?.id) {
           try {
-            await strapi.db
-              .query(USER_UID)
-              .delete({
-                where: {
-                  id:
-                    createdUser.id,
-                },
-              });
+            await users.delete({ where: { id: createdUser.id } });
           } catch (deleteError) {
             strapi.log.error(
               'No se pudo eliminar el usuario después del error',
@@ -376,465 +206,271 @@ export default factories.createCoreController(
           }
         }
 
-        return ctx.internalServerError(
-          'No se pudo registrar la solicitud'
-        );
+        return ctx.internalServerError('No se pudo registrar la solicitud');
       }
     },
 
-    // =====================================================
-    // ADMIN - LISTAR SOLICITUDES
     // GET /api/restaurant-applications/admin
-    // =====================================================
     async adminFind(ctx: any) {
-      populateApplicant(ctx);
+      ctx.query = {
+        ...(ctx.query || {}),
+        populate: ctx.query?.populate || applicantPopulate,
+      };
 
       return await super.find(ctx);
     },
 
-    // =====================================================
-    // ADMIN - VER UNA SOLICITUD
     // GET /api/restaurant-applications/admin/:documentId
-    // =====================================================
     async adminFindOne(ctx: any) {
-      const documentId = String(
-        ctx.params?.documentId || ''
-      ).trim();
+      const documentId = String(ctx.params?.documentId || '').trim();
 
       if (!documentId) {
-        return ctx.badRequest(
-          'El documentId es obligatorio'
-        );
+        return ctx.badRequest('El documentId es obligatorio');
       }
 
-      const application =
-        await strapi.db
-          .query(APPLICATION_UID)
-          .findOne({
-            where: {
-              documentId,
-            },
-
-            populate: {
-              applicant: {
-                populate: {
-                  role: true,
-                  restaurant: true,
-                },
-              },
-            },
-          });
+      const application = await strapi.db.query(APPLICATION_UID).findOne({
+        where: { documentId },
+        populate: applicantPopulate,
+      });
 
       if (!application) {
-        return ctx.notFound(
-          'No se encontró la solicitud'
-        );
+        return ctx.notFound('No se encontró la solicitud');
       }
 
       ctx.status = 200;
-
-      ctx.body =
-        buildApplicationResponse(
-          application
-        );
-
+      ctx.body = buildApplicationResponse(application);
       return ctx.body;
     },
 
-    // =====================================================
-    // ADMIN - APROBAR / RECHAZAR
-    //
-    // PUT
-    // /api/restaurant-applications/admin/:documentId/status
-    // =====================================================
-    async adminUpdateStatus(
-      ctx: any
-    ) {
-      const documentId = String(
-        ctx.params?.documentId || ''
-      ).trim();
+    // PUT /api/restaurant-applications/admin/:documentId/status
+    async adminUpdateStatus(ctx: any) {
+      const documentId = String(ctx.params?.documentId || '').trim();
 
       if (!documentId) {
-        return ctx.badRequest(
-          'El documentId es obligatorio'
-        );
+        return ctx.badRequest('El documentId es obligatorio');
       }
 
-      // ===================================================
-      // LEER BODY
-      // ===================================================
-      const body =
-        ctx.request.body || {};
+      const body = ctx.request.body || {};
+      const data = body?.data?.data ?? body?.data ?? body;
+      const status = data?.status as ApplicationStatus | undefined;
 
-      // Permitimos:
-      //
-      // { status: "approved" }
-      //
-      // o:
-      //
-      // {
-      //   data: {
-      //     status: "approved"
-      //   }
-      // }
-      //
-      // Incluso toleramos doble data accidental.
-      const data =
-        body?.data?.data ??
-        body?.data ??
-        body;
-
-      const status =
-        data?.status as
-          | ApplicationStatus
-          | undefined;
-
-      strapi.log.info(
-        `BODY adminUpdateStatus: ${JSON.stringify(
-          ctx.request.body
-        )}`
-      );
-
-      if (
-        status !== 'approved' &&
-        status !== 'rejected'
-      ) {
-        return ctx.badRequest(
-          `El estado debe ser approved o rejected. Recibido: ${String(
-            status
-          )}`
-        );
+      if (status !== 'approved' && status !== 'rejected') {
+        return ctx.badRequest('El estado debe ser approved o rejected');
       }
 
-      // ===================================================
-      // BUSCAR SOLICITUD
-      // ===================================================
-      const application =
-        await strapi.db
-          .query(APPLICATION_UID)
-          .findOne({
-            where: {
-              documentId,
-            },
+      const rejectionReason =
+        typeof data.rejectionReason === 'string'
+          ? data.rejectionReason.trim()
+          : '';
 
-            populate: {
-              applicant: true,
-            },
+      if (status === 'rejected' && !rejectionReason) {
+        return ctx.badRequest('Debe indicar el motivo del rechazo');
+      }
+
+      try {
+        const result = await strapi.db.transaction(async ({ trx }) => {
+          // Serializa las revisiones simultáneas de la misma solicitud.
+          const table = strapi.db.metadata.get(APPLICATION_UID).tableName;
+          const matched = await trx(table)
+            .where({ document_id: documentId })
+            .update({ status: trx.ref('status') });
+
+          if (!matched) {
+            return { code: 404, message: 'No se encontró la solicitud' };
+          }
+
+          const applications = strapi.db.query(APPLICATION_UID);
+          const users = strapi.db.query(USER_UID);
+
+          const application = await applications.findOne({
+            where: { documentId },
+            populate: applicantPopulate,
           });
 
-      if (!application) {
-        return ctx.notFound(
-          'No se encontró la solicitud'
-        );
-      }
+          const user = application?.applicant;
 
-      if (!application.applicant) {
-        return ctx.badRequest(
-          'La solicitud no tiene un usuario asociado'
-        );
-      }
+          if (!user?.documentId) {
+            return {
+              code: 400,
+              message: 'La solicitud no tiene un usuario asociado',
+            };
+          }
 
-      const applicant =
-        application.applicant;
+          const reviewedAt = new Date().toISOString();
 
-      // Si la solicitud ya estaba aprobada, se vuelve a verificar
-      // el usuario, el rol y el restaurante. Esto permite reparar
-      // aprobaciones antiguas que quedaron incompletas.
+          if (status === 'rejected') {
+            if (application.status === 'approved') {
+              return {
+                code: 400,
+                message: 'Una solicitud aprobada no puede ser rechazada',
+              };
+            }
 
-      const reviewedAt =
-        new Date().toISOString();
-
-      // ===================================================
-      // RECHAZAR
-      // ===================================================
-      if (status === 'rejected') {
-        if (
-          application.status ===
-          'approved'
-        ) {
-          return ctx.badRequest(
-            'Una solicitud aprobada no puede ser rechazada'
-          );
-        }
-
-        const rejectionReason =
-          typeof data.rejectionReason ===
-          'string'
-            ? data.rejectionReason.trim()
-            : '';
-
-        if (!rejectionReason) {
-          return ctx.badRequest(
-            'Debe indicar el motivo del rechazo'
-          );
-        }
-
-        try {
-          // ===============================================
-          // MANTENER USUARIO BLOQUEADO
-          // ===============================================
-          await strapi.db
-            .query(USER_UID)
-            .update({
-              where: {
-                id:
-                  applicant.id,
-              },
-
-              data: {
-                blocked:
-                  true,
-              },
+            await users.update({
+              where: { id: user.id },
+              data: { blocked: true },
+            });
+          } else {
+            const roles = await strapi.db.query(ROLE_UID).findMany({
+              select: ['id', 'type', 'name'],
             });
 
-          // ===============================================
-          // ACTUALIZAR SOLICITUD
-          // ===============================================
-          await strapi.db
-            .query(APPLICATION_UID)
-            .update({
-              where: {
-                id:
-                  application.id,
-              },
+            const role =
+              roles.find((item: any) => item.type === 'restaurant') ??
+              roles.find((item: any) =>
+                ['restaurant', 'restaurante'].includes(
+                  String(item.name).trim().toLowerCase()
+                )
+              );
 
-              data: {
-                status:
-                  'rejected',
+            if (!role) {
+              throw new Error('No se encontró el rol Restaurant / Restaurante');
+            }
 
-                rejectionReason,
+            const restaurants = strapi.documents(RESTAURANT_UID);
+            let restaurantId: string | undefined = user.restaurant?.documentId;
 
-                reviewedAt,
-              },
-            });
+            // Una solicitud antigua ya aprobada puede haber quedado sin vínculo.
+            if (!restaurantId && application.status === 'approved') {
+              const matches = await strapi.db.query(RESTAURANT_UID).findMany({
+                where: { email: user.email },
+                populate: { users: true },
+              });
 
-          // ===============================================
-          // RECUPERAR SOLICITUD ACTUALIZADA
-          // ===============================================
-          const updatedApplication =
-            await strapi.db
-              .query(APPLICATION_UID)
-              .findOne({
-                where: {
-                  documentId,
-                },
+              // El borrador y la publicación comparten documentId.
+              const documentIds = new Set(
+                matches.map((item: any) => item.documentId)
+              );
 
-                populate: {
-                  applicant: true,
+              const hasConflict = matches.some(
+                (item: any) =>
+                  item.name !== application.proposedRestaurantName ||
+                  item.users.some((member: any) => member.id !== user.id)
+              );
+
+              if (documentIds.size !== 1 || hasConflict) {
+                return {
+                  code: 409,
+                  message:
+                    'Revisa el restaurante de esta aprobación anterior. No se pudo identificar con certeza.',
+                };
+              }
+
+              restaurantId = matches[0].documentId;
+            }
+
+            if (!restaurantId) {
+              const created = await restaurants.create({
+                status: 'published',
+                data: {
+                  name: application.proposedRestaurantName,
+                  email: user.email,
+                  phone: user.phone || null,
+                  statusRes: 'ACTIVE',
                 },
               });
 
-          if (!updatedApplication) {
-            return ctx.internalServerError(
-              'La solicitud fue rechazada, pero no se pudo recuperar el resultado'
-            );
-          }
+              restaurantId = created.documentId;
+            } else {
+              const published = await restaurants.findOne({
+                documentId: restaurantId,
+                status: 'published',
+              });
 
-          ctx.status = 200;
+              if (!published) {
+                await restaurants.publish({ documentId: restaurantId });
+              }
+            }
 
-          ctx.body =
-            buildApplicationResponse(
-              updatedApplication
-            );
+            if (!restaurantId) {
+              throw new Error('No se obtuvo el documentId del restaurante');
+            }
 
-          return ctx.body;
-        } catch (error) {
-          strapi.log.error(
-            'Error rechazando solicitud de restaurante',
-            error
-          );
-
-          return ctx.internalServerError(
-            'No se pudo rechazar la solicitud'
-          );
-        }
-      }
-
-      // ===================================================
-      // APROBAR Y ACTIVAR CUENTA DE RESTAURANTE
-      // ===================================================
-      try {
-        const user = await strapi.db
-          .query(USER_UID)
-          .findOne({
-            where: { id: applicant.id },
-            populate: {
-              role: true,
-              restaurant: true,
-            },
-          });
-
-        if (!user) {
-          return ctx.notFound(
-            'No se encontró el usuario solicitante'
-          );
-        }
-
-        // Buscar el rol por type y, como respaldo, por name.
-        let restaurantRole = await strapi.db
-          .query(ROLE_UID)
-          .findOne({ where: { type: 'restaurant' } });
-
-        if (!restaurantRole) {
-          restaurantRole = await strapi.db
-            .query(ROLE_UID)
-            .findOne({ where: { name: 'Restaurant' } });
-        }
-        if (!restaurantRole) {
-          restaurantRole = await strapi.db
-            .query(ROLE_UID)
-            .findOne({ where: { name: 'Restaurante' } });
-        }
-
-        if (!restaurantRole) {
-          const roles = await strapi.db
-            .query(ROLE_UID)
-            .findMany({ select: ['id', 'name', 'type'] });
-          restaurantRole = roles.find((role: any) =>
-            ['restaurant', 'restaurante'].includes(String(role.name || '').trim().toLowerCase()) ||
-            String(role.type || '').trim().toLowerCase() === 'restaurant'
-          ) || null;
-        }
-
-        if (!restaurantRole) {
-          strapi.log.error(
-            'No existe un rol Restaurant en Users & Permissions. No se completó la aprobación.'
-          );
-          return ctx.internalServerError(
-            'No se encontró el rol Restaurant. Créalo en la administración de roles y vuelve a aprobar la solicitud.'
-          );
-        }
-
-        let restaurant = user.restaurant;
-        let recoveredByEmail = false;
-
-        // Recuperación idempotente: si un intento anterior creó el
-        // restaurante pero falló antes de vincularlo al usuario,
-        // se reutiliza el registro que tenga el correo del solicitante.
-        if (!restaurant) {
-          restaurant = await strapi.db
-            .query(RESTAURANT_UID)
-            .findOne({
-              where: { email: applicant.email },
-            });
-          recoveredByEmail = Boolean(restaurant);
-        }
-
-        if (!restaurant) {
-          const createdRestaurant = await strapi
-            .documents(RESTAURANT_UID)
-            .create({
-              status: 'published',
+            // User.restaurant es manyToOne y recibe una referencia singular.
+            await strapi.documents(USER_UID).update({
+              documentId: user.documentId,
               data: {
-                name: application.proposedRestaurantName,
-                email: applicant.email,
-                phone: applicant.phone || null,
-                statusRes: 'ACTIVE',
-              },
-              populate: {
-                users: true,
-              },
-            });
-
-          restaurant = createdRestaurant;
-          strapi.log.info(
-            `Restaurante publicado durante la aprobación: ${createdRestaurant.documentId}`
-          );
-        } else if (!restaurant.publishedAt && restaurant.documentId) {
-          // Evita que una relación antigua apunte a un restaurante borrador.
-          await strapi.documents(RESTAURANT_UID).publish({
-            documentId: restaurant.documentId,
-          });
-
-          restaurant = await strapi.db
-            .query(RESTAURANT_UID)
-            .findOne({
-              where: { id: restaurant.id },
-            });
-        }
-
-        if (!restaurant?.id) {
-          throw new Error(
-            'No se pudo crear o recuperar el registro del restaurante.'
-          );
-        }
-
-        // La aprobación deja el restaurante activo y publicado. Si se recuperó
-        // un registro previo por correo, se alinea también su nombre con la
-        // solicitud que se está aprobando.
-        if (restaurant.documentId) {
-          restaurant = await strapi.documents(RESTAURANT_UID).update({
-            documentId: restaurant.documentId,
-            status: 'published',
-            data: {
-              statusRes: 'ACTIVE',
-              ...(recoveredByEmail ? { name: application.proposedRestaurantName } : {}),
-            },
-            populate: { users: true },
-          });
-        } else {
-          await strapi.db.query(RESTAURANT_UID).update({
-            where: { id: restaurant.id },
-            data: { statusRes: 'ACTIVE' },
-          });
-        }
-
-        // Este es el paso que faltaba: asignar el rol Restaurant,
-        // relacionar el usuario con el restaurante y habilitar el acceso.
-        await strapi.db
-          .query(USER_UID)
-          .update({
-            where: { id: applicant.id },
-            data: {
-              role: restaurantRole.id,
-              restaurant: restaurant.id,
-              blocked: false,
-              confirmed: true,
-            },
-          });
-
-        await strapi.db
-          .query(APPLICATION_UID)
-          .update({
-            where: { id: application.id },
-            data: {
-              status: 'approved',
-              rejectionReason: null,
-              reviewedAt,
-            },
-          });
-
-        const updatedApplication = await strapi.db
-          .query(APPLICATION_UID)
-          .findOne({
-            where: { documentId },
-            populate: {
-              applicant: {
-                populate: {
-                  role: true,
-                  restaurant: true,
+                restaurant: {
+                  documentId: restaurantId,
                 },
               },
+            });
+
+            await users.update({
+              where: { id: user.id },
+              data: {
+                role: role.id,
+                confirmed: true,
+                blocked: false,
+              },
+            });
+
+            const linkedUser = await users.findOne({
+              where: { id: user.id },
+              populate: { restaurant: true },
+            });
+
+            if (linkedUser?.restaurant?.documentId !== restaurantId) {
+              throw new Error(
+                'No se pudo verificar el restaurante asignado al usuario'
+              );
+            }
+
+            for (const version of ['draft', 'published'] as const) {
+              const linkedRestaurant = await restaurants.findOne({
+                documentId: restaurantId,
+                status: version,
+                populate: { users: true },
+              });
+
+              const hasApplicant = linkedRestaurant?.users?.some(
+                (member: any) => member.id === user.id
+              );
+
+              if (!hasApplicant) {
+                throw new Error(
+                  `No se encontró al solicitante en los usuarios del restaurante (${version})`
+                );
+              }
+            }
+          }
+
+          const updated = await applications.update({
+            where: { id: application.id },
+            data: {
+              status,
+              rejectionReason: status === 'rejected' ? rejectionReason : null,
+              reviewedAt:
+                application.status === 'approved'
+                  ? application.reviewedAt ?? reviewedAt
+                  : reviewedAt,
             },
+            populate: applicantPopulate,
           });
 
-        if (!updatedApplication) {
-          return ctx.internalServerError(
-            'La solicitud fue aprobada, pero no se pudo recuperar el resultado.'
-          );
+          return {
+            code: 200,
+            response: buildApplicationResponse(updated),
+          };
+        });
+
+        if (result.code !== 200) {
+          return ctx.throw(result.code, result.message);
         }
 
         ctx.status = 200;
-        ctx.body = buildApplicationResponse(updatedApplication);
+        ctx.body = result.response;
         return ctx.body;
       } catch (error) {
+        if ((error as any)?.status) throw error;
+
         strapi.log.error(
-          'Error aprobando solicitud de restaurante',
+          'Error actualizando la solicitud de restaurante',
           error
         );
 
         return ctx.internalServerError(
-          'No se pudo aprobar la solicitud'
+          'No se pudo completar el cambio de estado de la solicitud'
         );
       }
     },
