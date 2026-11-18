@@ -230,6 +230,7 @@ export default factories.createCoreController(
           )
           .update({
             documentId,
+            status: 'published',
 
             data:
               data as any,
@@ -346,6 +347,7 @@ export default factories.createCoreController(
             )
             .update({
               documentId,
+              status: 'published',
 
               data: {
                 mainImage:
@@ -479,6 +481,7 @@ export default factories.createCoreController(
             )
             .update({
               documentId,
+              status: 'published',
 
               data: {
                 mainImage:
@@ -617,6 +620,7 @@ export default factories.createCoreController(
           )
           .update({
             documentId,
+            status: 'published',
 
             data: {
               mainImage:
@@ -776,6 +780,7 @@ export default factories.createCoreController(
             )
             .update({
               documentId,
+              status: 'published',
 
               data: {
                 gallery:
@@ -959,6 +964,7 @@ export default factories.createCoreController(
             )
             .update({
               documentId,
+              status: 'published',
 
               data: {
                 gallery:
@@ -1132,6 +1138,7 @@ export default factories.createCoreController(
           )
           .update({
             documentId,
+            status: 'published',
 
             data: {
               gallery:

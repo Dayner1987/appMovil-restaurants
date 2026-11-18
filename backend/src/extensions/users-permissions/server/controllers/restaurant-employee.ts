@@ -258,16 +258,40 @@ async function getRestaurantContext(
 // =====================================================
 
 async function getEmployeeRole() {
-  return await strapi.db
-    .query(
-      ROLE_UID
-    )
+  const roleByType = await strapi.db
+    .query(ROLE_UID)
     .findOne({
-      where: {
-        type:
-          'employee',
-      },
+      where: { type: 'employee' },
     });
+
+  if (roleByType) return roleByType;
+
+  // Respaldo para instalaciones donde el rol se creó con nombre traducido.
+  const roles = await strapi.db
+    .query(ROLE_UID)
+    .findMany({
+      select: ['id', 'name', 'type'],
+    });
+
+  return roles.find((role: any) =>
+    ['employee', 'empleado'].includes(
+      String(role.name ?? '').trim().toLowerCase()
+    ) ||
+    String(role.type ?? '').trim().toLowerCase() === 'employee'
+  ) ?? null;
+}
+
+function isUniqueConstraintError(error: any) {
+  const message = String(error?.message ?? '').toLowerCase();
+  const code = String(error?.code ?? '').toLowerCase();
+
+  return (
+    message.includes('unique') ||
+    message.includes('duplicate') ||
+    code.includes('unique') ||
+    code === '23505' ||
+    code === 'er_dup_entry'
+  );
 }
 
 // =====================================================
@@ -495,6 +519,18 @@ export async function restaurantCreateEmployee(
     );
   }
 
+  if (username.length < 3) {
+    return ctx.badRequest(
+      'El nombre de usuario debe tener al menos 3 caracteres'
+    );
+  }
+
+  if (/\s/.test(username)) {
+    return ctx.badRequest(
+      'El nombre de usuario no debe contener espacios'
+    );
+  }
+
   if (
     password.length <
     6
@@ -551,96 +587,83 @@ export async function restaurantCreateEmployee(
   // correctamente el password.
   // ===================================================
 
-  const userService =
-    strapi
-      .plugin(
-        'users-permissions'
-      )
-      .service(
-        'user'
-      );
+  const userService = strapi
+    .plugin('users-permissions')
+    .service('user');
 
-  const created =
-    await userService.add({
+  let createdUserId: number | null = null;
+
+  try {
+    const created = await userService.add({
       username,
-
       email,
-
       password,
-
-      provider:
-        'local',
-
-      confirmed:
-        true,
-
-      blocked:
-        false,
-
-      role:
-        employeeRole.id,
-
-      restaurant:
-        context.restaurant.id,
-
+      provider: 'local',
+      confirmed: true,
+      blocked: false,
+      role: employeeRole.id,
+      restaurant: context.restaurant.id,
       firstName,
-
       middleName,
-
       lastName,
-
       secondLastName,
-
       ci,
-
       phone,
     });
 
-  if (
-    !created?.id
-  ) {
-    return ctx.internalServerError(
-      'No se pudo crear el empleado'
-    );
-  }
+    if (!created?.id) {
+      throw new Error('Users & Permissions no devolvió el ID del empleado creado');
+    }
 
-  const employee =
-    await strapi.db
-      .query(
-        USER_UID
-      )
+    createdUserId = created.id;
+
+    const employee = await strapi.db
+      .query(USER_UID)
       .findOne({
-        where: {
-          id:
-            created.id,
-        },
-
+        where: { id: createdUserId },
         populate: {
-          role:
-            true,
-
-          restaurant:
-            true,
-
-          avatar:
-            true,
+          role: true,
+          restaurant: true,
+          avatar: true,
         },
       });
 
-  ctx.status =
-    201;
+    if (!employee) {
+      throw new Error('El empleado se creó, pero no se pudo recuperar su información');
+    }
 
-  ctx.body = {
-    message:
-      'Empleado creado correctamente',
+    ctx.status = 201;
+    ctx.body = {
+      message: 'Empleado creado correctamente',
+      data: sanitizeEmployee(employee),
+    };
 
-    data:
-      sanitizeEmployee(
-        employee
-      ),
-  };
+    return ctx.body;
+  } catch (error: any) {
+    strapi.log.error('Error creando empleado para restaurante', error);
 
-  return ctx.body;
+    // Si falló la lectura posterior a la creación, se evita dejar
+    // una cuenta parcial sin confirmar al cliente que se creó.
+    if (createdUserId) {
+      try {
+        await strapi.db.query(USER_UID).delete({
+          where: { id: createdUserId },
+        });
+      } catch (cleanupError) {
+        strapi.log.error('No se pudo revertir el empleado tras el error', cleanupError);
+      }
+    }
+
+    if (isUniqueConstraintError(error)) {
+      return ctx.badRequest(
+        'El usuario, correo, teléfono o CI ya está registrado'
+      );
+    }
+
+    return ctx.internalServerError(
+      'No se pudo crear el empleado. Revisa el registro del servidor para conocer el detalle.'
+    );
+  }
 }
 
 // =====================================================
@@ -871,6 +894,12 @@ export async function restaurantUpdateEmployee(
     );
   }
 
+  if (username.length < 3 || /\s/.test(username)) {
+    return ctx.badRequest(
+      'El nombre de usuario debe tener al menos 3 caracteres y no contener espacios'
+    );
+  }
+
   const emailRegex =
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -923,50 +952,49 @@ export async function restaurantUpdateEmployee(
         'user'
       );
 
-  await userService.edit(
-    employeeId,
-    {
-      username,
+  try {
+    await userService.edit(
+      employeeId,
+      {
+        username,
+        email,
+        firstName,
+        middleName: cleanNullableText(body.middleName),
+        lastName,
+        secondLastName: cleanNullableText(body.secondLastName),
+        ci,
+        phone,
+      }
+    );
 
-      email,
-
-      firstName,
-
-      middleName:
-        cleanNullableText(
-          body.middleName
-        ),
-
-      lastName,
-
-      secondLastName:
-        cleanNullableText(
-          body.secondLastName
-        ),
-
-      ci,
-
-      phone,
-    }
-  );
-
-  const updated =
-    await findOwnedEmployee(
+    const updated = await findOwnedEmployee(
       context.restaurant.id,
       employeeId
     );
 
-  ctx.body = {
-    message:
-      'Empleado actualizado correctamente',
+    if (!updated) {
+      return ctx.notFound('No se pudo recuperar el empleado actualizado');
+    }
 
-    data:
-      sanitizeEmployee(
-        updated
-      ),
-  };
+    ctx.body = {
+      message: 'Empleado actualizado correctamente',
+      data: sanitizeEmployee(updated),
+    };
 
-  return ctx.body;
+    return ctx.body;
+  } catch (error: any) {
+    strapi.log.error('Error actualizando empleado del restaurante', error);
+
+    if (isUniqueConstraintError(error)) {
+      return ctx.badRequest(
+        'El usuario, correo, teléfono o CI ya pertenece a otro usuario'
+      );
+    }
+
+    return ctx.internalServerError(
+      'No se pudo actualizar el empleado'
+    );
+  }
 }
 
 // =====================================================

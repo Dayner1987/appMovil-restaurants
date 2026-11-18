@@ -1,13 +1,11 @@
-// backend/src/api/restaurant/controllers/restaurant.ts
+import { factories } from '@strapi/strapi';
 
-import {
-  factories,
-} from '@strapi/strapi';
+const RESTAURANT_UID = 'api::restaurant.restaurant' as const;
+const USER_UID = 'plugin::users-permissions.user' as const;
 
-const RESTAURANT_UID =
-  'api::restaurant.restaurant' as const;
+type RestaurantMediaField = 'logo' | 'QRImage';
 
-const ALLOWED_FIELDS = [
+const ALLOWED_FIELDS = new Set([
   'name',
   'slug',
   'description',
@@ -15,656 +13,355 @@ const ALLOWED_FIELDS = [
   'address',
   'phone',
   'nit',
-  'statusRes',
-  'users',
-  'categories',
-  'products',
-  'promotions',
-  'publications',
-  'orders',
-];
+]);
 
-// =====================================================
-// HELPERS
-// =====================================================
-
-function getSingleFile(
-  files: any,
-  fieldName: string
-) {
-  const file =
-    files?.[fieldName];
-
-  if (!file) {
-    return null;
-  }
-
-  return Array.isArray(
-    file
-  )
-    ? file[0] ?? null
-    : file;
+function getSingleFile(files: any, fieldName: string) {
+  const file = files?.[fieldName];
+  if (!file) return null;
+  return Array.isArray(file) ? file[0] ?? null : file;
 }
 
-async function uploadOneFile(
+function isImageFile(file: any) {
+  const mime = String(file?.mimetype ?? file?.type ?? '').toLowerCase();
+  return mime.startsWith('image/');
+}
+
+async function uploadAndLinkImage(
   strapi: any,
   file: any,
+  restaurantId: number,
+  fieldName: RestaurantMediaField,
   alternativeText: string
 ) {
-  const uploadedFiles =
-    await strapi
-      .plugin('upload')
-      .service('upload')
-      .upload({
-        data: {
-          fileInfo: {
-            name:
-              file.originalFilename ??
-              file.name ??
-              'image',
-
-            alternativeText,
-          },
+  // El servicio de Upload debe crear la asociación con ref/refId/field.
+  // No se actualiza el campo media con uploadedFile.id mediante Document Service:
+  // Strapi 5 no recomienda esa conexión manual para campos media y Draft & Publish.
+  const uploadedFiles = await strapi
+    .plugin('upload')
+    .service('upload')
+    .upload({
+      data: {
+        ref: RESTAURANT_UID,
+        refId: restaurantId,
+        field: fieldName,
+        fileInfo: {
+          name: file.originalFilename ?? file.name ?? `${fieldName}.jpg`,
+          alternativeText,
         },
+      },
+      files: file,
+    });
 
-        files:
-          file,
-      });
-
-  if (
-    !uploadedFiles?.length
-  ) {
-    throw new Error(
-      'No se pudo subir la imagen'
-    );
+  if (!Array.isArray(uploadedFiles) || !uploadedFiles[0]?.id) {
+    throw new Error(`Strapi no devolvió el archivo subido para ${fieldName}`);
   }
 
   return uploadedFiles[0];
 }
 
-async function removeUploadedFile(
-  strapi: any,
-  file: any
-) {
-  if (!file) {
-    return;
-  }
-
-  await strapi
-    .plugin('upload')
-    .service('upload')
-    .remove(file);
+async function removeUploadedFile(strapi: any, file: any) {
+  if (!file) return;
+  await strapi.plugin('upload').service('upload').remove(file);
 }
 
-export default factories.createCoreController(
-  RESTAURANT_UID,
-  ({ strapi }) => {
-    // ===================================================
-    // ACTUALIZAR MEDIA
-    // ===================================================
+async function getOwnedRestaurant(
+  strapi: any,
+  ctx: any,
+  documentId: string,
+  populateMedia = true
+): Promise<any> {
+  const authenticatedUserId = ctx.state.user?.id;
 
-    async function updateMedia(
-      ctx: any,
-      fieldName:
-        | 'logo'
-        | 'QRImage',
-      requireEmpty:
-        boolean
-    ) {
-      const {
-        documentId,
-      } = ctx.params;
+  if (!authenticatedUserId) {
+    return { error: ctx.unauthorized('Debes iniciar sesión') };
+  }
 
-      if (!documentId) {
-        return ctx.badRequest(
-          'El documentId del restaurante es obligatorio'
-        );
-      }
+  const user = await strapi.db.query(USER_UID).findOne({
+    where: { id: authenticatedUserId },
+    populate: {
+      role: true,
+      restaurant: true,
+    },
+  });
 
-      const restaurant =
-        await strapi
-          .documents(
-            RESTAURANT_UID
-          )
-          .findOne({
-            documentId,
+  if (!user) {
+    return { error: ctx.unauthorized('No se encontró el usuario autenticado') };
+  }
 
-            populate: {
-              logo:
-                true,
+  const roleType = String(user.role?.type ?? '').trim().toLowerCase();
+  if (roleType !== 'restaurant') {
+    return { error: ctx.forbidden('Solo la cuenta del restaurante puede modificar sus datos') };
+  }
 
-              QRImage:
-                true,
-            },
-          });
+  if (!user.restaurant?.id) {
+    return { error: ctx.forbidden('La cuenta no tiene un restaurante asociado') };
+  }
 
-      if (!restaurant) {
-        return ctx.notFound(
-          'Restaurante no encontrado'
-        );
-      }
+  const restaurant = await strapi.documents(RESTAURANT_UID).findOne({
+    documentId,
+    populate: populateMedia
+      ? { logo: true, QRImage: true }
+      : undefined,
+  });
 
-      const currentMedia =
-        (restaurant as any)[
-          fieldName
-        ];
+  if (!restaurant) {
+    return { error: ctx.notFound('Restaurante no encontrado') };
+  }
 
-      if (
-        requireEmpty &&
-        currentMedia
-      ) {
-        return ctx.badRequest(
-          `${fieldName} ya existe. Utiliza PATCH para reemplazarlo.`
-        );
-      }
+  const sameRestaurant =
+    user.restaurant.documentId && restaurant.documentId
+      ? user.restaurant.documentId === restaurant.documentId
+      : Number(restaurant.id) === Number(user.restaurant.id);
 
-      const file =
-        getSingleFile(
-          ctx.request.files,
-          fieldName
-        );
+  if (!sameRestaurant) {
+    return { error: ctx.forbidden('No puedes modificar un restaurante que no pertenece a tu cuenta') };
+  }
 
-      if (!file) {
-        return ctx.badRequest(
-          `Debe enviar un archivo en el campo ${fieldName}`
-        );
-      }
+  return { restaurant };
+}
 
-      let uploadedFile:
-        any = null;
+async function sendRestaurantResponse(ctx: any, controller: any, restaurant: any) {
+  // ctx.badRequest(), ctx.notFound(), etc. ya establecen ctx.body.
+  // No se debe usar ctx.status para distinguir errores antes de escribir el body:
+  // Koa puede reportar 404 mientras la respuesta todavía está vacía.
+  if (ctx.body) return ctx.body;
 
-      try {
-        uploadedFile =
-          await uploadOneFile(
-            strapi,
-            file,
-            `${fieldName} del restaurante ${documentId}`
-          );
+  if (!restaurant) {
+    return ctx.notFound('No se pudo recuperar el restaurante actualizado');
+  }
 
-        const updated =
-          await strapi
-            .documents(
-              RESTAURANT_UID
-            )
-            .update({
-              documentId,
+  const sanitized = await controller.sanitizeOutput(restaurant, ctx);
+  ctx.status = 200;
+  ctx.body = { data: sanitized };
+  return ctx.body;
+}
 
-              data: {
-                [fieldName]:
-                  uploadedFile.id,
-              } as any,
-
-              populate: {
-                logo:
-                  true,
-
-                QRImage:
-                  true,
-
-                users:
-                  true,
-
-                categories:
-                  true,
-
-                products:
-                  true,
-
-                promotions:
-                  true,
-
-                publications:
-                  true,
-
-                orders:
-                  true,
-              },
-            });
-
-        if (
-          !requireEmpty &&
-          currentMedia
-        ) {
-          try {
-            await removeUploadedFile(
-              strapi,
-              currentMedia
-            );
-          } catch (
-            deleteError
-          ) {
-            strapi.log.error(
-              `No se pudo eliminar ${fieldName} anterior`,
-              deleteError
-            );
-          }
-        }
-
-        return updated;
-      } catch (error) {
-        if (
-          uploadedFile
-        ) {
-          try {
-            await removeUploadedFile(
-              strapi,
-              uploadedFile
-            );
-          } catch {}
-        }
-
-        throw error;
-      }
+export default factories.createCoreController(RESTAURANT_UID, ({ strapi }) => {
+  async function updateMedia(
+    ctx: any,
+    fieldName: RestaurantMediaField,
+    requireEmpty: boolean
+  ) {
+    const documentId = String(ctx.params?.documentId ?? '').trim();
+    if (!documentId) {
+      return ctx.badRequest('El documentId del restaurante es obligatorio');
     }
 
-    // ===================================================
-    // ELIMINAR MEDIA
-    // ===================================================
+    const access = await getOwnedRestaurant(strapi, ctx, documentId, true);
+    if (access.error) return access.error;
 
-    async function deleteMedia(
-      ctx: any,
-      fieldName:
-        | 'logo'
-        | 'QRImage'
-    ) {
-      const {
+    const restaurant = access.restaurant;
+    const currentMedia = restaurant[fieldName];
+
+    if (requireEmpty && currentMedia) {
+      return ctx.badRequest(`${fieldName} ya existe. Utiliza PATCH para reemplazarlo.`);
+    }
+
+    const file = getSingleFile(ctx.request.files, fieldName);
+    if (!file) {
+      return ctx.badRequest(`Debes enviar un archivo en el campo ${fieldName}`);
+    }
+
+    if (!isImageFile(file)) {
+      return ctx.badRequest(`El archivo del campo ${fieldName} debe ser una imagen`);
+    }
+
+    let uploadedFile: any = null;
+
+    try {
+      uploadedFile = await uploadAndLinkImage(
+        strapi,
+        file,
+        restaurant.id,
+        fieldName,
+        `${fieldName} del restaurante ${documentId}`
+      );
+
+      // El documento tiene Draft & Publish. Primero se vincula el archivo
+      // a la versión draft recuperada y luego se publica el documento.
+      await strapi.documents(RESTAURANT_UID).publish({ documentId });
+
+      const updated = await strapi.documents(RESTAURANT_UID).findOne({
         documentId,
-      } = ctx.params;
+        status: 'published',
+        populate: {
+          logo: true,
+          QRImage: true,
+        },
+      });
 
-      const restaurant =
-        await strapi
-          .documents(
-            RESTAURANT_UID
-          )
-          .findOne({
-            documentId,
-
-            populate: {
-              logo:
-                true,
-
-              QRImage:
-                true,
-            },
-          });
-
-      if (!restaurant) {
-        return ctx.notFound(
-          'Restaurante no encontrado'
-        );
-      }
-
-      const currentMedia =
-        (restaurant as any)[
-          fieldName
-        ];
-
-      if (!currentMedia) {
-        return ctx.badRequest(
-          `El restaurante no tiene ${fieldName}`
-        );
-      }
-
-      const updated =
-        await strapi
-          .documents(
-            RESTAURANT_UID
-          )
-          .update({
-            documentId,
-
-            data: {
-              [fieldName]:
-                null,
-            } as any,
-
-            populate: {
-              logo:
-                true,
-
-              QRImage:
-                true,
-
-              users:
-                true,
-
-              categories:
-                true,
-
-              products:
-                true,
-
-              promotions:
-                true,
-
-              publications:
-                true,
-
-              orders:
-                true,
-            },
-          });
-
-      try {
-        await removeUploadedFile(
-          strapi,
-          currentMedia
-        );
-      } catch (error) {
-        strapi.log.error(
-          `No se pudo eliminar ${fieldName}`,
-          error
+      // No se elimina automáticamente el archivo anterior. Podría estar
+      // compartido por otro registro; se evita borrar recursos ajenos.
+      if (currentMedia?.id && currentMedia.id !== uploadedFile.id) {
+        strapi.log.info(
+          `Se reemplazó ${fieldName} del restaurante ${documentId}. El archivo anterior permanece en la biblioteca multimedia.`
         );
       }
 
       return updated;
+    } catch (error) {
+      if (uploadedFile) {
+        try {
+          await removeUploadedFile(strapi, uploadedFile);
+        } catch (cleanupError) {
+          strapi.log.error('No se pudo limpiar el archivo subido tras el error', cleanupError);
+        }
+      }
+      throw error;
+    }
+  }
+
+  async function deleteMedia(ctx: any, fieldName: RestaurantMediaField) {
+    const documentId = String(ctx.params?.documentId ?? '').trim();
+    if (!documentId) {
+      return ctx.badRequest('El documentId del restaurante es obligatorio');
     }
 
-    return {
-      // =================================================
-      // PATCH RESTAURANT
-      // =================================================
+    const access = await getOwnedRestaurant(strapi, ctx, documentId, true);
+    if (access.error) return access.error;
 
-      async patch(ctx) {
-        const {
-          documentId,
-        } = ctx.params;
+    const currentMedia = access.restaurant[fieldName];
+    if (!currentMedia) {
+      return ctx.badRequest(`El restaurante no tiene ${fieldName}`);
+    }
 
-        if (!documentId) {
-          return ctx.badRequest(
-            'El documentId del restaurante es obligatorio'
-          );
-        }
-
-        const body =
-          (ctx.request.body as any) ??
-          {};
-
-        const payload =
-          body.data ??
-          body;
-
-        if (
-          !payload ||
-          typeof payload !==
-            'object' ||
-          Array.isArray(
-            payload
-          )
-        ) {
-          return ctx.badRequest(
-            'Los datos enviados no son válidos'
-          );
-        }
-
-        const data =
-          Object.fromEntries(
-            Object.entries(
-              payload
-            ).filter(
-              ([key]) =>
-                ALLOWED_FIELDS.includes(
-                  key
-                )
-            )
-          );
-
-        if (
-          Object.keys(
-            data
-          ).length === 0
-        ) {
-          return ctx.badRequest(
-            'No se enviaron campos válidos para actualizar'
-          );
-        }
-
-        const existing =
-          await strapi
-            .documents(
-              RESTAURANT_UID
-            )
-            .findOne({
-              documentId,
-            });
-
-        if (!existing) {
-          return ctx.notFound(
-            'Restaurante no encontrado'
-          );
-        }
-
-        const updated =
-          await strapi
-            .documents(
-              RESTAURANT_UID
-            )
-            .update({
-              documentId,
-
-              data:
-                data as any,
-
-              populate: {
-                logo:
-                  true,
-
-                QRImage:
-                  true,
-
-                users:
-                  true,
-
-                categories:
-                  true,
-
-                products:
-                  true,
-
-                promotions:
-                  true,
-
-                publications:
-                  true,
-
-                orders:
-                  true,
-              },
-            });
-
-        const sanitized =
-          await this.sanitizeOutput!(
-            updated,
-            ctx
-          );
-
-        ctx.body = {
-          data:
-            sanitized,
-        };
-
-        return ctx.body;
+    // Se actualiza la versión draft y se publica en una sola operación.
+    // El archivo no se elimina de Media Library por si tiene otras asociaciones.
+    return await strapi.documents(RESTAURANT_UID).update({
+      documentId,
+      status: 'published',
+      data: { [fieldName]: null } as any,
+      populate: {
+        logo: true,
+        QRImage: true,
       },
-
-      // =================================================
-      // LOGO
-      // =================================================
-
-      async createLogo(ctx) {
-        try {
-          const updated =
-            await updateMedia(
-              ctx,
-              'logo',
-              true
-            );
-
-          if (
-            !updated ||
-            ctx.body
-          ) {
-            return updated;
-          }
-
-          const sanitized =
-            await this.sanitizeOutput!(
-              updated,
-              ctx
-            );
-
-          ctx.body = {
-            data:
-              sanitized,
-          };
-
-          return ctx.body;
-        } catch (error) {
-          strapi.log.error(
-            'Error creando logo',
-            error
-          );
-
-          return ctx.internalServerError(
-            'No se pudo subir el logo'
-          );
-        }
-      },
-
-      async updateLogo(ctx) {
-        try {
-          const updated =
-            await updateMedia(
-              ctx,
-              'logo',
-              false
-            );
-
-          const sanitized =
-            await this.sanitizeOutput!(
-              updated,
-              ctx
-            );
-
-          ctx.body = {
-            data:
-              sanitized,
-          };
-
-          return ctx.body;
-        } catch (error) {
-          return ctx.internalServerError(
-            'No se pudo actualizar el logo'
-          );
-        }
-      },
-
-      async removeLogo(ctx) {
-        const updated =
-          await deleteMedia(
-            ctx,
-            'logo'
-          );
-
-        const sanitized =
-          await this.sanitizeOutput!(
-            updated,
-            ctx
-          );
-
-        ctx.body = {
-          data:
-            sanitized,
-
-          message:
-            'Logo eliminado correctamente',
-        };
-
-        return ctx.body;
-      },
-
-      // =================================================
-      // QR IMAGE
-      // =================================================
-
-      async createQRImage(ctx) {
-        try {
-          const updated =
-            await updateMedia(
-              ctx,
-              'QRImage',
-              true
-            );
-
-          const sanitized =
-            await this.sanitizeOutput!(
-              updated,
-              ctx
-            );
-
-          ctx.body = {
-            data:
-              sanitized,
-          };
-
-          return ctx.body;
-        } catch (error) {
-          return ctx.internalServerError(
-            'No se pudo subir la imagen QR'
-          );
-        }
-      },
-
-      async updateQRImage(ctx) {
-        try {
-          const updated =
-            await updateMedia(
-              ctx,
-              'QRImage',
-              false
-            );
-
-          const sanitized =
-            await this.sanitizeOutput!(
-              updated,
-              ctx
-            );
-
-          ctx.body = {
-            data:
-              sanitized,
-          };
-
-          return ctx.body;
-        } catch (error) {
-          return ctx.internalServerError(
-            'No se pudo actualizar la imagen QR'
-          );
-        }
-      },
-
-      async removeQRImage(ctx) {
-        const updated =
-          await deleteMedia(
-            ctx,
-            'QRImage'
-          );
-
-        const sanitized =
-          await this.sanitizeOutput!(
-            updated,
-            ctx
-          );
-
-        ctx.body = {
-          data:
-            sanitized,
-
-          message:
-            'Imagen QR eliminada correctamente',
-        };
-
-        return ctx.body;
-      },
-    };
+    });
   }
-);
+
+  return {
+    async patch(ctx: any) {
+      const documentId = String(ctx.params?.documentId ?? '').trim();
+      if (!documentId) {
+        return ctx.badRequest('El documentId del restaurante es obligatorio');
+      }
+
+      const access = await getOwnedRestaurant(strapi, ctx, documentId, true);
+      if (access.error) return access.error;
+
+      const body = ctx.request.body ?? {};
+      const payload = body.data ?? body;
+
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        return ctx.badRequest('Los datos enviados no son válidos');
+      }
+
+      const unknownFields = Object.keys(payload).filter((key) => !ALLOWED_FIELDS.has(key));
+      if (unknownFields.length > 0) {
+        return ctx.badRequest(`No se permite modificar estos campos: ${unknownFields.join(', ')}`);
+      }
+
+      const data: Record<string, any> = {};
+      for (const [key, value] of Object.entries(payload)) {
+        data[key] = typeof value === 'string' ? value.trim() : value;
+      }
+
+      if (Object.keys(data).length === 0) {
+        return ctx.badRequest('No se enviaron campos válidos para actualizar');
+      }
+
+      if (data.name !== undefined && (typeof data.name !== 'string' || !data.name)) {
+        return ctx.badRequest('El nombre del restaurante no puede estar vacío');
+      }
+
+      if (data.email !== undefined) {
+        const email = String(data.email).trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return ctx.badRequest('El correo electrónico del restaurante no es válido');
+        }
+        data.email = email;
+      }
+
+      try {
+        const updated = await strapi.documents(RESTAURANT_UID).update({
+          documentId,
+          status: 'published',
+          data,
+          populate: {
+            logo: true,
+            QRImage: true,
+            users: true,
+            products: true,
+            promotions: true,
+            publications: true,
+            orders: true,
+          },
+        });
+
+        return await sendRestaurantResponse(ctx, this, updated);
+      } catch (error) {
+        strapi.log.error(`Error actualizando el restaurante ${documentId}`, error);
+        return ctx.internalServerError('No se pudo actualizar la información del restaurante');
+      }
+    },
+
+    async createLogo(ctx: any) {
+      try {
+        const updated = await updateMedia(ctx, 'logo', true);
+        return await sendRestaurantResponse(ctx, this, updated);
+      } catch (error) {
+        strapi.log.error('Error creando el logo del restaurante', error);
+        return ctx.internalServerError('No se pudo subir el logo');
+      }
+    },
+
+    async updateLogo(ctx: any) {
+      try {
+        const updated = await updateMedia(ctx, 'logo', false);
+        return await sendRestaurantResponse(ctx, this, updated);
+      } catch (error) {
+        strapi.log.error('Error actualizando el logo del restaurante', error);
+        return ctx.internalServerError('No se pudo actualizar el logo');
+      }
+    },
+
+    async removeLogo(ctx: any) {
+      try {
+        const updated = await deleteMedia(ctx, 'logo');
+        return await sendRestaurantResponse(ctx, this, updated);
+      } catch (error) {
+        strapi.log.error('Error eliminando el logo del restaurante', error);
+        return ctx.internalServerError('No se pudo eliminar el logo');
+      }
+    },
+
+    async createQRImage(ctx: any) {
+      try {
+        const updated = await updateMedia(ctx, 'QRImage', true);
+        return await sendRestaurantResponse(ctx, this, updated);
+      } catch (error) {
+        strapi.log.error('Error creando la imagen QR del restaurante', error);
+        return ctx.internalServerError('No se pudo subir la imagen QR');
+      }
+    },
+
+    async updateQRImage(ctx: any) {
+      try {
+        const updated = await updateMedia(ctx, 'QRImage', false);
+        return await sendRestaurantResponse(ctx, this, updated);
+      } catch (error) {
+        strapi.log.error('Error actualizando la imagen QR del restaurante', error);
+        return ctx.internalServerError('No se pudo actualizar la imagen QR');
+      }
+    },
+
+    async removeQRImage(ctx: any) {
+      try {
+        const updated = await deleteMedia(ctx, 'QRImage');
+        return await sendRestaurantResponse(ctx, this, updated);
+      } catch (error) {
+        strapi.log.error('Error eliminando la imagen QR del restaurante', error);
+        return ctx.internalServerError('No se pudo eliminar la imagen QR');
+      }
+    },
+  };
+});

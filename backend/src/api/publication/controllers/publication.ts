@@ -184,6 +184,7 @@ export default factories.createCoreController(
           )
           .update({
             documentId,
+            status: 'published',
 
             data:
               data as any,
@@ -285,6 +286,7 @@ export default factories.createCoreController(
             )
             .update({
               documentId,
+              status: 'published',
 
               data: {
                 image:
@@ -398,6 +400,7 @@ export default factories.createCoreController(
             )
             .update({
               documentId,
+              status: 'published',
 
               data: {
                 image:
@@ -506,6 +509,7 @@ export default factories.createCoreController(
           )
           .update({
             documentId,
+            status: 'published',
 
             data: {
               image:

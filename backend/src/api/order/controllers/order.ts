@@ -21,6 +21,10 @@ const ALLOWED_FIELDS = [
   'order_items',
   'payments',
   'users',
+  'customer',
+  'createdByUser',
+  'completeBy',
+  'shift',
 ];
 
 export default factories.createCoreController(
@@ -138,6 +142,7 @@ export default factories.createCoreController(
           )
           .update({
             documentId,
+            status: 'published',
 
             data:
               data as any,
@@ -153,6 +158,18 @@ export default factories.createCoreController(
                 true,
 
               users:
+                true,
+
+              customer:
+                true,
+
+              createdByUser:
+                true,
+
+              completeBy:
+                true,
+
+              shift:
                 true,
             },
           });

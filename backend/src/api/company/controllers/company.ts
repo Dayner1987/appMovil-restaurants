@@ -55,10 +55,15 @@ async function updateCompanyLogo(
     files: file,
   });
 
+  // La carga de media actualiza la relación del borrador.
+  // Se publica para que el logo nuevo también quede visible en la API pública.
+  await strapi.documents(COMPANY_UID).publish({ documentId });
+
   const updatedCompany = await strapi
     .documents(COMPANY_UID)
     .findOne({
       documentId,
+      status: 'published',
       populate: {
         logoImg: true,
       },
@@ -128,6 +133,7 @@ export default factories.createCoreController(
         .documents(COMPANY_UID)
         .update({
           documentId,
+          status: 'published',
           data: {
             logoImg: null,
           },
@@ -197,16 +203,26 @@ export default factories.createCoreController(
     .documents(COMPANY_UID)
     .findOne({
       documentId,
+      status: 'published',
+      populate: {
+        logoImg: true,
+      },
     });
 
   if (!company) {
     return ctx.notFound('Company no encontrada');
   }
 
+  // El formulario de información general no gestiona el archivo del logo.
+  // Se conserva explícitamente la relación multimedia existente para impedir
+  // que una actualización de nombre/correo/teléfono la deje vacía.
+  data.logoImg = company.logoImg?.id ?? null;
+
   const updatedCompany = await strapi
     .documents(COMPANY_UID)
     .update({
       documentId,
+      status: 'published',
       data,
       populate: {
         logoImg: true,

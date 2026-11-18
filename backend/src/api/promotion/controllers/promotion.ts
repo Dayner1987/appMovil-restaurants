@@ -25,6 +25,41 @@ export default factories.createCoreController(
   PROMOTION_UID,
   ({ strapi }) => ({
     // =====================================================
+    // CREATE PROMOTION - PUBLICAR INMEDIATAMENTE
+    // =====================================================
+    async create(ctx) {
+      const body = (ctx.request.body as any) ?? {};
+      const payload = body.data ?? body;
+
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        return ctx.badRequest('Los datos enviados no son válidos');
+      }
+
+      const allowedFields = [
+        'name', 'description', 'type', 'percentage', 'discountAmount',
+        'buyQuantity', 'payQuantity', 'startAt', 'endAt', 'restaurant', 'products',
+      ];
+      const data = Object.fromEntries(
+        Object.entries(payload).filter(([key]) => allowedFields.includes(key))
+      );
+
+      if (!String(data.name ?? '').trim() || !data.type || !data.restaurant) {
+        return ctx.badRequest('El nombre, tipo y restaurante son obligatorios');
+      }
+
+      const createdPromotion = await strapi.documents(PROMOTION_UID).create({
+        status: 'published',
+        data: data as any,
+        populate: { restaurant: true, products: true },
+      });
+
+      const sanitizedPromotion = await this.sanitizeOutput!(createdPromotion, ctx);
+      ctx.status = 201;
+      ctx.body = { data: sanitizedPromotion };
+      return ctx.body;
+    },
+
+    // =====================================================
     // PATCH PROMOTION
     // =====================================================
 
@@ -106,6 +141,7 @@ export default factories.createCoreController(
           )
           .update({
             documentId,
+            status: 'published',
 
             data:
               data as any,

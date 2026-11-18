@@ -938,7 +938,7 @@ export interface ApiRestaurantRestaurant extends Struct.CollectionTypeSchema {
       'api::restaurant.restaurant'
     > &
       Schema.Attribute.Private;
-    logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    logo: Schema.Attribute.Media<'images'>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     nit: Schema.Attribute.String;
     orders: Schema.Attribute.Relation<'oneToMany', 'api::order.order'>;
@@ -953,7 +953,7 @@ export interface ApiRestaurantRestaurant extends Struct.CollectionTypeSchema {
       'api::publication.publication'
     >;
     publishedAt: Schema.Attribute.DateTime;
-    QRImage: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
+    QRImage: Schema.Attribute.Media<'images'>;
     slug: Schema.Attribute.UID<'name'>;
     statusRes: Schema.Attribute.Enumeration<
       ['ACTIVE', 'INACTIVE', 'SUSPENDED']

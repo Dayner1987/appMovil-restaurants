@@ -101,6 +101,7 @@ export default factories.createCoreController(
           )
           .update({
             documentId,
+            status: 'published',
 
             data:
               data as any,
